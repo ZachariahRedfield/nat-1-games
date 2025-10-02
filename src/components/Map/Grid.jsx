@@ -10,7 +10,7 @@ export default function Grid({
 
   // view & tools
   tileSize = 32,
-  toolMode,
+  toolMode, // 'tile_brush' | 'canvas_brush' | 'pan'
   scrollRef,
   brushSize = 1,
 
@@ -22,7 +22,7 @@ export default function Grid({
   // layers
   canvasRefs, // { background: ref, base: ref, sky: ref }
   currentLayer = "base",
-  layerVisibility = { background: true, base: true, sky: true }, // NEW
+  layerVisibility = { background: true, base: true, sky: true },
 
   // stroke lifecycle
   onBeginTileStroke, // (layer) => void
@@ -33,6 +33,7 @@ export default function Grid({
 
   const layerIsVisible = layerVisibility?.[currentLayer] !== false;
 
+  // CSS size (what the user sees) vs buffer size (fixed pixel canvas)
   const cssWidth = cols * tileSize;
   const cssHeight = rows * tileSize;
   const bufferWidth = cols * BASE_TILE;
@@ -44,8 +45,11 @@ export default function Grid({
   const [mousePos, setMousePos] = useState(null);
 
   const mouseDownRef = useRef(false);
-  const lastPaintPosRef = useRef(null);
   const paintedPathRef = useRef(new Set());
+
+  // Canvas brush – stamp engine state (CSS space)
+  const lastStampCssRef = useRef(null); // last stamped position
+  const emaCssRef = useRef(null); // smoothed pointer for stability
 
   // ===== helpers
   const hexToRgba = (hex, a) => {
@@ -64,7 +68,14 @@ export default function Grid({
     return canvas ? canvas.getContext("2d") : null;
   };
 
-  const stampAt = (row, col) => {
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const lerp = (a, b, t) => ({
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+  });
+
+  // ===== TILE brush (grid updates on current layer)
+  const applyTileBrushAt = (row, col) => {
     const half = Math.floor(brushSize / 2);
     const updates = [];
     for (let r = 0; r < brushSize; r++) {
@@ -79,32 +90,39 @@ export default function Grid({
     if (updates.length) placeTiles(updates);
   };
 
-  const drawCanvasStroke = (fromCss, toCss) => {
+  // ===== CANVAS brush (stamp engine in CSS space)
+  const stampDiscAt = (cssPt) => {
     const ctx = getActiveCtx();
-    if (!ctx || !fromCss || !toCss) return;
-
-    const from = toCanvasCoords(fromCss.x, fromCss.y);
-    const to = toCanvasCoords(toCss.x, toCss.y);
-
-    const zoneKey = `${Math.floor(to.x)}-${Math.floor(to.y)}-${brushSize}`;
-    if (paintedPathRef.current.has(zoneKey)) return;
-    paintedPathRef.current.add(zoneKey);
+    if (!ctx || !cssPt) return;
+    const p = toCanvasCoords(cssPt.x, cssPt.y);
 
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
-    ctx.lineWidth = brushSize * BASE_TILE;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
     ctx.globalCompositeOperation = isErasing
       ? "destination-out"
       : "source-over";
-    ctx.strokeStyle = isErasing
+    ctx.fillStyle = isErasing
       ? "rgba(0,0,0,1)"
       : hexToRgba(canvasColor, canvasOpacity);
-    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, (brushSize * BASE_TILE) / 2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
+  };
+
+  // lay stamps along segment a -> b with tight spacing
+  const stampBetween = (a, b) => {
+    const radiusCss = (brushSize * tileSize) / 2;
+    const spacing = Math.max(1, radiusCss * 0.27); // ~27% of radius -> solid ribbon
+    const d = dist(a, b);
+    if (d <= spacing) {
+      stampDiscAt(b);
+      return;
+    }
+    const steps = Math.ceil(d / spacing);
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      stampDiscAt(lerp(a, b, t));
+    }
   };
 
   // ===== global pointerup
@@ -114,8 +132,9 @@ export default function Grid({
       setIsBrushing(false);
       setIsPanning(false);
       setLastPan(null);
-      lastPaintPosRef.current = null;
       paintedPathRef.current.clear();
+      lastStampCssRef.current = null;
+      emaCssRef.current = null;
     };
     window.addEventListener("pointerup", up);
     return () => window.removeEventListener("pointerup", up);
@@ -135,13 +154,14 @@ export default function Grid({
     const rect = e.currentTarget.getBoundingClientRect();
     const xCss = e.clientX - rect.left;
     const yCss = e.clientY - rect.top;
+
+    // lock when layer hidden
     if (
       (toolMode === "tile_brush" || toolMode === "canvas_brush") &&
       !layerIsVisible
-    ) {
-      // layer is hidden -> locked from editing
+    )
       return;
-    }
+
     setMousePos({ x: xCss, y: yCss });
 
     const row = Math.floor((yCss / cssHeight) * rows);
@@ -150,36 +170,22 @@ export default function Grid({
     if (toolMode === "tile_brush") {
       onBeginTileStroke?.(currentLayer); // snapshot once at stroke start
       setIsBrushing(true);
-      stampAt(row, col);
+      applyTileBrushAt(row, col);
       return;
     }
 
     if (toolMode === "canvas_brush") {
-      onBeginCanvasStroke?.(currentLayer); // snapshot BEFORE paint
+      onBeginCanvasStroke?.(currentLayer); // snapshot BEFORE any paint
       setIsBrushing(true);
-      lastPaintPosRef.current = { x: xCss, y: yCss };
-      paintedPathRef.current.clear();
 
-      // single click dot
-      const ctx = getActiveCtx();
-      if (ctx) {
-        const p = toCanvasCoords(xCss, yCss);
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x, p.y);
-        ctx.lineWidth = brushSize * BASE_TILE;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.globalCompositeOperation = isErasing
-          ? "destination-out"
-          : "source-over";
-        ctx.strokeStyle = isErasing
-          ? "rgba(0,0,0,1)"
-          : hexToRgba(canvasColor, canvasOpacity);
-        ctx.stroke();
-        ctx.restore();
-      }
+      // init smoothing
+      const start = { x: xCss, y: yCss };
+      emaCssRef.current = start;
+      lastStampCssRef.current = start;
+
+      // solid start
+      stampDiscAt(start);
+      return;
     }
   };
 
@@ -187,13 +193,14 @@ export default function Grid({
     const rect = e.currentTarget.getBoundingClientRect();
     const xCss = e.clientX - rect.left;
     const yCss = e.clientY - rect.top;
+
+    // lock when layer hidden (but allow pan)
     if (
       (toolMode === "tile_brush" || toolMode === "canvas_brush") &&
       !layerIsVisible
-    ) {
-      // allow pan to keep working, but block brushes
+    )
       return;
-    }
+
     setMousePos({ x: xCss, y: yCss });
 
     if (toolMode === "pan" && isPanning && lastPan && scrollRef?.current) {
@@ -209,20 +216,59 @@ export default function Grid({
     if (toolMode === "tile_brush") {
       const row = Math.floor((yCss / cssHeight) * rows);
       const col = Math.floor((xCss / cssWidth) * cols);
-      stampAt(row, col);
+      applyTileBrushAt(row, col);
       return;
     }
 
     if (toolMode === "canvas_brush") {
-      const last = lastPaintPosRef.current;
-      drawCanvasStroke(last, { x: xCss, y: yCss });
-      lastPaintPosRef.current = { x: xCss, y: yCss };
+      // Use native event for coalesced points
+      const native = e.nativeEvent;
+      const events =
+        typeof native.getCoalescedEvents === "function"
+          ? native.getCoalescedEvents()
+          : [native];
+
+      // smoothing (0..1). Higher = snappier, Lower = smoother.
+      const alpha = 0.55;
+
+      let last = lastStampCssRef.current;
+      let ema = emaCssRef.current || last;
+
+      for (const ev of events) {
+        const px = ev.clientX - rect.left;
+        const py = ev.clientY - rect.top;
+
+        if (!last || !ema) {
+          const init = { x: px, y: py };
+          lastStampCssRef.current = init;
+          emaCssRef.current = init;
+          stampDiscAt(init);
+          continue;
+        }
+
+        // EMA smoothing
+        ema = {
+          x: ema.x + (px - ema.x) * alpha,
+          y: ema.y + (py - ema.y) * alpha,
+        };
+
+        // lay tightly-spaced stamps between last and ema
+        stampBetween(last, ema);
+        last = ema;
+      }
+
+      lastStampCssRef.current = last;
+      emaCssRef.current = ema;
       return;
     }
   };
 
   const handlePointerUp = (e) => {
     e.target.releasePointerCapture?.(e.pointerId);
+    if (toolMode === "canvas_brush") {
+      const end = emaCssRef.current || lastStampCssRef.current;
+      if (end) stampDiscAt(end); // tidy finish
+    }
   };
 
   return (
@@ -237,7 +283,7 @@ export default function Grid({
               width: cssWidth,
               height: cssHeight,
               zIndex: 10 + i * 10,
-              display: layerVisibility[layer] ? "block" : "none", // NEW
+              display: layerVisibility[layer] ? "block" : "none",
             }}
           >
             <div
@@ -287,7 +333,7 @@ export default function Grid({
               width: cssWidth,
               height: cssHeight,
               zIndex: 11 + i * 10,
-              display: layerVisibility[layer] ? "block" : "none", // NEW
+              display: layerVisibility[layer] ? "block" : "none",
             }}
             className="absolute top-0 left-0 pointer-events-none"
           />
@@ -321,6 +367,7 @@ export default function Grid({
                 : layerIsVisible
                 ? "crosshair"
                 : "not-allowed",
+            touchAction: "none",
           }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
