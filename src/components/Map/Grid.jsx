@@ -4,22 +4,24 @@ const BASE_TILE = 32; // canvas buffer px per tile (zoom-safe)
 const LAYERS = ["background", "base", "sky"];
 
 export default function Grid({
-  // tiles (multi-layer)
-  maps, // { background: Grid, base: Grid, sky: Grid }
-  placeTiles, // (updates:[{row,col}]) => void
+  // data
+  maps, // { background: Grid, base: Grid, sky: Grid } (strings or hex colors)
+  objects, // { background: Obj[], base: Obj[], sky: Obj[] }
+  assets, // Asset[] (image/color)
 
-  // view & tools
-  tileSize = 32,
-  toolMode, // 'tile_brush' | 'canvas_brush' | 'pan'
-  scrollRef,
-  brushSize = 1,
-
-  // canvas paint
+  // drawing config
+  engine, // 'grid' | 'canvas'
+  selectedAsset, // Asset or null
+  gridSettings, // { sizeTiles, rotation, flipX, flipY, opacity }
+  brushSize = 2, // canvas brush size in tiles
+  canvasOpacity = 0.35,
   canvasColor = "#cccccc",
-  canvasOpacity = 0.4,
+  canvasSpacing = 0.27, // fraction of radius
   isErasing = false,
 
-  // layers
+  // view / layers
+  tileSize = 32,
+  scrollRef,
   canvasRefs, // { background: ref, base: ref, sky: ref }
   currentLayer = "base",
   layerVisibility = { background: true, base: true, sky: true },
@@ -27,29 +29,37 @@ export default function Grid({
   // stroke lifecycle
   onBeginTileStroke, // (layer) => void
   onBeginCanvasStroke, // (layer) => void
+  onBeginObjectStroke, // (layer) => void
+
+  // mutators
+  placeTiles, // (updates, colorHex?) => void
+  addObject, // (layer, obj) => void
+  eraseObjectAt, // (layer, row, col) => void
 }) {
   const rows = maps.base.length;
   const cols = maps.base[0].length;
 
-  const layerIsVisible = layerVisibility?.[currentLayer] !== false;
-
-  // CSS size (what the user sees) vs buffer size (fixed pixel canvas)
   const cssWidth = cols * tileSize;
   const cssHeight = rows * tileSize;
   const bufferWidth = cols * BASE_TILE;
   const bufferHeight = rows * BASE_TILE;
 
+  const layerIsVisible = layerVisibility?.[currentLayer] !== false;
+
+  // input state
   const [isPanning, setIsPanning] = useState(false);
   const [lastPan, setLastPan] = useState(null);
   const [isBrushing, setIsBrushing] = useState(false);
   const [mousePos, setMousePos] = useState(null);
 
   const mouseDownRef = useRef(false);
-  const paintedPathRef = useRef(new Set());
 
   // Canvas brush – stamp engine state (CSS space)
-  const lastStampCssRef = useRef(null); // last stamped position
-  const emaCssRef = useRef(null); // smoothed pointer for stability
+  const lastStampCssRef = useRef(null);
+  const emaCssRef = useRef(null);
+
+  // Grid-stamp de-dupe within a stroke
+  const lastTileRef = useRef({ row: -1, col: -1 });
 
   // ===== helpers
   const hexToRgba = (hex, a) => {
@@ -74,24 +84,24 @@ export default function Grid({
     y: a.y + (b.y - a.y) * t,
   });
 
-  // ===== TILE brush (grid updates on current layer)
-  const applyTileBrushAt = (row, col) => {
-    const half = Math.floor(brushSize / 2);
-    const updates = [];
-    for (let r = 0; r < brushSize; r++) {
-      for (let c = 0; c < brushSize; c++) {
-        const rr = row - half + r;
-        const cc = col - half + c;
-        if (rr >= 0 && rr < rows && cc >= 0 && cc < cols) {
-          updates.push({ row: rr, col: cc });
-        }
-      }
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  const getTopMostObjectAt = (layer, r, c) => {
+    const arr = objects[layer] || [];
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const o = arr[i];
+      const inside =
+        r >= o.row &&
+        r < o.row + o.hTiles &&
+        c >= o.col &&
+        c < o.col + o.wTiles;
+      if (inside) return { obj: o, index: i };
     }
-    if (updates.length) placeTiles(updates);
+    return null;
   };
 
-  // ===== CANVAS brush (stamp engine in CSS space)
-  const stampDiscAt = (cssPt) => {
+  // ===== CANVAS BRUSH (free brush; image tip or color disc)
+  const paintTipAt = (cssPt) => {
     const ctx = getActiveCtx();
     if (!ctx || !cssPt) return;
     const p = toCanvasCoords(cssPt.x, cssPt.y);
@@ -100,29 +110,127 @@ export default function Grid({
     ctx.globalCompositeOperation = isErasing
       ? "destination-out"
       : "source-over";
-    ctx.fillStyle = isErasing
-      ? "rgba(0,0,0,1)"
-      : hexToRgba(canvasColor, canvasOpacity);
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, (brushSize * BASE_TILE) / 2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.globalAlpha = Math.max(
+      0.01,
+      selectedAsset?.kind === "image"
+        ? gridSettings?.opacity ?? 1
+        : canvasOpacity
+    );
+
+    if (selectedAsset?.kind === "image" && selectedAsset.img) {
+      // image tip
+      const img = selectedAsset.img;
+      const pxSize = brushSize * BASE_TILE; // canvas pixels
+      ctx.translate(p.x, p.y);
+      // optional rotation/flips from gridSettings (reused)
+      const rot = ((gridSettings?.rotation || 0) * Math.PI) / 180;
+      ctx.rotate(rot);
+      ctx.scale(gridSettings?.flipX ? -1 : 1, gridSettings?.flipY ? -1 : 1);
+      ctx.drawImage(img, -pxSize / 2, -pxSize / 2, pxSize, pxSize);
+    } else {
+      // solid disc
+      ctx.fillStyle = hexToRgba(canvasColor, 1);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, (brushSize * BASE_TILE) / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   };
 
-  // lay stamps along segment a -> b with tight spacing
-  const stampBetween = (a, b) => {
+  const stampBetweenCanvas = (a, b) => {
     const radiusCss = (brushSize * tileSize) / 2;
-    const spacing = Math.max(1, radiusCss * 0.27); // ~27% of radius -> solid ribbon
+    const spacing = Math.max(1, radiusCss * canvasSpacing); // tighter = more solid
     const d = dist(a, b);
     if (d <= spacing) {
-      stampDiscAt(b);
+      paintTipAt(b);
       return;
     }
     const steps = Math.ceil(d / spacing);
     for (let i = 1; i <= steps; i++) {
       const t = i / steps;
-      stampDiscAt(lerp(a, b, t));
+      paintTipAt(lerp(a, b, t));
     }
+  };
+
+  // ===== GRID STAMP (image objects) or GRID COLOR (tiles)
+  const placeGridImageAt = (centerRow, centerCol) => {
+    if (!selectedAsset || selectedAsset.kind !== "image") return;
+
+    const wTiles = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
+    const aspect = selectedAsset.aspectRatio || 1;
+    const hTiles = Math.max(1, Math.round(wTiles / aspect));
+
+    // Center on hovered tile, then clamp so the footprint stays in-bounds
+    const r0 = clamp(
+      centerRow - Math.floor(hTiles / 2),
+      0,
+      Math.max(0, rows - hTiles)
+    );
+    const c0 = clamp(
+      centerCol - Math.floor(wTiles / 2),
+      0,
+      Math.max(0, cols - wTiles)
+    );
+
+    addObject(currentLayer, {
+      assetId: selectedAsset.id,
+      row: r0,
+      col: c0,
+      wTiles,
+      hTiles,
+      rotation: gridSettings.rotation || 0,
+      flipX: !!gridSettings.flipX,
+      flipY: !!gridSettings.flipY,
+      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+    });
+  };
+
+  const placeGridColorStampAt = (centerRow, centerCol) => {
+    // Size in tiles (square, since a solid color has no aspect)
+    const size = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
+    const wTiles = size;
+    const hTiles = size;
+
+    // Center on hovered tile, clamp so full footprint stays in bounds
+    const r0 = clamp(
+      centerRow - Math.floor(hTiles / 2),
+      0,
+      Math.max(0, rows - hTiles)
+    );
+    const c0 = clamp(
+      centerCol - Math.floor(wTiles / 2),
+      0,
+      Math.max(0, cols - wTiles)
+    );
+
+    // Build updates for N×N
+    const updates = [];
+    for (let r = 0; r < hTiles; r++) {
+      for (let c = 0; c < wTiles; c++) {
+        updates.push({ row: r0 + r, col: c0 + c });
+      }
+    }
+
+    // Opacity comes from gridSettings.opacity; color from the selected color asset (canvasColor prop)
+    const a = Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1));
+    const rgba = hexToRgba(canvasColor, a);
+
+    // Write directly into the tile map (MapBuilder.placeTiles respects the color we pass)
+    placeTiles(updates, rgba);
+  };
+
+  const eraseGridAt = (row, col) => {
+    const hit = getTopMostObjectAt(currentLayer, row, col);
+    if (hit) {
+      eraseObjectAt(currentLayer, row, col);
+    } else {
+      // fall back to clearing the color tile at this cell
+      placeTiles([{ row, col }]); // parent uses isErasing to set null
+    }
+  };
+
+  const placeGridColorAt = (row, col) => {
+    placeTiles([{ row, col }]); // parent uses canvasColor + isErasing
   };
 
   // ===== global pointerup
@@ -132,9 +240,9 @@ export default function Grid({
       setIsBrushing(false);
       setIsPanning(false);
       setLastPan(null);
-      paintedPathRef.current.clear();
       lastStampCssRef.current = null;
       emaCssRef.current = null;
+      lastTileRef.current = { row: -1, col: -1 };
     };
     window.addEventListener("pointerup", up);
     return () => window.removeEventListener("pointerup", up);
@@ -144,7 +252,14 @@ export default function Grid({
   const handlePointerDown = (e) => {
     mouseDownRef.current = true;
 
-    if (toolMode === "pan") {
+    if (engine !== "canvas" && engine !== "grid") return;
+
+    if (!layerIsVisible && engine !== "pan") {
+      // locked when hidden
+      return;
+    }
+
+    if (engine === "pan") {
       setIsPanning(true);
       setLastPan({ x: e.clientX, y: e.clientY });
       e.target.setPointerCapture?.(e.pointerId);
@@ -154,28 +269,29 @@ export default function Grid({
     const rect = e.currentTarget.getBoundingClientRect();
     const xCss = e.clientX - rect.left;
     const yCss = e.clientY - rect.top;
-
-    // lock when layer hidden
-    if (
-      (toolMode === "tile_brush" || toolMode === "canvas_brush") &&
-      !layerIsVisible
-    )
-      return;
-
     setMousePos({ x: xCss, y: yCss });
 
     const row = Math.floor((yCss / cssHeight) * rows);
     const col = Math.floor((xCss / cssWidth) * cols);
 
-    if (toolMode === "tile_brush") {
-      onBeginTileStroke?.(currentLayer); // snapshot once at stroke start
+    if (engine === "grid") {
+      // ...snapshot logic you already added...
       setIsBrushing(true);
-      applyTileBrushAt(row, col);
+      lastTileRef.current = { row: -1, col: -1 };
+
+      if (isErasing) {
+        eraseGridAt(row, col);
+      } else if (selectedAsset?.kind === "image") {
+        placeGridImageAt(row, col);
+      } else {
+        // was: placeGridColorAt(row, col)
+        placeGridColorStampAt(row, col); // NEW
+      }
       return;
     }
 
-    if (toolMode === "canvas_brush") {
-      onBeginCanvasStroke?.(currentLayer); // snapshot BEFORE any paint
+    if (engine === "canvas") {
+      onBeginCanvasStroke?.(currentLayer); // snapshot BEFORE paint
       setIsBrushing(true);
 
       // init smoothing
@@ -183,8 +299,8 @@ export default function Grid({
       emaCssRef.current = start;
       lastStampCssRef.current = start;
 
-      // solid start
-      stampDiscAt(start);
+      // start with a solid stamp
+      paintTipAt(start);
       return;
     }
   };
@@ -193,17 +309,9 @@ export default function Grid({
     const rect = e.currentTarget.getBoundingClientRect();
     const xCss = e.clientX - rect.left;
     const yCss = e.clientY - rect.top;
-
-    // lock when layer hidden (but allow pan)
-    if (
-      (toolMode === "tile_brush" || toolMode === "canvas_brush") &&
-      !layerIsVisible
-    )
-      return;
-
     setMousePos({ x: xCss, y: yCss });
 
-    if (toolMode === "pan" && isPanning && lastPan && scrollRef?.current) {
+    if (engine === "pan" && isPanning && lastPan && scrollRef?.current) {
       const dx = e.clientX - lastPan.x;
       const dy = e.clientY - lastPan.y;
       scrollRef.current.scrollBy({ left: -dx, top: -dy });
@@ -212,23 +320,36 @@ export default function Grid({
     }
 
     if (!mouseDownRef.current) return;
+    if (!layerIsVisible) return;
 
-    if (toolMode === "tile_brush") {
+    if (engine === "grid") {
       const row = Math.floor((yCss / cssHeight) * rows);
       const col = Math.floor((xCss / cssWidth) * cols);
-      applyTileBrushAt(row, col);
+
+      if (row === lastTileRef.current.row && col === lastTileRef.current.col)
+        return;
+      lastTileRef.current = { row, col };
+
+      if (isErasing) {
+        eraseGridAt(row, col);
+      } else if (selectedAsset?.kind === "image") {
+        placeGridImageAt(row, col);
+      } else {
+        // was: placeGridColorAt(row, col)
+        placeGridColorStampAt(row, col); // NEW
+      }
       return;
     }
 
-    if (toolMode === "canvas_brush") {
-      // Use native event for coalesced points
+    if (engine === "canvas") {
+      // Use native coalesced events for silky strokes
       const native = e.nativeEvent;
       const events =
         typeof native.getCoalescedEvents === "function"
           ? native.getCoalescedEvents()
           : [native];
 
-      // smoothing (0..1). Higher = snappier, Lower = smoother.
+      // EMA smoothing factor
       const alpha = 0.55;
 
       let last = lastStampCssRef.current;
@@ -242,18 +363,17 @@ export default function Grid({
           const init = { x: px, y: py };
           lastStampCssRef.current = init;
           emaCssRef.current = init;
-          stampDiscAt(init);
+          paintTipAt(init);
           continue;
         }
 
-        // EMA smoothing
+        // smooth
         ema = {
           x: ema.x + (px - ema.x) * alpha,
           y: ema.y + (py - ema.y) * alpha,
         };
-
-        // lay tightly-spaced stamps between last and ema
-        stampBetween(last, ema);
+        // lay stamps between last and ema
+        stampBetweenCanvas(last, ema);
         last = ema;
       }
 
@@ -265,11 +385,33 @@ export default function Grid({
 
   const handlePointerUp = (e) => {
     e.target.releasePointerCapture?.(e.pointerId);
-    if (toolMode === "canvas_brush") {
+    if (engine === "canvas") {
       const end = emaCssRef.current || lastStampCssRef.current;
-      if (end) stampDiscAt(end); // tidy finish
+      if (end) paintTipAt(end);
     }
   };
+
+  // ===== RENDERING
+
+  // render a tile cell background from maps (supports named or hex)
+  const cellBg = (v) => {
+    if (!v) return "transparent";
+    if (typeof v === "string") {
+      if (v.startsWith("rgba(") || v.startsWith("rgb(")) return v; // NEW: accept rgba/rgb
+      if (v.startsWith("#")) return v; // hex
+    }
+    // fallback demo names
+    return v === "grass"
+      ? "green"
+      : v === "water"
+      ? "blue"
+      : v === "stone"
+      ? "gray"
+      : "transparent";
+  };
+
+  // find asset by id (cheap enough for now)
+  const getAssetById = (id) => assets.find((a) => a.id === id);
 
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>
@@ -282,7 +424,7 @@ export default function Grid({
             style={{
               width: cssWidth,
               height: cssHeight,
-              zIndex: 10 + i * 10,
+              zIndex: 10 + i * 20,
               display: layerVisibility[layer] ? "block" : "none",
             }}
           >
@@ -296,33 +438,71 @@ export default function Grid({
               }}
             >
               {maps[layer].map((rowArr, ri) =>
-                rowArr.map((tile, ci) => {
-                  const bg =
-                    tile === "grass"
-                      ? "green"
-                      : tile === "water"
-                      ? "blue"
-                      : tile === "stone"
-                      ? "gray"
-                      : "transparent";
-                  return (
-                    <div
-                      key={`${layer}-${ri}-${ci}`}
-                      className="border border-gray-600"
-                      style={{
-                        width: tileSize,
-                        height: tileSize,
-                        backgroundColor: bg,
-                      }}
-                    />
-                  );
-                })
+                rowArr.map((val, ci) => (
+                  <div
+                    key={`${layer}-${ri}-${ci}`}
+                    className="border border-gray-600"
+                    style={{
+                      width: tileSize,
+                      height: tileSize,
+                      backgroundColor: cellBg(val),
+                    }}
+                  />
+                ))
               )}
             </div>
           </div>
         ))}
 
-        {/* 2) Per-layer CANVASES, stacked with their tile grids */}
+        {/* 2) Per-layer OBJECTS (image stamps) — above tiles, below canvas */}
+        {LAYERS.map((layer, i) => (
+          <div
+            key={`objs-${layer}`}
+            className="absolute top-0 left-0 pointer-events-none"
+            style={{
+              width: cssWidth,
+              height: cssHeight,
+              zIndex: 11 + i * 20,
+              display: layerVisibility[layer] ? "block" : "none",
+            }}
+          >
+            {objects[layer].map((o) => {
+              const a = getAssetById(o.assetId);
+              if (!a || a.kind !== "image") return null;
+              const left = o.col * tileSize;
+              const top = o.row * tileSize;
+              const w = o.wTiles * tileSize;
+              const h = o.hTiles * tileSize;
+              const rot = o.rotation || 0;
+              const sx = o.flipX ? -1 : 1;
+              const sy = o.flipY ? -1 : 1;
+
+              return (
+                <div
+                  key={o.id}
+                  className="absolute"
+                  style={{
+                    left,
+                    top,
+                    width: w,
+                    height: h,
+                    transformOrigin: "center",
+                    transform: `translate(0,0) rotate(${rot}deg) scale(${sx}, ${sy})`,
+                    opacity: o.opacity ?? 1,
+                  }}
+                >
+                  <img
+                    src={a.src}
+                    alt={a.name}
+                    className="w-full h-full object-fill pointer-events-none select-none"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+        {/* 3) Per-layer CANVASES (VFX) — on top */}
         {LAYERS.map((layer, i) => (
           <canvas
             key={`canvas-${layer}`}
@@ -332,15 +512,15 @@ export default function Grid({
             style={{
               width: cssWidth,
               height: cssHeight,
-              zIndex: 11 + i * 10,
+              zIndex: 12 + i * 20,
               display: layerVisibility[layer] ? "block" : "none",
             }}
             className="absolute top-0 left-0 pointer-events-none"
           />
         ))}
 
-        {/* 3) Canvas brush cursor preview */}
-        {toolMode === "canvas_brush" && layerIsVisible && mousePos && (
+        {/* 4) Canvas brush preview */}
+        {engine === "canvas" && layerIsVisible && mousePos && (
           <div
             className="absolute rounded-full border border-white pointer-events-none"
             style={{
@@ -348,25 +528,29 @@ export default function Grid({
               top: mousePos.y - brushSize * tileSize * 0.5,
               width: brushSize * tileSize,
               height: brushSize * tileSize,
-              zIndex: 50,
-              backgroundColor: hexToRgba(canvasColor, 0.1),
+              zIndex: 99,
+              backgroundColor:
+                selectedAsset?.kind === "image"
+                  ? "transparent"
+                  : "rgba(255,255,255,0.1)",
             }}
           />
         )}
 
-        {/* 4) Single invisible POINTER OVERLAY */}
+        {/* 5) Pointer overlay */}
         <div
           className="absolute top-0 left-0"
           style={{
             width: cssWidth,
             height: cssHeight,
-            zIndex: 60,
-            cursor:
-              toolMode === "pan"
-                ? "grab"
-                : layerIsVisible
-                ? "crosshair"
-                : "not-allowed",
+            zIndex: 100,
+            cursor: isPanning
+              ? "grabbing"
+              : engine === "pan"
+              ? "grab"
+              : layerIsVisible
+              ? "crosshair"
+              : "not-allowed",
             touchAction: "none",
           }}
           onPointerDown={handlePointerDown}
