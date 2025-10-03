@@ -35,6 +35,10 @@ export default function Grid({
   placeTiles, // (updates, colorHex?) => void
   addObject, // (layer, obj) => void
   eraseObjectAt, // (layer, row, col) => void
+  moveObject,
+  removeObjectById,
+  updateObjectById,
+  onSelectionChange,
 }) {
   const rows = maps.base.length;
   const cols = maps.base[0].length;
@@ -84,7 +88,61 @@ export default function Grid({
     y: a.y + (b.y - a.y) * t,
   });
 
+  // Selection & dragging
+  const [selectedObjId, setSelectedObjId] = useState(null);
+  const dragRef = useRef(null); // { id, offsetRow, offsetCol }
+
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  const eraseGridStampAt = (
+    centerRow,
+    centerCol,
+    {
+      rows,
+      cols,
+      gridSettings,
+      objects,
+      currentLayer,
+      placeTiles,
+      removeObjectById,
+    }
+  ) => {
+    const size = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
+    const wTiles = size,
+      hTiles = size;
+
+    const r0 = clamp(
+      centerRow - Math.floor(hTiles / 2),
+      0,
+      Math.max(0, rows - hTiles)
+    );
+    const c0 = clamp(
+      centerCol - Math.floor(wTiles / 2),
+      0,
+      Math.max(0, cols - wTiles)
+    );
+
+    // 1) Clear color tiles in the footprint
+    const updates = [];
+    for (let r = 0; r < hTiles; r++) {
+      for (let c = 0; c < wTiles; c++) {
+        updates.push({ row: r0 + r, col: c0 + c });
+      }
+    }
+    placeTiles(updates); // parent respects isErasing and writes nulls
+
+    // 2) Remove any objects whose rect intersects the footprint
+    const arr = objects[currentLayer] || [];
+    for (const o of arr) {
+      const intersects = !(
+        o.row + o.hTiles <= r0 ||
+        r0 + hTiles <= o.row ||
+        o.col + o.wTiles <= c0 ||
+        c0 + wTiles <= o.col
+      );
+      if (intersects) removeObjectById(currentLayer, o.id);
+    }
+  };
 
   const getTopMostObjectAt = (layer, r, c) => {
     const arr = objects[layer] || [];
@@ -95,10 +153,13 @@ export default function Grid({
         r < o.row + o.hTiles &&
         c >= o.col &&
         c < o.col + o.wTiles;
-      if (inside) return { obj: o, index: i };
+      if (inside) return o;
     }
     return null;
   };
+
+  const getObjectById = (layer, id) =>
+    (objects[layer] || []).find((o) => o.id === id);
 
   // ===== CANVAS BRUSH (free brush; image tip or color disc)
   const paintTipAt = (cssPt) => {
@@ -248,6 +309,56 @@ export default function Grid({
     return () => window.removeEventListener("pointerup", up);
   }, []);
 
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!selectedObjId) return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        onBeginObjectStroke?.(currentLayer);
+        removeObjectById(currentLayer, selectedObjId);
+        setSelectedObjId(null);
+        onSelectionChange?.(null);
+      } else if (e.key === "Escape") {
+        setSelectedObjId(null);
+        dragRef.current = null;
+        onSelectionChange?.(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedObjId, currentLayer]);
+
+  // When controls (gridSettings) change and an object is selected, live-update it
+  useEffect(() => {
+    if (!selectedObjId) return;
+    const obj = getObjectById(currentLayer, selectedObjId);
+    if (!obj) return;
+
+    // Compute new size from Size (tiles wide) while preserving aspect
+    const a = getAssetById(obj.assetId);
+    const aspect = a?.aspectRatio || 1;
+    const wTiles = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
+    const hTiles = Math.max(1, Math.round(wTiles / aspect));
+
+    // Keep the object's center stable as you resize
+    const centerRow = obj.row + obj.hTiles / 2;
+    const centerCol = obj.col + obj.wTiles / 2;
+    let newRow = Math.round(centerRow - hTiles / 2);
+    let newCol = Math.round(centerCol - wTiles / 2);
+    newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
+    newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
+
+    updateObjectById(currentLayer, obj.id, {
+      wTiles,
+      hTiles,
+      row: newRow,
+      col: newCol,
+      rotation: gridSettings.rotation || 0,
+      flipX: !!gridSettings.flipX,
+      flipY: !!gridSettings.flipY,
+      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+    });
+  }, [gridSettings, selectedObjId, currentLayer, rows, cols]);
+
   // ===== pointer overlay
   const handlePointerDown = (e) => {
     mouseDownRef.current = true;
@@ -275,17 +386,50 @@ export default function Grid({
     const col = Math.floor((xCss / cssWidth) * cols);
 
     if (engine === "grid") {
-      // ...snapshot logic you already added...
       setIsBrushing(true);
       lastTileRef.current = { row: -1, col: -1 };
 
+      const hitObj = getTopMostObjectAt(currentLayer, row, col);
+
+      // Selection/dragging takes priority when not erasing
+      if (!isErasing && hitObj) {
+        onBeginObjectStroke?.(currentLayer);
+        setSelectedObjId(hitObj.id);
+        onSelectionChange?.(hitObj); // ← tell parent we selected this
+        dragRef.current = {
+          id: hitObj.id,
+          offsetRow: row - hitObj.row,
+          offsetCol: col - hitObj.col,
+        };
+        return;
+      }
+
+      // Clicked empty space → clear selection in parent
+      if (!isErasing && !hitObj) {
+        setSelectedObjId(null);
+        onSelectionChange?.(null); // ← restore parent’s defaults
+      }
+
+      // Stamping / Erasing
       if (isErasing) {
-        eraseGridAt(row, col);
+        if (hitObj) onBeginObjectStroke?.(currentLayer);
+        else onBeginTileStroke?.(currentLayer);
+
+        eraseGridStampAt(row, col, {
+          rows,
+          cols,
+          gridSettings,
+          objects,
+          currentLayer,
+          placeTiles,
+          removeObjectById,
+        });
       } else if (selectedAsset?.kind === "image") {
+        onBeginObjectStroke?.(currentLayer);
         placeGridImageAt(row, col);
       } else {
-        // was: placeGridColorAt(row, col)
-        placeGridColorStampAt(row, col); // NEW
+        onBeginTileStroke?.(currentLayer);
+        placeGridColorStampAt(row, col);
       }
       return;
     }
@@ -326,17 +470,45 @@ export default function Grid({
       const row = Math.floor((yCss / cssHeight) * rows);
       const col = Math.floor((xCss / cssWidth) * cols);
 
+      // Dragging?
+      if (dragRef.current && selectedObjId) {
+        const obj = getObjectById(currentLayer, selectedObjId);
+        if (obj) {
+          const { offsetRow, offsetCol } = dragRef.current;
+          const newRow = clamp(
+            row - offsetRow,
+            0,
+            Math.max(0, rows - obj.hTiles)
+          );
+          const newCol = clamp(
+            col - offsetCol,
+            0,
+            Math.max(0, cols - obj.wTiles)
+          );
+          moveObject(currentLayer, obj.id, newRow, newCol);
+        }
+        return;
+      }
+
+      // De-dupe tile hits
       if (row === lastTileRef.current.row && col === lastTileRef.current.col)
         return;
       lastTileRef.current = { row, col };
 
       if (isErasing) {
-        eraseGridAt(row, col);
+        eraseGridStampAt(row, col, {
+          rows,
+          cols,
+          gridSettings,
+          objects,
+          currentLayer,
+          placeTiles,
+          removeObjectById,
+        });
       } else if (selectedAsset?.kind === "image") {
         placeGridImageAt(row, col);
       } else {
-        // was: placeGridColorAt(row, col)
-        placeGridColorStampAt(row, col); // NEW
+        placeGridColorStampAt(row, col);
       }
       return;
     }
@@ -388,6 +560,12 @@ export default function Grid({
     if (engine === "canvas") {
       const end = emaCssRef.current || lastStampCssRef.current;
       if (end) paintTipAt(end);
+    }
+    if (dragRef.current) {
+      dragRef.current = null;
+    }
+    if (!dragRef.current && selectedObjId) {
+      // Click release over empty space is handled in pointerDown; nothing extra here
     }
   };
 
@@ -501,6 +679,34 @@ export default function Grid({
             })}
           </div>
         ))}
+
+        {/* Selection overlay (on top of objects, below canvas) */}
+        {LAYERS.map((layer, i) => {
+          const sel =
+            layer === currentLayer ? getObjectById(layer, selectedObjId) : null;
+          if (!sel || !layerVisibility[layer]) return null;
+
+          const left = sel.col * tileSize;
+          const top = sel.row * tileSize;
+          const w = sel.wTiles * tileSize;
+          const h = sel.hTiles * tileSize;
+
+          return (
+            <div
+              key={`sel-${layer}`}
+              className="absolute pointer-events-none"
+              style={{
+                left,
+                top,
+                width: w,
+                height: h,
+                zIndex: 12 + i * 20 - 1, // just above objects layer
+                border: "2px dashed #4ade80", // green dashed outline
+                boxShadow: "0 0 0 2px rgba(74,222,128,0.3) inset",
+              }}
+            />
+          );
+        })}
 
         {/* 3) Per-layer CANVASES (VFX) — on top */}
         {LAYERS.map((layer, i) => (

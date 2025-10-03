@@ -28,6 +28,10 @@ export default function MapBuilder({ goBack }) {
     sky: makeGrid(rows, cols),
   });
 
+  // Remember user's own grid controls to restore after selection
+  const gridDefaultsRef = useRef(null);
+  const [hasSelection, setHasSelection] = useState(false);
+
   // --- per-layer placed OBJECTS (image stamps) ---
   // object: { id, assetId, row, col, wTiles, hTiles, rotation, flipX, flipY, opacity }
   const [objects, setObjects] = useState({
@@ -138,6 +142,7 @@ export default function MapBuilder({ goBack }) {
       base: resizeLayer(prev.base, r, c),
       sky: resizeLayer(prev.sky, r, c),
     }));
+
     // objects keep their positions; optional: clip objects that go out of bounds
     setObjects((prev) => {
       const clip = (arr) =>
@@ -192,6 +197,29 @@ export default function MapBuilder({ goBack }) {
       if (!changed) return prev;
       return { ...prev, [currentLayer]: nextLayer };
     });
+  };
+
+  // Move an object by id
+  const moveObject = (layer, id, row, col) => {
+    setObjects((prev) => ({
+      ...prev,
+      [layer]: prev[layer].map((o) => (o.id === id ? { ...o, row, col } : o)),
+    }));
+  };
+
+  const updateObjectById = (layer, id, patch) => {
+    setObjects((prev) => ({
+      ...prev,
+      [layer]: prev[layer].map((o) => (o.id === id ? { ...o, ...patch } : o)),
+    }));
+  };
+
+  // Remove an object by id
+  const removeObjectById = (layer, id) => {
+    setObjects((prev) => ({
+      ...prev,
+      [layer]: prev[layer].filter((o) => o.id !== id),
+    }));
   };
 
   // ====== object add/remove ======
@@ -371,6 +399,29 @@ export default function MapBuilder({ goBack }) {
       setEngine(a.defaultEngine);
     };
     img.src = src;
+  };
+
+  const handleSelectionChange = (obj) => {
+    if (obj) {
+      // We just selected something: remember user's current controls ONCE
+      if (!hasSelection) gridDefaultsRef.current = { ...gridSettings };
+      setHasSelection(true);
+
+      // Sync controls to the selected object's properties
+      setGridSettings((s) => ({
+        ...s,
+        sizeTiles: Math.max(1, obj.wTiles || 1),
+        rotation: obj.rotation || 0,
+        flipX: !!obj.flipX,
+        flipY: !!obj.flipY,
+        opacity: obj.opacity ?? 1,
+      }));
+    } else {
+      // Selection cleared: restore user's controls
+      const d = gridDefaultsRef.current;
+      if (d) setGridSettings((s) => ({ ...s, ...d }));
+      setHasSelection(false);
+    }
   };
 
   // ====== layer visibility toggles ======
@@ -815,6 +866,10 @@ export default function MapBuilder({ goBack }) {
                 placeTiles={placeTiles}
                 addObject={addObject}
                 eraseObjectAt={eraseObjectAt}
+                moveObject={moveObject}
+                removeObjectById={removeObjectById}
+                updateObjectById={updateObjectById}
+                onSelectionChange={handleSelectionChange}
               />
             </div>
           </div>
