@@ -18,6 +18,7 @@ export default function Grid({
   canvasColor = "#cccccc",
   canvasSpacing = 0.27, // fraction of radius
   isErasing = false,
+  interactionMode = "draw", // 'draw' | 'select',
 
   // view / layers
   tileSize = 32,
@@ -359,23 +360,41 @@ export default function Grid({
     });
   }, [gridSettings, selectedObjId, currentLayer, rows, cols]);
 
+  const [panHotkey, setPanHotkey] = useState(false); // spacebar held?
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.code === "Space") {
+        setPanHotkey(true);
+        e.preventDefault();
+      }
+    };
+    const onKeyUp = (e) => {
+      if (e.code === "Space") setPanHotkey(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, []);
+
   // ===== pointer overlay
   const handlePointerDown = (e) => {
     mouseDownRef.current = true;
 
-    if (engine !== "canvas" && engine !== "grid") return;
-
-    if (!layerIsVisible && engine !== "pan") {
-      // locked when hidden
-      return;
-    }
-
-    if (engine === "pan") {
+    // Pan gesture: spacebar or middle mouse
+    const isMMB = e.button === 1 || (e.buttons & 4) === 4;
+    if (panHotkey || isMMB) {
       setIsPanning(true);
       setLastPan({ x: e.clientX, y: e.clientY });
       e.target.setPointerCapture?.(e.pointerId);
       return;
     }
+
+    // Layer lock
+    if (!layerIsVisible) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const xCss = e.clientX - rect.left;
@@ -384,6 +403,26 @@ export default function Grid({
 
     const row = Math.floor((yCss / cssHeight) * rows);
     const col = Math.floor((xCss / cssWidth) * cols);
+
+    // ===== SELECT MODE =====
+    if (interactionMode === "select") {
+      const hitObj = getTopMostObjectAt(currentLayer, row, col);
+      if (hitObj) {
+        onBeginObjectStroke?.(currentLayer);
+        setSelectedObjId(hitObj.id);
+        onSelectionChange?.(hitObj);
+        dragRef.current = {
+          id: hitObj.id,
+          offsetRow: row - hitObj.row,
+          offsetCol: col - hitObj.col,
+        };
+      } else {
+        // click empty: clear selection
+        setSelectedObjId(null);
+        onSelectionChange?.(null);
+      }
+      return; // no stamping/erasing in select mode
+    }
 
     if (engine === "grid") {
       setIsBrushing(true);
@@ -465,6 +504,30 @@ export default function Grid({
 
     if (!mouseDownRef.current) return;
     if (!layerIsVisible) return;
+
+    // SELECT MODE drag
+    if (interactionMode === "select") {
+      const row = Math.floor((yCss / cssHeight) * rows);
+      const col = Math.floor((xCss / cssWidth) * cols);
+      if (dragRef.current && selectedObjId) {
+        const obj = getObjectById(currentLayer, selectedObjId);
+        if (obj) {
+          const { offsetRow, offsetCol } = dragRef.current;
+          const newRow = clamp(
+            row - offsetRow,
+            0,
+            Math.max(0, rows - obj.hTiles)
+          );
+          const newCol = clamp(
+            col - offsetCol,
+            0,
+            Math.max(0, cols - obj.wTiles)
+          );
+          moveObject(currentLayer, obj.id, newRow, newCol);
+        }
+      }
+      return; // no stamping while selecting
+    }
 
     if (engine === "grid") {
       const row = Math.floor((yCss / cssHeight) * rows);
@@ -590,6 +653,15 @@ export default function Grid({
 
   // find asset by id (cheap enough for now)
   const getAssetById = (id) => assets.find((a) => a.id === id);
+  // Decide cursor based on pan/select/visibility
+  const cursorStyle =
+    isPanning || panHotkey
+      ? "grabbing"
+      : !layerIsVisible
+      ? "not-allowed"
+      : interactionMode === "select"
+      ? "default"
+      : "crosshair";
 
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>
@@ -750,18 +822,13 @@ export default function Grid({
             width: cssWidth,
             height: cssHeight,
             zIndex: 100,
-            cursor: isPanning
-              ? "grabbing"
-              : engine === "pan"
-              ? "grab"
-              : layerIsVisible
-              ? "crosshair"
-              : "not-allowed",
+            cursor: cursorStyle, // ← use the computed value
             touchAction: "none",
           }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
+          onContextMenu={(e) => e.preventDefault()} // optional (future right-click pan)
         />
       </div>
     </div>

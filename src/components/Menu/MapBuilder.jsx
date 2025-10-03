@@ -28,6 +28,9 @@ export default function MapBuilder({ goBack }) {
     sky: makeGrid(rows, cols),
   });
 
+  // Edit mode: 'draw' | 'select'
+  const [interactionMode, setInteractionMode] = useState("draw");
+
   // Remember user's own grid controls to restore after selection
   const gridDefaultsRef = useRef(null);
   const [hasSelection, setHasSelection] = useState(false);
@@ -540,7 +543,38 @@ export default function MapBuilder({ goBack }) {
 
               {/* ENGINE (HOW) */}
               <div>
-                <h3 className="font-bold text-sm mb-2">How</h3>
+                {/* Mode */}
+                <div>
+                  <h3 className="font-bold text-sm mb-2">Mode</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      className={`px-2 py-1 rounded ${
+                        interactionMode === "select"
+                          ? "bg-blue-600"
+                          : "bg-gray-600"
+                      }`}
+                      onClick={() => setInteractionMode("select")}
+                      title="Select / move existing objects (no stamping)"
+                    >
+                      🖱️ Select
+                    </button>
+                    <button
+                      className={`px-2 py-1 rounded ${
+                        interactionMode === "draw"
+                          ? "bg-blue-600"
+                          : "bg-gray-600"
+                      }`}
+                      onClick={() => setInteractionMode("draw")}
+                      title="Stamp / paint (normal drawing)"
+                    >
+                      ✏️ Draw
+                    </button>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Pan: hold <kbd>Space</kbd> or use middle-mouse
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     disabled={!selectedAsset?.allowedEngines?.includes("grid")}
@@ -852,6 +886,7 @@ export default function MapBuilder({ goBack }) {
                 canvasColor={canvasColor}
                 canvasSpacing={canvasSpacing}
                 isErasing={isErasing}
+                interactionMode={interactionMode}
                 // view / layers
                 tileSize={tileSize}
                 scrollRef={scrollRef}
