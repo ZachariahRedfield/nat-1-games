@@ -225,6 +225,22 @@ export default function MapBuilder({ goBack }) {
     }));
   };
 
+  const snapshotSettings = () => {
+    setUndoStack((prev) => [
+      ...prev,
+      {
+        type: "settings",
+        settings: {
+          gridSettings: { ...gridSettings },
+          brushSize,
+          canvasOpacity,
+          canvasSpacing,
+        },
+      },
+    ]);
+    setRedoStack([]);
+  };
+
   // ====== object add/remove ======
   const addObject = (layer, obj) => {
     setObjects((prev) => ({
@@ -294,6 +310,23 @@ export default function MapBuilder({ goBack }) {
         },
       ]);
       setObjects((prev) => ({ ...prev, [entry.layer]: entry.objects }));
+    } else if (entry.type === "settings") {
+      setRedoStack((r) => [
+        ...r,
+        {
+          type: "settings",
+          settings: {
+            gridSettings: { ...gridSettings },
+            brushSize,
+            canvasOpacity,
+            canvasSpacing,
+          },
+        },
+      ]);
+      setGridSettings(entry.settings.gridSettings);
+      setBrushSize(entry.settings.brushSize);
+      setCanvasOpacity(entry.settings.canvasOpacity);
+      setCanvasSpacing(entry.settings.canvasSpacing);
     }
   };
 
@@ -337,6 +370,23 @@ export default function MapBuilder({ goBack }) {
         },
       ]);
       setObjects((prev) => ({ ...prev, [entry.layer]: entry.objects }));
+    } else if (entry.type === "settings") {
+      setUndoStack((u) => [
+        ...u,
+        {
+          type: "settings",
+          settings: {
+            gridSettings: { ...gridSettings },
+            brushSize,
+            canvasOpacity,
+            canvasSpacing,
+          },
+        },
+      ]);
+      setGridSettings(entry.settings.gridSettings);
+      setBrushSize(entry.settings.brushSize);
+      setCanvasOpacity(entry.settings.canvasOpacity);
+      setCanvasSpacing(entry.settings.canvasSpacing);
     }
   };
 
@@ -495,7 +545,10 @@ export default function MapBuilder({ goBack }) {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => handleUpload(e.target.files?.[0])}
+                      onChange={(e) => {
+                        snapshotSettings(); // ← add this
+                        handleUpload(e.target.files?.[0]);
+                      }}
                     />
                   </label>
                 </div>
@@ -534,7 +587,10 @@ export default function MapBuilder({ goBack }) {
                     <input
                       type="color"
                       value={canvasColor}
-                      onChange={(e) => setCanvasColor(e.target.value)}
+                      onChange={(e) => {
+                        snapshotSettings(); // ← add this
+                        setCanvasColor(e.target.value);
+                      }}
                       className="w-full h-8 p-0 border-0"
                     />
                   </div>
@@ -710,33 +766,37 @@ export default function MapBuilder({ goBack }) {
                         min="1"
                         max="20"
                         value={gridSettings.sizeTiles}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          snapshotSettings();
                           setGridSettings((s) => ({
                             ...s,
                             sizeTiles: Math.max(
                               1,
                               parseInt(e.target.value) || 1
                             ),
-                          }))
-                        }
+                          }));
+                        }}
                         className="w-full p-1 text-black rounded"
                       />
                     </div>
+
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="block text-xs mb-1">Rotate</label>
                         <input
                           type="number"
                           value={gridSettings.rotation}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            snapshotSettings();
                             setGridSettings((s) => ({
                               ...s,
                               rotation: parseInt(e.target.value) || 0,
-                            }))
-                          }
+                            }));
+                          }}
                           className="w-full p-1 text-black rounded"
                         />
                       </div>
+
                       <div className="flex flex-col justify-end">
                         <label className="text-xs mb-1">Flip</label>
                         <div className="flex gap-2">
@@ -744,12 +804,13 @@ export default function MapBuilder({ goBack }) {
                             <input
                               type="checkbox"
                               checked={gridSettings.flipX}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                snapshotSettings();
                                 setGridSettings((s) => ({
                                   ...s,
                                   flipX: e.target.checked,
-                                }))
-                              }
+                                }));
+                              }}
                             />{" "}
                             X
                           </label>
@@ -757,17 +818,19 @@ export default function MapBuilder({ goBack }) {
                             <input
                               type="checkbox"
                               checked={gridSettings.flipY}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                snapshotSettings();
                                 setGridSettings((s) => ({
                                   ...s,
                                   flipY: e.target.checked,
-                                }))
-                              }
+                                }));
+                              }}
                             />{" "}
                             Y
                           </label>
                         </div>
                       </div>
+
                       <div>
                         <label className="block text-xs mb-1">Opacity</label>
                         <input
@@ -776,12 +839,13 @@ export default function MapBuilder({ goBack }) {
                           max="1"
                           step="0.05"
                           value={gridSettings.opacity}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            snapshotSettings();
                             setGridSettings((s) => ({
                               ...s,
                               opacity: parseFloat(e.target.value),
-                            }))
-                          }
+                            }));
+                          }}
                           className="w-full"
                         />
                       </div>
@@ -793,7 +857,8 @@ export default function MapBuilder({ goBack }) {
               {engine === "canvas" && (
                 <div>
                   <h3 className="font-bold text-sm mb-2">Canvas Brush</h3>
-                  {/* Brush Size shown only for free/canvas or grid/color if you want; you asked to hide on Pan earlier */}
+
+                  {/* Brush Size */}
                   <div className="mt-1">
                     <label className="block text-xs mb-1">
                       Brush Size (tiles)
@@ -803,7 +868,10 @@ export default function MapBuilder({ goBack }) {
                       min="1"
                       max="10"
                       value={brushSize}
-                      onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                      onChange={(e) => {
+                        snapshotSettings();
+                        setBrushSize(parseInt(e.target.value));
+                      }}
                       className="w-full"
                     />
                     <div className="text-xs text-gray-300 mt-1">
@@ -821,12 +889,14 @@ export default function MapBuilder({ goBack }) {
                         max="1"
                         step="0.05"
                         value={canvasOpacity}
-                        onChange={(e) =>
-                          setCanvasOpacity(parseFloat(e.target.value))
-                        }
+                        onChange={(e) => {
+                          snapshotSettings();
+                          setCanvasOpacity(parseFloat(e.target.value));
+                        }}
                         className="w-full"
                       />
                     </div>
+
                     <div>
                       <label className="block text-xs mb-1">Spacing</label>
                       <input
@@ -835,9 +905,10 @@ export default function MapBuilder({ goBack }) {
                         max="0.6"
                         step="0.01"
                         value={canvasSpacing}
-                        onChange={(e) =>
-                          setCanvasSpacing(parseFloat(e.target.value))
-                        }
+                        onChange={(e) => {
+                          snapshotSettings();
+                          setCanvasSpacing(parseFloat(e.target.value));
+                        }}
                         className="w-full"
                       />
                       <div className="text-xs text-gray-300 mt-1">
