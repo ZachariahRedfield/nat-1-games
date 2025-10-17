@@ -6,6 +6,7 @@ import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
 import CanvasBrushControls from "./CanvasBrushControls";
 import BrushSettings from "./BrushSettings";
 import AssetCreator from "./AssetCreator";
+import NumericInput from "../../common/NumericInput";
 
 export default function MapBuilder({ goBack }) {
   // --- dimensions ---
@@ -28,6 +29,7 @@ export default function MapBuilder({ goBack }) {
   const gridDefaultsRef = useRef(null);
   const [hasSelection, setHasSelection] = useState(false);
   const [selectedObj, setSelectedObj] = useState(null);
+  const [selectedObjsList, setSelectedObjsList] = useState([]);
 
   // --- per-layer placed OBJECTS (image stamps) ---
   // object: { id, assetId, row, col, wTiles, hTiles, rotation, flipX, flipY, opacity }
@@ -43,6 +45,7 @@ export default function MapBuilder({ goBack }) {
   const [tokensVisible, setTokensVisible] = useState(true);
   const [selectedToken, setSelectedToken] = useState(null);
   const [tokenHUDVisible, setTokenHUDVisible] = useState(true);
+  const [tokenHUDShowInitiative, setTokenHUDShowInitiative] = useState(false);
 
   // --- canvas refs (per layer) ---
   const canvasRefs = {
@@ -70,21 +73,8 @@ export default function MapBuilder({ goBack }) {
 
   // ====== ASSETS (WHAT) ======
   // Asset: { id, name, kind: 'image'|'color', src?, aspectRatio?, defaultEngine, allowedEngines, defaults:{...}, img? }
-  const [assets, setAssets] = useState(() => {
-    const colorId = uid();
-    return [
-      {
-        id: colorId,
-        name: "Light Grey",
-        kind: "color",
-        defaultEngine: "canvas",
-        allowedEngines: ["grid", "canvas"],
-        defaults: { sizeTiles: 1, sizePx: 32, opacity: 0.4, snap: false },
-        color: "#cccccc",
-      },
-    ];
-  });
-  const [selectedAssetId, setSelectedAssetId] = useState(assets[0].id);
+  const [assets, setAssets] = useState(() => []);
+  const [selectedAssetId, setSelectedAssetId] = useState(null);
   const [assetGroup, setAssetGroup] = useState("image"); // 'image' | 'token' | 'material' | 'natural'
   const [showAssetKindMenu, setShowAssetKindMenu] = useState(false);
 
@@ -93,7 +83,7 @@ export default function MapBuilder({ goBack }) {
   const getAsset = (id) => assets.find((a) => a.id === id) || null;
   const selectedAsset = getAsset(selectedAssetId);
   const [engine, setEngine] = useState(
-    selectedAsset?.defaultEngine || "canvas"
+    selectedAsset?.defaultEngine || "grid"
   );
 
   // Keep engine in sync when asset changes
@@ -133,7 +123,7 @@ export default function MapBuilder({ goBack }) {
     if (assetGroup === "image") ensureSelectionBy((x) => x.kind === "image");
     else if (assetGroup === "material") ensureSelectionBy((x) => x.kind === "color");
     else if (assetGroup === "token") {
-      ensureSelectionBy((x) => x.kind === "token");
+      ensureSelectionBy((x) => x.kind === "token" || x.kind === 'tokenGroup');
       setEngine("grid");
     } else if (assetGroup === "natural") {
       ensureSelectionBy((x) => x.kind === "natural");
@@ -339,7 +329,10 @@ export default function MapBuilder({ goBack }) {
     setTokens((prev) => prev.map((t) => (t.id === id ? { ...t, row, col } : t)));
   };
   const updateTokenById = (id, patch) => {
+    // Update tokens array
     setTokens((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    // Keep the selectedToken in sync so controlled inputs don't reset while typing
+    setSelectedToken((cur) => (cur && cur.id === id ? { ...cur, ...patch } : cur));
   };
   const removeTokenById = (id) => {
     setTokens((prev) => prev.filter((t) => t.id !== id));
@@ -783,11 +776,14 @@ export default function MapBuilder({ goBack }) {
     img.src = src;
   };
 
-  const handleSelectionChange = (obj) => {
-    if (obj) {
+  const handleSelectionChange = (objOrArr) => {
+    const arr = Array.isArray(objOrArr) ? objOrArr : (objOrArr ? [objOrArr] : []);
+    if (arr.length) {
       // We just selected something: remember user's current controls ONCE
       if (!hasSelection) gridDefaultsRef.current = { ...gridSettings };
       setHasSelection(true);
+      setSelectedObjsList(arr);
+      const obj = arr[arr.length - 1];
       setSelectedObj(obj);
 
       // Sync controls to the selected object's properties
@@ -805,6 +801,7 @@ export default function MapBuilder({ goBack }) {
       if (d) setGridSettings((s) => ({ ...s, ...d }));
       setHasSelection(false);
       setSelectedObj(null);
+      setSelectedObjsList([]);
     }
   };
 
@@ -872,8 +869,11 @@ export default function MapBuilder({ goBack }) {
     img.src = src;
   };
 
-  const handleTokenSelectionChange = (tok) => {
-    if (tok) {
+  const handleTokenSelectionChange = (tokOrArr) => {
+    const arr = Array.isArray(tokOrArr) ? tokOrArr : (tokOrArr ? [tokOrArr] : []);
+    if (arr.length) {
+      setSelectedTokensList(arr);
+      const tok = arr[arr.length - 1];
       setSelectedToken(tok);
       setGridSettings((s) => ({
         ...s,
@@ -885,6 +885,7 @@ export default function MapBuilder({ goBack }) {
       }));
     } else {
       setSelectedToken(null);
+      setSelectedTokensList([]);
     }
   };
 
@@ -893,24 +894,213 @@ export default function MapBuilder({ goBack }) {
     const obj = selectedObj;
     if (!obj) return;
     const asset = assets.find((a) => a.id === obj.assetId);
-    if (!asset || asset.kind !== "image") return;
-    const baseImg = asset.img || (() => { const im = new Image(); im.src = asset.src; return im; })();
+    if (!asset) return;
     const wPx = Math.max(1, Math.round(obj.wTiles * tileSize));
     const hPx = Math.max(1, Math.round(obj.hTiles * tileSize));
+
+    const renderAndSave = (imgSrc) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = wPx; canvas.height = hPx;
+      const ctx = canvas.getContext('2d');
+      const baseImg = new Image();
+      baseImg.onload = () => {
+        ctx.save();
+        ctx.translate(wPx / 2, hPx / 2);
+        const rot = ((obj.rotation || 0) * Math.PI) / 180;
+        ctx.rotate(rot);
+        ctx.scale(obj.flipX ? -1 : 1, obj.flipY ? -1 : 1);
+        ctx.globalAlpha = obj.opacity ?? 1;
+        ctx.drawImage(baseImg, -wPx / 2, -hPx / 2, wPx, hPx);
+        ctx.restore();
+        const dataUrl = canvas.toDataURL('image/png');
+        const nameDefault = `${asset.name}-variant`;
+        const name = window.prompt('Name this saved asset', nameDefault) || nameDefault;
+        const newImg = new Image();
+        newImg.src = dataUrl;
+        const newAsset = {
+          id: uid(),
+          name,
+          kind: 'image',
+          src: dataUrl,
+          aspectRatio: wPx / hPx || 1,
+          defaultEngine: 'grid',
+          allowedEngines: ['grid', 'canvas'],
+          defaults: { sizeTiles: obj.wTiles || 1, opacity: obj.opacity ?? 1, snap: true },
+          img: newImg,
+        };
+        setAssets((prev) => [newAsset, ...prev]);
+        setSelectedAssetId(newAsset.id);
+        setEngine('grid');
+      };
+      baseImg.src = imgSrc;
+    };
+
+    if (asset.kind === 'image') {
+      renderAndSave(asset.img?.src || asset.src);
+    } else if (asset.kind === 'natural') {
+      const idx = obj.variantIndex || 0;
+      const src = Array.isArray(asset.variants) && asset.variants[idx] ? asset.variants[idx].src : null;
+      if (!src) return;
+      renderAndSave(src);
+      // Switch to Images group so the newly saved asset is visible
+      try { setAssetGroup('image'); } catch {}
+    } else {
+      // not supported
+      return;
+    }
+  };
+
+  // Save currently selected token as a new token asset
+  const saveSelectedTokenAsAsset = async () => {
+    const tok = selectedToken;
+    if (!tok) return;
+    const asset = assets.find((a) => a.id === tok.assetId);
+    if (!asset) return;
+    const wPx = Math.max(1, Math.round((tok.wTiles || 1) * tileSize));
+    const hPx = Math.max(1, Math.round((tok.hTiles || 1) * tileSize));
     const canvas = document.createElement('canvas');
     canvas.width = wPx; canvas.height = hPx;
     const ctx = canvas.getContext('2d');
-    ctx.save();
-    ctx.translate(wPx / 2, hPx / 2);
-    const rot = ((obj.rotation || 0) * Math.PI) / 180;
-    ctx.rotate(rot);
-    ctx.scale(obj.flipX ? -1 : 1, obj.flipY ? -1 : 1);
-    ctx.globalAlpha = obj.opacity ?? 1;
-    ctx.drawImage(baseImg, -wPx / 2, -hPx / 2, wPx, hPx);
-    ctx.restore();
+    const baseImg = new Image();
+    baseImg.onload = () => {
+      ctx.save();
+      ctx.translate(wPx / 2, hPx / 2);
+      const rot = ((tok.rotation || 0) * Math.PI) / 180;
+      ctx.rotate(rot);
+      ctx.scale(tok.flipX ? -1 : 1, tok.flipY ? -1 : 1);
+      ctx.globalAlpha = tok.opacity ?? 1;
+      ctx.drawImage(baseImg, -wPx / 2, -hPx / 2, wPx, hPx);
+      ctx.restore();
+      const dataUrl = canvas.toDataURL('image/png');
+      const nameDefault = `${asset.name}-variant`;
+      const name = window.prompt('Name this saved token', nameDefault) || nameDefault;
+      const newAsset = {
+        id: uid(),
+        name,
+        kind: 'token',
+        src: dataUrl,
+        aspectRatio: wPx / hPx || 1,
+        defaultEngine: 'grid',
+        allowedEngines: [],
+        defaults: { sizeTiles: tok.wTiles || 1, opacity: tok.opacity ?? 1, snap: true },
+        glowDefault: tok.glowColor || asset.glowDefault || '#7dd3fc',
+      };
+      setAssets((prev) => [newAsset, ...prev]);
+      setSelectedAssetId(newAsset.id);
+      setAssetGroup('token');
+      setEngine('grid');
+    };
+    baseImg.src = asset.src;
+  };
+
+  const saveCurrentSelection = () => {
+    if ((selectedTokensList?.length || 0) > 0 && (selectedObjsList?.length || 0) > 0) {
+      alert('Mixed selection (images + tokens) not supported in one save. Please select only images or only tokens.');
+      return;
+    }
+    // Multi-token selection -> token group
+    if (selectedTokensList && selectedTokensList.length > 1) {
+      return saveSelectedTokensAsGroup(selectedTokensList);
+    }
+    // Multi-object selection -> prompt: natural variants or merged image
+    if (selectedObjsList && selectedObjsList.length > 1) {
+      const choice = window.confirm('Save as Natural group?\nOK: Natural Group (each selection becomes a variant)\nCancel: Merge into single Image');
+      if (choice) return saveMultipleObjectsAsNaturalGroup(selectedObjsList);
+      return saveMultipleObjectsAsMergedImage(selectedObjsList);
+    }
+    if (selectedToken) return saveSelectedTokenAsAsset();
+    if (selectedObj) return saveSelectionAsAsset();
+  };
+
+  // Save multiple selected image/natural objects as a Natural asset (variants)
+  const saveMultipleObjectsAsNaturalGroup = async (objs) => {
+    const variants = [];
+    for (const obj of objs) {
+      const asset = assets.find((a) => a.id === obj.assetId);
+      if (!asset) continue;
+      let srcToUse = null;
+      if (asset.kind === 'image') srcToUse = asset.img?.src || asset.src;
+      else if (asset.kind === 'natural') {
+        const idx = obj.variantIndex || 0;
+        srcToUse = Array.isArray(asset.variants) && asset.variants[idx] ? asset.variants[idx].src : null;
+      }
+      if (!srcToUse) continue;
+      const wPx = Math.max(1, Math.round(obj.wTiles * tileSize));
+      const hPx = Math.max(1, Math.round(obj.hTiles * tileSize));
+      const canvas = document.createElement('canvas');
+      canvas.width = wPx; canvas.height = hPx;
+      const ctx = canvas.getContext('2d');
+      const baseImg = new Image();
+      await new Promise((res)=>{ baseImg.onload = res; baseImg.src = srcToUse; });
+      ctx.save();
+      ctx.translate(wPx / 2, hPx / 2);
+      const rot = ((obj.rotation || 0) * Math.PI) / 180;
+      ctx.rotate(rot);
+      ctx.scale(obj.flipX ? -1 : 1, obj.flipY ? -1 : 1);
+      ctx.globalAlpha = obj.opacity ?? 1;
+      ctx.drawImage(baseImg, -wPx / 2, -hPx / 2, wPx, hPx);
+      ctx.restore();
+      const dataUrl = canvas.toDataURL('image/png');
+      variants.push({ src: dataUrl, aspectRatio: wPx / hPx || 1 });
+    }
+    if (!variants.length) return;
+    const nameDefault = 'Natural Group';
+    const name = window.prompt('Name this Natural group', nameDefault) || nameDefault;
+    const newAsset = {
+      id: uid(),
+      name,
+      kind: 'natural',
+      variants,
+      defaultEngine: 'grid',
+      allowedEngines: [],
+      defaults: { sizeTiles: 1, opacity: 1, snap: true },
+    };
+    setAssets((prev) => [newAsset, ...prev]);
+    setSelectedAssetId(newAsset.id);
+    setAssetGroup('natural');
+    setEngine('grid');
+  };
+
+  // Save multiple selected image/natural objects as a merged image asset
+  const saveMultipleObjectsAsMergedImage = async (objs) => {
+    if (!objs?.length) return;
+    const minRow = Math.min(...objs.map((o)=> o.row));
+    const minCol = Math.min(...objs.map((o)=> o.col));
+    const maxRow = Math.max(...objs.map((o)=> o.row + o.hTiles));
+    const maxCol = Math.max(...objs.map((o)=> o.col + o.wTiles));
+    const wPx = Math.max(1, Math.round((maxCol - minCol) * tileSize));
+    const hPx = Math.max(1, Math.round((maxRow - minRow) * tileSize));
+    const canvas = document.createElement('canvas');
+    canvas.width = wPx; canvas.height = hPx;
+    const ctx = canvas.getContext('2d');
+    for (const obj of objs) {
+      const asset = assets.find((a) => a.id === obj.assetId);
+      if (!asset) continue;
+      let srcToUse = null;
+      if (asset.kind === 'image') srcToUse = asset.img?.src || asset.src;
+      else if (asset.kind === 'natural') {
+        const idx = obj.variantIndex || 0;
+        srcToUse = Array.isArray(asset.variants) && asset.variants[idx] ? asset.variants[idx].src : null;
+      }
+      if (!srcToUse) continue;
+      const baseImg = new Image();
+      await new Promise((res)=>{ baseImg.onload = res; baseImg.src = srcToUse; });
+      const wObj = Math.max(1, Math.round(obj.wTiles * tileSize));
+      const hObj = Math.max(1, Math.round(obj.hTiles * tileSize));
+      const cx = Math.round((obj.col - minCol) * tileSize + wObj / 2);
+      const cy = Math.round((obj.row - minRow) * tileSize + hObj / 2);
+      ctx.save();
+      ctx.translate(cx, cy);
+      const rot = ((obj.rotation || 0) * Math.PI) / 180;
+      ctx.rotate(rot);
+      ctx.scale(obj.flipX ? -1 : 1, obj.flipY ? -1 : 1);
+      ctx.globalAlpha = obj.opacity ?? 1;
+      ctx.drawImage(baseImg, -wObj / 2, -hObj / 2, wObj, hObj);
+      ctx.restore();
+    }
     const dataUrl = canvas.toDataURL('image/png');
-    const nameDefault = `${asset.name}-variant`;
-    const name = window.prompt('Name this saved asset', nameDefault) || nameDefault;
+    const nameDefault = 'Merged Image';
+    const name = window.prompt('Name this merged image', nameDefault) || nameDefault;
     const newImg = new Image();
     newImg.src = dataUrl;
     const newAsset = {
@@ -920,12 +1110,36 @@ export default function MapBuilder({ goBack }) {
       src: dataUrl,
       aspectRatio: wPx / hPx || 1,
       defaultEngine: 'grid',
-      allowedEngines: ['grid', 'canvas'],
-      defaults: { sizeTiles: obj.wTiles || 1, opacity: obj.opacity ?? 1, snap: true },
+      allowedEngines: ['grid','canvas'],
+      defaults: { sizeTiles: 1, opacity: 1, snap: true },
       img: newImg,
     };
     setAssets((prev) => [newAsset, ...prev]);
     setSelectedAssetId(newAsset.id);
+    setAssetGroup('image');
+    setEngine('grid');
+  };
+
+  // Save a group of selected tokens as a tokenGroup asset
+  const saveSelectedTokensAsGroup = async (toks) => {
+    if (!toks?.length) return;
+    // Sort left-to-right for default order
+    const ordered = [...toks].sort((a,b)=> (a.col - b.col) || (a.row - b.row));
+    const members = ordered.map((t)=> ({ assetId: t.assetId }));
+    const nameDefault = 'Token Group';
+    const name = window.prompt('Name this token group', nameDefault) || nameDefault;
+    const newAsset = {
+      id: uid(),
+      name,
+      kind: 'tokenGroup',
+      members,
+      defaultEngine: 'grid',
+      allowedEngines: [],
+      defaults: { sizeTiles: 1, opacity: 1, snap: true },
+    };
+    setAssets((prev) => [newAsset, ...prev]);
+    setSelectedAssetId(newAsset.id);
+    setAssetGroup('token');
     setEngine('grid');
   };
 
@@ -941,22 +1155,20 @@ export default function MapBuilder({ goBack }) {
   return (
     <div className="w-full h-full flex flex-col">
       <header className="p-4 bg-gray-800 flex justify-between text-white items-center">
-        <h2 className="text-xl font-bold">Map Builder</h2>
+        <div className="flex flex-col items-start gap-1">
+          <h2 className="text-xl font-bold">Map Builder</h2>
+          <button
+            onClick={() => setShowToolbar((s) => !s)}
+            className="text-[11px] px-2 py-0.5 bg-gray-700/60 hover:bg-gray-600/70 border border-gray-600 rounded"
+          >
+            {showToolbar ? "Hide Toolbar" : "Show Toolbar"}
+          </button>
+        </div>
         <div className="flex gap-2 flex-wrap items-center">
-          <div className="flex gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
-            <button onClick={() => setShowToolbar((s) => !s)} className="px-2.5 py-1 text-sm bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded">
-              {showToolbar ? "Hide Toolbar" : "Show Toolbar"}
-            </button>
-            <button onClick={() => setIsErasing((s) => !s)} className="px-2.5 py-1 text-sm bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded" title="Erase tiles/objects (grid) or paint erase (canvas)">
-              {isErasing ? "Erasing" : "Drawing"}
-            </button>
-          </div>
           <div className="flex gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
             <button onClick={undo} className="px-2.5 py-1 text-sm bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded">Undo</button>
             <button onClick={redo} className="px-2.5 py-1 text-sm bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded">Redo</button>
-          
-          <button onClick={saveSelectionAsAsset} disabled={!selectedObj} className={`px-2.5 py-1 text-sm border rounded ${selectedObj ? 'bg-amber-600 border-amber-500 hover:bg-amber-500' : 'bg-gray-700 border-gray-500 cursor-not-allowed'}`} title="Save selected image (with edits) as a new asset">Save Selection</button>
-        </div>
+          </div>
           <div className="flex gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
             <button onClick={saveProject} className="px-2.5 py-1 text-sm bg-green-700 hover:bg-green-600 border border-green-500 rounded">Save</button>
             <button onClick={loadProject} className="px-2.5 py-1 text-sm bg-blue-700 hover:bg-blue-600 border border-blue-500 rounded">Load</button>
@@ -975,10 +1187,24 @@ export default function MapBuilder({ goBack }) {
                 <h3 className="font-bold text-sm mb-2">Grid</h3>
                 <div className="grid grid-cols-3 gap-2 items-end">
                   <label className="text-xs">Rows
-                    <input type="number" min="1" max="200" value={rowsInput} onChange={(e)=>setRowsInput(e.target.value)} className="w-full p-1 text-black rounded" />
+                    <NumericInput
+                      value={parseInt(rowsInput) || 0}
+                      min={1}
+                      max={200}
+                      step={1}
+                      onCommit={(n)=> setRowsInput(String(n))}
+                      className="w-full p-1 text-black rounded"
+                    />
                   </label>
                   <label className="text-xs">Cols
-                    <input type="number" min="1" max="200" value={colsInput} onChange={(e)=>setColsInput(e.target.value)} className="w-full p-1 text-black rounded" />
+                    <NumericInput
+                      value={parseInt(colsInput) || 0}
+                      min={1}
+                      max={200}
+                      step={1}
+                      onCommit={(n)=> setColsInput(String(n))}
+                      className="w-full p-1 text-black rounded"
+                    />
                   </label>
                   <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={updateGridSizes}>Apply</button>
                 </div>
@@ -1072,18 +1298,31 @@ export default function MapBuilder({ goBack }) {
                 <div className="mb-2 border border-gray-600 rounded overflow-hidden">
                   <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
                     <span className="text-xs uppercase tracking-wide">Assets</span>
-                    <button className="text-xs px-2 py-0.5 bg-gray-800 rounded" onClick={() => setShowAssetPreviews((s) => !s)}>
-                      {showAssetPreviews ? "Hide Previews" : "Show Previews"}
-                    </button>
+                    <div className="inline-flex items-center bg-gray-800 rounded overflow-hidden border border-gray-700">
+                      <button
+                        className={`text-xs px-2 py-0.5 ${showAssetPreviews ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-200'}`}
+                        onClick={() => setShowAssetPreviews(true)}
+                        title="Show image thumbnails"
+                      >
+                        Images
+                      </button>
+                      <button
+                        className={`text-xs px-2 py-0.5 ${!showAssetPreviews ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-200'}`}
+                        onClick={() => setShowAssetPreviews(false)}
+                        title="Show names list"
+                      >
+                        Names
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-2 grid grid-cols-3 gap-2">
+                  <div className={`p-2 ${showAssetPreviews ? 'grid grid-cols-3 gap-2' : 'flex flex-col gap-1'}`}>
                     {assets
                       .filter((a) => !a.hiddenFromUI)
                       .filter((a) => (
                         assetGroup === 'image'
                           ? a.kind === 'image'
                           : assetGroup === 'token'
-                          ? a.kind === 'token'
+                          ? (a.kind === 'token' || a.kind === 'tokenGroup')
                           : assetGroup === 'material'
                           ? a.kind === 'color'
                           : assetGroup === 'natural'
@@ -1094,23 +1333,29 @@ export default function MapBuilder({ goBack }) {
                         <div
                           key={a.id}
                           onClick={() => selectAsset(a.id)}
-                          className={`relative border rounded p-1 text-xs cursor-pointer ${
-                            selectedAssetId === a.id ? 'border-blue-400 bg-blue-600/20' : 'border-gray-600 bg-gray-700/40'
+                          className={`relative cursor-pointer ${showAssetPreviews ? 'border rounded p-1 text-xs' : 'px-2 py-1 text-xs hover:bg-gray-700'} ${
+                            selectedAssetId === a.id
+                              ? (showAssetPreviews ? 'border-blue-400 bg-blue-600/20' : 'border border-blue-400 bg-blue-600/10')
+                              : (showAssetPreviews ? 'border-gray-600 bg-gray-700/40' : 'border border-transparent')
                           }`}
                           title={a.name}
                         >
-                          {(a.kind === 'image' || a.kind === 'token' || a.kind === 'natural') ? (
+                          {(a.kind === 'image' || a.kind === 'token' || a.kind === 'natural' || a.kind === 'tokenGroup') ? (
                             showAssetPreviews ? (
                               a.kind === 'natural'
                                 ? (a.variants?.length
                                     ? <img src={a.variants[0]?.src} alt={a.name} className="w-full h-12 object-contain" />
                                     : <div className="w-full h-12 flex items-center justify-center text-[10px] opacity-80">0 variants</div>)
+                                : a.kind === 'tokenGroup'
+                                ? (<div className="w-full h-12 flex items-center justify-center text-[10px] opacity-80">{(a.members?.length||0)} tokens</div>)
                                 : (<img src={a.src} alt={a.name} className="w-full h-12 object-contain" />)
                             ) : (
-                              <div className="w-full h-12 flex items-center justify-center text-xs font-medium truncate">{a.name}</div>
+                              <div className="text-xs font-medium whitespace-normal break-words leading-tight py-0.5">{a.name}</div>
                             )
                           ) : (
-                            <div className="w-full h-12 rounded" style={{ backgroundColor: a.color || '#cccccc' }} />
+                            showAssetPreviews
+                              ? <div className="w-full h-12 rounded" style={{ backgroundColor: a.color || '#cccccc' }} />
+                              : <div className="text-xs font-medium whitespace-normal break-words leading-tight py-0.5">{a.name}</div>
                           )}
                           {showAssetPreviews && <div className="mt-1 truncate">{a.name}</div>}
                           {selectedAssetId === a.id && (a.kind === 'image' || a.kind === 'token' || a.kind === 'natural') && (
@@ -1134,7 +1379,7 @@ export default function MapBuilder({ goBack }) {
                                 if (confirm(`Delete asset "${a.name}"?`)) {
                                   setAssets((prev) => prev.filter((x) => x.id !== a.id));
                                   const next = assets.find(
-                                    (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? x.kind === 'token' : assetGroup === 'natural' ? x.kind === 'natural' : true)
+                                    (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? (x.kind === 'token' || x.kind === 'tokenGroup') : assetGroup === 'natural' ? x.kind === 'natural' : true)
                                   );
                                   if (next) setSelectedAssetId(next.id);
                                 }
@@ -1149,23 +1394,55 @@ export default function MapBuilder({ goBack }) {
                 </div>
               </div>
 
-              {/* ENGINE (HOW) */}
-              {assetGroup !== 'token' && (
-                <div>
-                  <h3 className="font-bold text-sm mb-2">Engine</h3>
-                  <div className="flex gap-2">
-                    <button disabled={!selectedAsset?.allowedEngines?.includes("grid")} onClick={() => setEngine("grid")} className={`px-2 py-1 rounded ${engine === "grid" ? "bg-blue-600" : "bg-gray-700"}`}>Grid</button>
-                    <button disabled={!selectedAsset?.allowedEngines?.includes("canvas")} onClick={() => setEngine("canvas")} className={`px-2 py-1 rounded ${engine === "canvas" ? "bg-blue-600" : "bg-gray-700"}`}>Canvas</button>
-                  </div>
-                </div>
-              )}
-
-              {/* INTERACTION MODE (always visible) */}
+              {/* INTERACTION MODE (two-row contextual) */}
               <div className="mt-4">
-                <h3 className="font-bold text-sm mb-2">Interaction <span className="ml-2 text-[10px] bg-gray-700 rounded px-1 py-0.5">Press V to toggle</span></h3>
-                <div className="flex gap-2">
-                  <button onClick={() => setInteractionMode("draw")} className={`px-2 py-1 rounded ${interactionMode === "draw" ? "bg-blue-600" : "bg-gray-700"}`}>Draw</button>
-                  <button onClick={() => setInteractionMode("select")} className={`px-2 py-1 rounded ${interactionMode === "select" ? "bg-blue-600" : "bg-gray-700"}`}>Select</button>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-sm">Interaction</h3>
+                  <span className="text-[10px] bg-gray-700 rounded px-1 py-0.5">Press V to toggle</span>
+                </div>
+                {/* Row 1: Mode segmented */}
+                <div className="inline-flex items-center gap-0 bg-gray-700/40 border border-gray-600 rounded overflow-hidden">
+                  <button onClick={() => setInteractionMode("draw")} className={`px-3 py-1 text-sm ${interactionMode === "draw" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}>Draw</button>
+                  <button onClick={() => setInteractionMode("select")} className={`px-3 py-1 text-sm ${interactionMode === "select" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}>Select</button>
+                </div>
+                {/* Row 2: Context */}
+                <div className="mt-2 flex items-center gap-2">
+                  {interactionMode === 'draw' ? (
+                    <>
+                      {assetGroup !== 'token' && (
+                        <div className="inline-flex items-center gap-0 bg-gray-700/40 border border-gray-600 rounded overflow-hidden">
+                          <button
+                            onClick={() => setEngine("grid")}
+                            className={`px-3 py-1 text-sm ${engine === "grid" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                          >
+                            Grid
+                          </button>
+                          <button
+                            onClick={() => setEngine("canvas")}
+                            className={`px-3 py-1 text-sm ${engine === "canvas" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                          >
+                            Canvas
+                          </button>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => setIsErasing((s) => !s)}
+                        className={`px-3 py-1 text-sm border rounded ${isErasing ? 'bg-red-700 border-red-600' : 'bg-gray-700/40 border-gray-600'}`}
+                        title="Erase tiles/objects (grid) or paint erase (canvas)"
+                      >
+                        {isErasing ? 'Erasing' : 'Draw'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={saveCurrentSelection}
+                      disabled={((selectedObjsList?.length||0) === 0) && ((selectedTokensList?.length||0) === 0)}
+                      className={`px-3 py-1 text-sm border rounded ${ (((selectedObjsList?.length||0) > 0) || ((selectedTokensList?.length||0) > 0)) ? 'bg-amber-600 border-amber-500 hover:bg-amber-500' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
+                      title="Save selected as a new asset"
+                    >
+                      Save
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1174,29 +1451,35 @@ export default function MapBuilder({ goBack }) {
                 <div>
                   {!selectedToken ? (
                     <>
-                      <BrushSettings
-                        kind={interactionMode === 'select' ? 'grid' : (assetGroup === 'natural' ? 'natural' : 'grid')}
-                        titleOverride={interactionMode === 'select' ? 'Settings' : undefined}
-                        gridSettings={gridSettings}
-                        setGridSettings={setGridSettings}
-                        naturalSettings={naturalSettings}
-                        setNaturalSettings={setNaturalSettings}
-                        brushSize={brushSize}
-                        setBrushSize={setBrushSize}
-                        canvasOpacity={canvasOpacity}
-                        setCanvasOpacity={setCanvasOpacity}
-                        canvasSpacing={canvasSpacing}
-                        setCanvasSpacing={setCanvasSpacing}
-                        canvasBlendMode={canvasBlendMode}
-                        setCanvasBlendMode={setCanvasBlendMode}
-                        canvasSmoothing={canvasSmoothing}
-                        setCanvasSmoothing={setCanvasSmoothing}
-                        tileSize={tileSize}
-                        snapshotSettings={snapshotSettings}
-                      />
+                      {interactionMode === 'select' && (selectedObjsList?.length || 0) > 1 ? (
+                        <div className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700 rounded px-2 py-1">
+                          Multiple selected — settings locked. Save as a group to edit parent settings later.
+                        </div>
+                      ) : (
+                        <BrushSettings
+                          kind={interactionMode === 'select' ? 'grid' : (assetGroup === 'natural' ? 'natural' : 'grid')}
+                          titleOverride={interactionMode === 'select' ? 'Settings' : undefined}
+                          gridSettings={gridSettings}
+                          setGridSettings={setGridSettings}
+                          naturalSettings={naturalSettings}
+                          setNaturalSettings={setNaturalSettings}
+                          brushSize={brushSize}
+                          setBrushSize={setBrushSize}
+                          canvasOpacity={canvasOpacity}
+                          setCanvasOpacity={setCanvasOpacity}
+                          canvasSpacing={canvasSpacing}
+                          setCanvasSpacing={setCanvasSpacing}
+                          canvasBlendMode={canvasBlendMode}
+                          setCanvasBlendMode={setCanvasBlendMode}
+                          canvasSmoothing={canvasSmoothing}
+                          setCanvasSmoothing={setCanvasSmoothing}
+                          tileSize={tileSize}
+                          snapshotSettings={snapshotSettings}
+                        />
+                      )}
 
                       {/* Label Settings when selecting a label/text object */}
-                      {selectedObj && (() => {
+                      {selectedObj && ((selectedObjsList?.length || 0) <= 1) && (() => {
                         const a = assets.find((x) => x.id === selectedObj.assetId);
                         return a && a.kind === 'image' && a.labelMeta;
                       })() && (
@@ -1212,7 +1495,14 @@ export default function MapBuilder({ goBack }) {
                                   <input type="color" className="w-full h-8 p-0 border border-gray-500 rounded" value={lm.color || '#ffffff'} onChange={(e)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, color: e.target.value }); }} />
                                 </label>
                                 <label className="text-xs">Font Size
-                                  <input type="number" min="8" max="128" className="w-full p-1 text-black rounded" value={lm.size || 28} onChange={(e)=>{ const v = Math.max(8, Math.min(128, parseInt(e.target.value)||28)); snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, size: v }); }} />
+                                  <NumericInput
+                                    value={lm.size || 28}
+                                    min={8}
+                                    max={128}
+                                    step={1}
+                                    onCommit={(v)=> { snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, size: v }); }}
+                                    className="w-full p-1 text-black rounded"
+                                  />
                                 </label>
                                 <label className="text-xs col-span-2">Font Family
                                   <input type="text" className="w-full p-1 text-black rounded" value={lm.font || 'Arial'} onChange={(e)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, font: e.target.value }); }} />
@@ -1225,8 +1515,14 @@ export default function MapBuilder({ goBack }) {
                     </>
                   ) : (
                     <>
-                      <h3 className="font-bold text-sm mb-2">Token Settings</h3>
-                      <div className="grid gap-2">
+                      {(selectedTokensList?.length || 0) > 1 ? (
+                        <div className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700 rounded px-2 py-1">
+                          Multiple tokens selected — settings locked. Save as a Token Group to manage as a set.
+                        </div>
+                      ) : (
+                        <>
+                        <h3 className="font-bold text-sm mb-2">Token Settings</h3>
+                        <div className="grid gap-2">
                         <label className="block text-xs">Size (tiles)</label>
                         <input type="range" min="1" max="20" value={gridSettings.sizeTiles} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, sizeTiles: parseInt(e.target.value) })); }} />
                         <label className="block text-xs">Rotation</label>
@@ -1242,13 +1538,30 @@ export default function MapBuilder({ goBack }) {
                           <input type="text" className="w-full p-1 text-black rounded" value={selectedToken?.meta?.name || ''} onChange={(e) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, name: e.target.value } })} />
                         </label>
                         <label className="text-xs">HP
-                          <input type="number" className="w-full p-1 text-black rounded" value={selectedToken?.meta?.hp ?? 0} onChange={(e) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, hp: parseInt(e.target.value)||0 } })} />
+                          <NumericInput
+                            value={selectedToken?.meta?.hp ?? 0}
+                            min={-9999}
+                            max={999999}
+                            step={1}
+                            onCommit={(v) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, hp: Math.round(v) } })}
+                            className="w-full p-1 text-black rounded"
+                          />
                         </label>
                         <label className="text-xs">Initiative
-                          <input type="number" className="w-full p-1 text-black rounded" value={selectedToken?.meta?.initiative ?? 0} onChange={(e) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, initiative: parseInt(e.target.value)||0 } })} />
+                          <NumericInput
+                            value={selectedToken?.meta?.initiative ?? 0}
+                            min={-99}
+                            max={999}
+                            step={1}
+                            onCommit={(v) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, initiative: Math.round(v) } })}
+                            className="w-full p-1 text-black rounded"
+                          />
                         </label>
                         <label className="text-xs inline-flex items-center gap-2">
                           <input type="checkbox" checked={tokenHUDVisible} onChange={(e)=> setTokenHUDVisible(e.target.checked)} /> Show Token HUD
+                        </label>
+                        <label className="text-xs inline-flex items-center gap-2">
+                          <input type="checkbox" checked={tokenHUDShowInitiative} onChange={(e)=> setTokenHUDShowInitiative(e.target.checked)} /> Show Initiative in HUD
                         </label>
                       </div>
                         {/* Glow color */}
@@ -1272,6 +1585,8 @@ export default function MapBuilder({ goBack }) {
                           </div>
                         </div>
                       </div>
+                      </>
+                      )}
                     </>
                   )}
                 </div>
@@ -1339,7 +1654,7 @@ export default function MapBuilder({ goBack }) {
                       className={`px-2 py-0.5 text-[12px] rounded ${layerVisibility[l] ? 'bg-gray-600' : 'bg-gray-700'}`}
                       title={layerVisibility[l] ? 'Visible' : 'Hidden'}
                     >
-                      {layerVisibility[l] ? '👁' : '🚫'}
+                      {layerVisibility[l] ? '??' : '??'}
                     </button>
                   </div>
                 ))}
@@ -1350,7 +1665,7 @@ export default function MapBuilder({ goBack }) {
                     className={`px-2 py-0.5 text-[12px] rounded ${tokensVisible ? 'bg-gray-600' : 'bg-gray-700'}`}
                     title={tokensVisible ? 'Hide tokens layer' : 'Show tokens layer'}
                   >
-                    tokens {tokensVisible ? '👁' : '🚫'}
+                    tokens {tokensVisible ? '??' : '??'}
                   </button>
                 </div>
               </div>
@@ -1380,6 +1695,7 @@ export default function MapBuilder({ goBack }) {
                 layerVisibility={layerVisibility}
                 tokensVisible={tokensVisible}
                 tokenHUDVisible={tokenHUDVisible}
+                tokenHUDShowInitiative={tokenHUDShowInitiative}
                 assetGroup={assetGroup}
                 onBeginTileStroke={onBeginTileStroke}
                 onBeginCanvasStroke={onBeginCanvasStroke}

@@ -5,7 +5,8 @@ import StartSession from "./components/Menu/SessonManager/StartSession";
 import AssetCreation from "./components/Menu/AssetCreation/AssetCreation";
 
 function App() {
-  const [screen, setScreen] = useState("menu");
+  // TEMP: default to Map Builder for development convenience
+  const [screen, setScreen] = useState("mapBuilder");
 
   const renderScreen = () => {
     switch (screen) {

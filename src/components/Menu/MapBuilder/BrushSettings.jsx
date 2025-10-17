@@ -1,4 +1,5 @@
 import React from "react";
+import NumericInput from "../../common/NumericInput";
 import CanvasBrushControls from "./CanvasBrushControls";
 
 export default function BrushSettings({
@@ -128,35 +129,21 @@ export default function BrushSettings({
                 Random Size
               </label>
               <div className="flex items-center gap-1 mt-1">
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
+                <NumericInput
                   value={naturalSettings?.randomSize?.min ?? 1}
-                  onChange={(e) => {
-                    const v = Math.max(1, Math.min(20, parseInt(e.target.value) || 1));
-                    snapshotSettings?.();
-                    setNaturalSettings((s) => ({
-                      ...s,
-                      randomSize: { ...(s.randomSize || { enabled: false, max: 1 }), min: v },
-                    }));
-                  }}
+                  min={1}
+                  max={20}
+                  step={1}
+                  onCommit={(v) => { const n = Math.round(v); snapshotSettings?.(); setNaturalSettings((s) => ({ ...s, randomSize: { ...(s.randomSize || { enabled: false, max: 1 }), min: n } })); }}
                   className="w-12 p-1 text-black rounded"
                 />
                 <span>to</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
+                <NumericInput
                   value={naturalSettings?.randomSize?.max ?? 1}
-                  onChange={(e) => {
-                    const v = Math.max(1, Math.min(20, parseInt(e.target.value) || 1));
-                    snapshotSettings?.();
-                    setNaturalSettings((s) => ({
-                      ...s,
-                      randomSize: { ...(s.randomSize || { enabled: false, min: 1 }), max: v },
-                    }));
-                  }}
+                  min={1}
+                  max={20}
+                  step={1}
+                  onCommit={(v) => { const n = Math.round(v); snapshotSettings?.(); setNaturalSettings((s) => ({ ...s, randomSize: { ...(s.randomSize || { enabled: false, min: 1 }), max: n } })); }}
                   className="w-12 p-1 text-black rounded"
                 />
               </div>
@@ -177,37 +164,21 @@ export default function BrushSettings({
                 Random Opacity
               </label>
               <div className="flex items-center gap-1 mt-1">
-                <input
-                  type="number"
-                  min="0.05"
-                  max="1"
-                  step="0.05"
+                <NumericInput
                   value={naturalSettings?.randomOpacity?.min ?? 1}
-                  onChange={(e) => {
-                    const v = Math.max(0.05, Math.min(1, parseFloat(e.target.value) || 0.05));
-                    snapshotSettings?.();
-                    setNaturalSettings((s) => ({
-                      ...s,
-                      randomOpacity: { ...(s.randomOpacity || { enabled: false, max: 1 }), min: v },
-                    }));
-                  }}
+                  min={0.05}
+                  max={1}
+                  step={0.05}
+                  onCommit={(v) => { const n = Math.max(0.05, Math.min(1, parseFloat(v))); snapshotSettings?.(); setNaturalSettings((s) => ({ ...s, randomOpacity: { ...(s.randomOpacity || { enabled: false, max: 1 }), min: n } })); }}
                   className="w-14 p-1 text-black rounded"
                 />
                 <span>to</span>
-                <input
-                  type="number"
-                  min="0.05"
-                  max="1"
-                  step="0.05"
+                <NumericInput
                   value={naturalSettings?.randomOpacity?.max ?? 1}
-                  onChange={(e) => {
-                    const v = Math.max(0.05, Math.min(1, parseFloat(e.target.value) || 1));
-                    snapshotSettings?.();
-                    setNaturalSettings((s) => ({
-                      ...s,
-                      randomOpacity: { ...(s.randomOpacity || { enabled: false, min: 1 }), max: v },
-                    }));
-                  }}
+                  min={0.05}
+                  max={1}
+                  step={0.05}
+                  onCommit={(v) => { const n = Math.max(0.05, Math.min(1, parseFloat(v))); snapshotSettings?.(); setNaturalSettings((s) => ({ ...s, randomOpacity: { ...(s.randomOpacity || { enabled: false, min: 1 }), max: n } })); }}
                   className="w-14 p-1 text-black rounded"
                 />
               </div>
@@ -238,18 +209,13 @@ export default function BrushSettings({
         {!gridSettings.snapToGrid && (
           <div className="grid grid-cols-2 gap-2 items-center">
             <label className="text-xs">Grid Step (tiles)</label>
-            <input
-              type="number"
-              min="0.05"
-              max="1"
-              step="0.05"
-              className="w-full p-1 text-black rounded"
+            <NumericInput
               value={gridSettings.snapStep ?? 0.25}
-              onChange={(e)=>{
-                const v = Math.max(0.05, Math.min(1, parseFloat(e.target.value)||0.25));
-                snapshotSettings?.();
-                setGridSettings((s)=> ({ ...s, snapStep: v }));
-              }}
+              min={0.05}
+              max={1}
+              step={0.05}
+              className="w-full p-1 text-black rounded"
+              onCommit={(v)=> { const n = Math.max(0.05, Math.min(1, parseFloat(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapStep: n })); }}
             />
           </div>
         )}

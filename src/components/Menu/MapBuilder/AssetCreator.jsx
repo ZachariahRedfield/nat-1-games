@@ -1,4 +1,5 @@
 import React from "react";
+import NumericInput from "../../common/NumericInput";
 
 export default function AssetCreator({ kind = 'image', onClose, onCreate, selectedImageSrc }) {
   const tab = kind; // locked to the button the user clicked
@@ -154,7 +155,10 @@ export default function AssetCreator({ kind = 'image', onClose, onCreate, select
     }
   };
 
-  const Section = () => {
+  // Render content for the selected creator tab. Note: use a plain
+  // render function (not a nested component) to avoid remounting
+  // the subtree on every keystroke, which can steal input focus.
+  const renderSection = () => {
     if (tab === 'image') return (
       <div className="grid gap-2">
         <label className="text-xs">Name
@@ -189,7 +193,14 @@ export default function AssetCreator({ kind = 'image', onClose, onCreate, select
             <input type="color" value={labelColor} onChange={(e)=> setLabelColor(e.target.value)} className="w-full h-8 p-0 border border-gray-500 rounded" />
           </label>
           <label className="text-xs">Font Size
-            <input type="number" min="8" max="128" value={labelSize} onChange={(e)=> setLabelSize(parseInt(e.target.value)||28)} className="w-full p-1 text-black rounded" />
+            <NumericInput
+              value={labelSize}
+              min={8}
+              max={128}
+              step={1}
+              onCommit={(n)=> setLabelSize(Math.round(n))}
+              className="w-full p-1 text-black rounded"
+            />
           </label>
           <label className="text-xs col-span-2">Font Family
             <input className="w-full p-1 text-black rounded" value={labelFont} onChange={(e)=> setLabelFont(e.target.value)} />
@@ -231,7 +242,7 @@ export default function AssetCreator({ kind = 'image', onClose, onCreate, select
 
   return (
     <div className="mb-3 p-2 border border-gray-600 rounded space-y-3">
-      <Section />
+      {renderSection()}
       <div className="flex gap-2">
         <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={save}>Save Asset</button>
         <button className="px-2 py-1 bg-gray-700 rounded text-sm" onClick={onClose}>Close</button>

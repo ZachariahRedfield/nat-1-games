@@ -40,6 +40,7 @@ export default function Grid({
   layerVisibility = { background: true, base: true, sky: true },
   tokensVisible = true,
   tokenHUDVisible = true,
+  tokenHUDShowInitiative = false,
   assetGroup = 'image',
 
   // ===== Props: stroke lifecycle (callbacks)
@@ -112,6 +113,8 @@ export default function Grid({
   // Selection & dragging
   const [selectedObjId, setSelectedObjId] = useState(null);
   const [selectedTokenId, setSelectedTokenId] = useState(null);
+  const [selectedObjIds, setSelectedObjIds] = useState([]);
+  const [selectedTokenIds, setSelectedTokenIds] = useState([]);
   const dragRef = useRef(null); // { kind:'object'|'token', id, offsetRow, offsetCol }
 
   // clamp comes from utils
@@ -359,33 +362,77 @@ export default function Grid({
   };
 
   const placeTokenAt = (centerRow, centerCol) => {
-    if (!selectedAsset || selectedAsset.kind !== "token") return;
-    const wTiles = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
-    const aspect = selectedAsset.aspectRatio || 1;
-    const hTiles = Math.max(1, Math.round(wTiles / aspect));
-    const r0 = clamp(
-      (gridSettings?.snapToGrid ? (centerRow - Math.floor(hTiles / 2)) : (centerRow - hTiles / 2)),
-      0,
-      Math.max(0, rows - hTiles)
-    );
-    const c0 = clamp(
-      (gridSettings?.snapToGrid ? (centerCol - Math.floor(wTiles / 2)) : (centerCol - wTiles / 2)),
-      0,
-      Math.max(0, cols - wTiles)
-    );
-    addToken?.({
-      assetId: selectedAsset.id,
-      row: r0,
-      col: c0,
-      wTiles,
-      hTiles,
-      rotation: gridSettings.rotation || 0,
-      flipX: !!gridSettings.flipX,
-      flipY: !!gridSettings.flipY,
-      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
-      glowColor: '#7dd3fc',
-      meta: { name: selectedAsset?.name || 'Token', hp: 0, initiative: 0 },
-    });
+    if (!selectedAsset) return;
+    const baseSize = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
+    const snap = !!gridSettings?.snapToGrid;
+    if (selectedAsset.kind === 'token') {
+      const wTiles = baseSize;
+      const aspect = selectedAsset.aspectRatio || 1;
+      const hTiles = Math.max(1, Math.round(wTiles / aspect));
+      const r0 = clamp(
+        (snap ? (centerRow - Math.floor(hTiles / 2)) : (centerRow - hTiles / 2)),
+        0,
+        Math.max(0, rows - hTiles)
+      );
+      const c0 = clamp(
+        (snap ? (centerCol - Math.floor(wTiles / 2)) : (centerCol - wTiles / 2)),
+        0,
+        Math.max(0, cols - wTiles)
+      );
+      addToken?.({
+        assetId: selectedAsset.id,
+        row: r0,
+        col: c0,
+        wTiles,
+        hTiles,
+        rotation: gridSettings.rotation || 0,
+        flipX: !!gridSettings.flipX,
+        flipY: !!gridSettings.flipY,
+        opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+        glowColor: '#7dd3fc',
+        meta: { name: selectedAsset?.name || 'Token', hp: 0, initiative: 0 },
+      });
+      return;
+    }
+    if (selectedAsset.kind === 'tokenGroup' && Array.isArray(selectedAsset.members)) {
+      let cursorCol = centerCol;
+      const placed = [];
+      for (const m of selectedAsset.members) {
+        const tokAsset = assets.find((a)=> a.id === m.assetId);
+        if (!tokAsset) continue;
+        const wTiles = baseSize;
+        const aspect = tokAsset.aspectRatio || 1;
+        const hTiles = Math.max(1, Math.round(wTiles / aspect));
+        const r0 = clamp(
+          (snap ? (centerRow - Math.floor(hTiles / 2)) : (centerRow - hTiles / 2)),
+          0,
+          Math.max(0, rows - hTiles)
+        );
+        const c0 = clamp(
+          (snap ? (cursorCol - Math.floor(wTiles / 2)) : (cursorCol - wTiles / 2)),
+          0,
+          Math.max(0, cols - wTiles)
+        );
+        placed.push({ assetId: tokAsset.id, r0, c0, wTiles, hTiles, name: tokAsset.name });
+        cursorCol += wTiles; // place next to the right
+      }
+      for (const p of placed) {
+        addToken?.({
+          assetId: p.assetId,
+          row: p.r0,
+          col: p.c0,
+          wTiles: p.wTiles,
+          hTiles: p.hTiles,
+          rotation: gridSettings.rotation || 0,
+          flipX: !!gridSettings.flipX,
+          flipY: !!gridSettings.flipY,
+          opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+          glowColor: '#7dd3fc',
+          meta: { name: p.name || 'Token', hp: 0, initiative: 0 },
+        });
+      }
+      return;
+    }
   };
 
   // ===== global pointerup
@@ -405,46 +452,56 @@ export default function Grid({
 
   useEffect(() => {
     const onKey = (e) => {
-      if (selectedTokenId) {
+      // Delete/Escape for tokens
+      if (selectedTokenIds.length || selectedTokenId) {
         if (e.key === "Delete" || e.key === "Backspace") {
           onBeginTokenStroke?.();
-          removeTokenById?.(selectedTokenId);
+          const ids = selectedTokenIds.length ? selectedTokenIds : (selectedTokenId ? [selectedTokenId] : []);
+          ids.forEach((id) => removeTokenById?.(id));
           setSelectedTokenId(null);
-          onTokenSelectionChange?.(null);
+          setSelectedTokenIds([]);
+          onTokenSelectionChange?.([]);
         } else if (e.key === "Escape") {
           setSelectedTokenId(null);
+          setSelectedTokenIds([]);
           dragRef.current = null;
-          onTokenSelectionChange?.(null);
+          onTokenSelectionChange?.([]);
         }
         return;
       }
-      if (!selectedObjId) return;
+      // Delete/Escape for objects
+      if (!(selectedObjIds.length || selectedObjId)) return;
       if (e.key === "Delete" || e.key === "Backspace") {
         onBeginObjectStroke?.(currentLayer);
-        removeObjectById(currentLayer, selectedObjId);
+        const ids = selectedObjIds.length ? selectedObjIds : (selectedObjId ? [selectedObjId] : []);
+        ids.forEach((id) => removeObjectById(currentLayer, id));
         setSelectedObjId(null);
-        onSelectionChange?.(null);
+        setSelectedObjIds([]);
+        onSelectionChange?.([]);
       } else if (e.key === "Escape") {
         setSelectedObjId(null);
+        setSelectedObjIds([]);
         dragRef.current = null;
-        onSelectionChange?.(null);
+        onSelectionChange?.([]);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedObjId, selectedTokenId, currentLayer]);
+  }, [selectedObjId, selectedTokenId, selectedObjIds, selectedTokenIds, currentLayer]);
 
   // When switching asset group, clear opposite selections so controls don't update both
   useEffect(() => {
     if (assetGroup === 'token') {
       if (selectedObjId) {
         setSelectedObjId(null);
-        onSelectionChange?.(null);
+        setSelectedObjIds([]);
+        onSelectionChange?.([]);
       }
     } else {
       if (selectedTokenId) {
         setSelectedTokenId(null);
-        onTokenSelectionChange?.(null);
+        setSelectedTokenIds([]);
+        onTokenSelectionChange?.([]);
       }
     }
   }, [assetGroup]);
@@ -554,7 +611,7 @@ export default function Grid({
     const col = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
 
     // Token placement: only in draw mode and only when Token Asset menu is active
-    if (selectedAsset?.kind === 'token' && assetGroup === 'token' && interactionMode !== 'select') {
+    if ((selectedAsset?.kind === 'token' || selectedAsset?.kind === 'tokenGroup') && assetGroup === 'token' && interactionMode !== 'select') {
       onBeginTokenStroke?.();
       placeTokenAt(row, col);
       return;
@@ -565,27 +622,55 @@ export default function Grid({
 
     // ===== SELECT MODE =====
     if (interactionMode === "select") {
+      const multi = e.shiftKey || e.ctrlKey || e.metaKey;
       if (assetGroup === 'token') {
         const hitTok = getTopMostTokenAt(Math.floor(row), Math.floor(col));
         if (hitTok) {
-          setSelectedTokenId(hitTok.id);
-          onTokenSelectionChange?.(hitTok);
-          dragRef.current = { kind: 'token', id: hitTok.id, offsetRow: row - hitTok.row, offsetCol: col - hitTok.col };
+          if (multi) {
+            const has = selectedTokenIds.includes(hitTok.id);
+            const next = has ? selectedTokenIds.filter((x) => x !== hitTok.id) : [...selectedTokenIds, hitTok.id];
+            setSelectedTokenIds(next);
+            setSelectedTokenId(hitTok.id);
+            onTokenSelectionChange?.(next.map((id)=> getTokenById(id)).filter(Boolean));
+            // Disable drag for multi for now
+            dragRef.current = null;
+          } else {
+            setSelectedTokenIds([hitTok.id]);
+            setSelectedTokenId(hitTok.id);
+            onTokenSelectionChange?.([hitTok]);
+            dragRef.current = { kind: 'token', id: hitTok.id, offsetRow: row - hitTok.row, offsetCol: col - hitTok.col };
+          }
         } else {
+          // start marquee selection for tokens
           setSelectedTokenId(null);
-          onTokenSelectionChange?.(null);
+          setSelectedTokenIds([]);
+          onTokenSelectionChange?.([]);
+          dragRef.current = { kind: 'marquee-token', startRow: row, startCol: col, curRow: row, curCol: col };
         }
         return;
       } else {
         const hitObj = getTopMostObjectAt(currentLayer, Math.floor(row), Math.floor(col));
         if (hitObj) {
-          onBeginObjectStroke?.(currentLayer);
-          setSelectedObjId(hitObj.id);
-          onSelectionChange?.(hitObj);
-          dragRef.current = { kind: 'object', id: hitObj.id, offsetRow: row - hitObj.row, offsetCol: col - hitObj.col };
+          if (multi) {
+            const has = selectedObjIds.includes(hitObj.id);
+            const next = has ? selectedObjIds.filter((x) => x !== hitObj.id) : [...selectedObjIds, hitObj.id];
+            setSelectedObjIds(next);
+            setSelectedObjId(hitObj.id);
+            onSelectionChange?.(next.map((id)=> getObjectById(currentLayer, id)).filter(Boolean));
+            dragRef.current = null; // disable drag for multi
+          } else {
+            onBeginObjectStroke?.(currentLayer);
+            setSelectedObjIds([hitObj.id]);
+            setSelectedObjId(hitObj.id);
+            onSelectionChange?.([hitObj]);
+            dragRef.current = { kind: 'object', id: hitObj.id, offsetRow: row - hitObj.row, offsetCol: col - hitObj.col };
+          }
         } else {
           setSelectedObjId(null);
-          onSelectionChange?.(null);
+          setSelectedObjIds([]);
+          onSelectionChange?.([]);
+          // start marquee selection for objects
+          dragRef.current = { kind: 'marquee-obj', startRow: row, startCol: col, curRow: row, curCol: col };
         }
         return; // no stamping/erasing in select mode
       }
@@ -598,7 +683,7 @@ export default function Grid({
       const hitObj = getTopMostObjectAt(currentLayer, row, col);
       // In draw mode, ignore selection/drag.
       // Stamping / Erasing
-      if (selectedAsset?.kind === 'token' && assetGroup === 'token') {
+      if ((selectedAsset?.kind === 'token' || selectedAsset?.kind === 'tokenGroup') && assetGroup === 'token') {
         onBeginTokenStroke?.();
         placeTokenAt(row, col);
       } else if (isErasing) {
@@ -666,7 +751,7 @@ export default function Grid({
       }
       const row = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
       const col = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
-      if (dragRef.current && dragRef.current.kind === 'object' && selectedObjId) {
+      if (dragRef.current && dragRef.current.kind === 'object' && selectedObjId && selectedObjIds.length <= 1) {
         const obj = getObjectById(currentLayer, selectedObjId);
         if (obj) {
           const { offsetRow, offsetCol } = dragRef.current;
@@ -682,7 +767,7 @@ export default function Grid({
           );
           moveObject(currentLayer, obj.id, newRow, newCol);
         }
-      } else if (dragRef.current && dragRef.current.kind === 'token' && selectedTokenId) {
+      } else if (dragRef.current && dragRef.current.kind === 'token' && selectedTokenId && selectedTokenIds.length <= 1) {
         const tok = getTokenById(selectedTokenId);
         if (tok) {
           const { offsetRow, offsetCol } = dragRef.current;
@@ -691,6 +776,10 @@ export default function Grid({
           const newCol = clamp(col - offsetCol, 0, Math.max(0, cols - w));
           moveToken?.(tok.id, newRow, newCol);
         }
+      } else if (dragRef.current && (dragRef.current.kind === 'marquee-obj' || dragRef.current.kind === 'marquee-token')) {
+        // update marquee
+        dragRef.current.curRow = row;
+        dragRef.current.curCol = col;
       }
       return; // no stamping while selecting
     }
@@ -712,7 +801,7 @@ export default function Grid({
       }
 
       // For token assets, only place on pointer down (single-click), not on move
-      if (selectedAsset?.kind === 'token') return;
+      if (selectedAsset?.kind === 'token' || selectedAsset?.kind === 'tokenGroup') return;
 
       if (isErasing) {
         eraseGridStampAt(row, col, {
@@ -781,6 +870,30 @@ export default function Grid({
       if (end) paintTipAt(end);
     }
     if (dragRef.current) {
+      // finalize marquee selections
+      if (dragRef.current.kind === 'marquee-obj' || dragRef.current.kind === 'marquee-token') {
+        const { startRow, startCol, curRow, curCol } = dragRef.current;
+        const r1 = Math.floor(Math.min(startRow, curRow));
+        const r2 = Math.ceil(Math.max(startRow, curRow));
+        const c1 = Math.floor(Math.min(startCol, curCol));
+        const c2 = Math.ceil(Math.max(startCol, curCol));
+        if (dragRef.current.kind === 'marquee-obj') {
+          const arr = (objects[currentLayer] || []).filter((o) => {
+            return !(o.row + o.hTiles <= r1 || r2 <= o.row || o.col + o.wTiles <= c1 || c2 <= o.col);
+          }).map((o) => o.id);
+          setSelectedObjIds(arr);
+          setSelectedObjId(arr[0] || null);
+          onSelectionChange?.(arr.map((id)=> getObjectById(currentLayer, id)).filter(Boolean));
+        } else {
+          const arr = (tokens || []).filter((t) => {
+            const h = t.hTiles || 1, w = t.wTiles || 1;
+            return !(t.row + h <= r1 || r2 <= t.row || t.col + w <= c1 || c2 <= t.col);
+          }).map((t) => t.id);
+          setSelectedTokenIds(arr);
+          setSelectedTokenId(arr[0] || null);
+          onTokenSelectionChange?.(arr.map((id)=> getTokenById(id)).filter(Boolean));
+        }
+      }
       dragRef.current = null;
     }
     if (!dragRef.current && (selectedObjId || selectedTokenId)) {
@@ -810,14 +923,14 @@ export default function Grid({
   // find asset by id (cheap enough for now)
   const getAssetById = (id) => assets.find((a) => a.id === id);
   // Decide cursor based on pan/select/visibility
-  const cursorStyle =
-    isPanning || panHotkey
-      ? "grabbing"
-      : !layerIsVisible
-      ? "not-allowed"
-      : interactionMode === "select"
-      ? "default"
-      : "crosshair";
+  let cursorStyle = "default";
+  if (isPanning || panHotkey) cursorStyle = "grabbing";
+  else if (!layerIsVisible) cursorStyle = "not-allowed";
+  else if (interactionMode === "select") cursorStyle = "default";
+  else {
+    if (engine === 'grid') cursorStyle = 'cell';
+    else if (engine === 'canvas') cursorStyle = isErasing ? 'crosshair' : 'crosshair';
+  }
 
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>
@@ -853,6 +966,7 @@ export default function Grid({
           cssHeight={cssHeight}
           visible={tokensVisible}
           showHUD={tokenHUDVisible}
+          showInitiative={tokenHUDShowInitiative}
         />
 
         {/* 4) Selection overlay (on top of objects, below canvas) */}
@@ -860,11 +974,46 @@ export default function Grid({
           objects={objects}
           currentLayer={currentLayer}
           selectedObjId={selectedObjId}
+          selectedObjIds={selectedObjIds}
           tileSize={tileSize}
           cssWidth={cssWidth}
           cssHeight={cssHeight}
           layerVisibility={layerVisibility}
         />
+
+        {/* 4b) Token selection overlay */}
+        {tokensVisible && (selectedTokenIds.length || selectedTokenId) && (
+          (() => {
+            const ids = selectedTokenIds.length ? selectedTokenIds : (selectedTokenId ? [selectedTokenId] : []);
+            return (
+              <>
+                {ids.map((id) => {
+                  const t = getTokenById(id);
+                  if (!t) return null;
+                  const left = t.col * tileSize;
+                  const top = t.row * tileSize;
+                  const w = (t.wTiles || 1) * tileSize;
+                  const h = (t.hTiles || 1) * tileSize;
+                  return (
+                    <div
+                      key={`tsel-${id}`}
+                      className="absolute pointer-events-none"
+                      style={{
+                        left,
+                        top,
+                        width: w,
+                        height: h,
+                        zIndex: 9998,
+                        border: "2px dashed #22d3ee",
+                        boxShadow: "0 0 0 2px rgba(34,211,238,0.25) inset",
+                      }}
+                    />
+                  );
+                })}
+              </>
+            );
+          })()
+        )}
 
         {/* 5) Per-layer CANVASES (VFX) - on top */}
         <CanvasLayers
@@ -884,6 +1033,7 @@ export default function Grid({
           brushSize={brushSize}
           tileSize={tileSize}
           selectedAsset={selectedAsset}
+          isErasing={isErasing}
         />
 
         {/* 7) Pointer overlay */}
@@ -895,6 +1045,23 @@ export default function Grid({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
         />
+
+        {/* 8) Marquee overlay */}
+        {dragRef.current && (dragRef.current.kind === 'marquee-obj' || dragRef.current.kind === 'marquee-token') && (
+          (() => {
+            const { startRow, startCol, curRow, curCol } = dragRef.current;
+            const left = Math.min(startCol, curCol) * tileSize;
+            const top = Math.min(startRow, curRow) * tileSize;
+            const w = Math.abs(curCol - startCol) * tileSize;
+            const h = Math.abs(curRow - startRow) * tileSize;
+            return (
+              <div
+                className="absolute pointer-events-none border border-blue-400/70 bg-blue-400/10"
+                style={{ left, top, width: w, height: h, zIndex: 9999 }}
+              />
+            );
+          })()
+        )}
 
 
         

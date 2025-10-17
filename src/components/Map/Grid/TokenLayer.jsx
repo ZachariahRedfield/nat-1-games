@@ -8,6 +8,7 @@ export default function TokenLayer({
   cssHeight,
   visible = true,
   showHUD = true,
+  showInitiative = false,
 }) {
   const getAssetById = (id) => assets.find((a) => a.id === id);
 
@@ -52,16 +53,21 @@ export default function TokenLayer({
                 filter: `drop-shadow(0 0 3px ${glow}) drop-shadow(0 0 6px ${glow})`,
               }}
             />
-            {/* Simple token HUD: name and HP at the bottom */}
-            {showHUD && (t.meta?.name || typeof t.meta?.hp === 'number') && (
+            {/* Simple token HUD: name and HP (+optional initiative) at the bottom */}
+            {showHUD && (t.meta?.name || typeof t.meta?.hp === 'number' || (showInitiative && typeof t.meta?.initiative === 'number')) && (
               <div
                 className="absolute left-0 right-0 bottom-0 bg-black/60 text-white text-[10px] leading-3 px-1 py-[2px] flex justify-between gap-2 pointer-events-none select-none"
                 style={{ backdropFilter: 'blur(2px)' }}
               >
-                <span className="truncate max-w-[70%]">{t.meta?.name || 'Token'}</span>
-                {typeof t.meta?.hp === 'number' && (
-                  <span className="opacity-90">HP {t.meta.hp}</span>
-                )}
+                <span className="truncate max-w-[60%]">{t.meta?.name || 'Token'}</span>
+                <span className="opacity-90 flex items-center gap-2">
+                  {typeof t.meta?.hp === 'number' && (
+                    <span>HP {t.meta.hp}</span>
+                  )}
+                  {showInitiative && typeof t.meta?.initiative === 'number' && (
+                    <span className="text-amber-300">Init {t.meta.initiative}</span>
+                  )}
+                </span>
               </div>
             )}
           </div>
