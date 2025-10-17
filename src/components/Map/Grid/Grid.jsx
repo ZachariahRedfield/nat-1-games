@@ -1,15 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
-
-const BASE_TILE = 32; // canvas buffer px per tile (zoom-safe)
-const LAYERS = ["background", "base", "sky"];
+﻿import React, { useEffect, useRef, useState } from "react";
+// Grid.jsx overview
+// - Organizes draw modes (grid vs canvas), selection/dragging, and rendering
+// - Helpers and constants shared via ./utils
+// - Potential presentational splits exist (TilesLayer, ObjectsLayer, etc.) for maintainability
+import { BASE_TILE, LAYERS, clamp, hexToRgba, dist, lerp } from "./utils";
+import TilesLayer from "./TilesLayer";
+import ObjectsLayer from "./ObjectsLayer";
+import SelectionOverlay from "./SelectionOverlay";
+import TokenLayer from "./TokenLayer";
+import CanvasLayers from "./CanvasLayers";
+import BrushPreview from "./BrushPreview";
+import PointerOverlay from "./PointerOverlay";
 
 export default function Grid({
-  // data
+  // ===== Props: data (what to render)
   maps, // { background: Grid, base: Grid, sky: Grid } (strings or hex colors)
   objects, // { background: Obj[], base: Obj[], sky: Obj[] }
   assets, // Asset[] (image/color)
 
-  // drawing config
+  // ===== Props: drawing config (how to interact)
   engine, // 'grid' | 'canvas'
   selectedAsset, // Asset or null
   gridSettings, // { sizeTiles, rotation, flipX, flipY, opacity }
@@ -17,22 +26,28 @@ export default function Grid({
   canvasOpacity = 0.35,
   canvasColor = "#cccccc",
   canvasSpacing = 0.27, // fraction of radius
+  canvasBlendMode = "source-over",
+  canvasSmoothing = 0.55,
   isErasing = false,
   interactionMode = "draw", // 'draw' | 'select',
 
-  // view / layers
+  // ===== Props: view / layers (where and which)
   tileSize = 32,
   scrollRef,
   canvasRefs, // { background: ref, base: ref, sky: ref }
   currentLayer = "base",
   layerVisibility = { background: true, base: true, sky: true },
+  tokensVisible = true,
+  tokenHUDVisible = true,
+  assetGroup = 'image',
 
-  // stroke lifecycle
+  // ===== Props: stroke lifecycle (callbacks)
   onBeginTileStroke, // (layer) => void
   onBeginCanvasStroke, // (layer) => void
   onBeginObjectStroke, // (layer) => void
+  onBeginTokenStroke, // () => void
 
-  // mutators
+  // ===== Props: mutators (state changes in parent)
   placeTiles, // (updates, colorHex?) => void
   addObject, // (layer, obj) => void
   eraseObjectAt, // (layer, row, col) => void
@@ -40,6 +55,13 @@ export default function Grid({
   removeObjectById,
   updateObjectById,
   onSelectionChange,
+  // Tokens
+  tokens = [],
+  addToken,
+  moveToken,
+  removeTokenById,
+  updateTokenById,
+  onTokenSelectionChange,
 }) {
   const rows = maps.base.length;
   const cols = maps.base[0].length;
@@ -59,18 +81,14 @@ export default function Grid({
 
   const mouseDownRef = useRef(false);
 
-  // Canvas brush – stamp engine state (CSS space)
+  // Canvas brush â€“ stamp engine state (CSS space)
   const lastStampCssRef = useRef(null);
   const emaCssRef = useRef(null);
 
   // Grid-stamp de-dupe within a stroke
   const lastTileRef = useRef({ row: -1, col: -1 });
 
-  // ===== helpers
-  const hexToRgba = (hex, a) => {
-    const n = parseInt(hex.replace("#", ""), 16);
-    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-  };
+  // ===== Helpers (instance-bound)
 
   const toCanvasCoords = (xCss, yCss) => {
     const scaleX = bufferWidth / cssWidth;
@@ -83,17 +101,14 @@ export default function Grid({
     return canvas ? canvas.getContext("2d") : null;
   };
 
-  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  const lerp = (a, b, t) => ({
-    x: a.x + (b.x - a.x) * t,
-    y: a.y + (b.y - a.y) * t,
-  });
+  // dist / lerp come from utils
 
   // Selection & dragging
   const [selectedObjId, setSelectedObjId] = useState(null);
-  const dragRef = useRef(null); // { id, offsetRow, offsetCol }
+  const [selectedTokenId, setSelectedTokenId] = useState(null);
+  const dragRef = useRef(null); // { kind:'object'|'token', id, offsetRow, offsetCol }
 
-  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  // clamp comes from utils
 
   const eraseGridStampAt = (
     centerRow,
@@ -162,6 +177,18 @@ export default function Grid({
   const getObjectById = (layer, id) =>
     (objects[layer] || []).find((o) => o.id === id);
 
+  const getTopMostTokenAt = (r, c) => {
+    for (let i = tokens.length - 1; i >= 0; i--) {
+      const t = tokens[i];
+      const inside =
+        r >= t.row && r < t.row + (t.hTiles || 1) &&
+        c >= t.col && c < t.col + (t.wTiles || 1);
+      if (inside) return t;
+    }
+    return null;
+  };
+  const getTokenById = (id) => tokens.find((t) => t.id === id);
+
   // ===== CANVAS BRUSH (free brush; image tip or color disc)
   const paintTipAt = (cssPt) => {
     const ctx = getActiveCtx();
@@ -171,7 +198,7 @@ export default function Grid({
     ctx.save();
     ctx.globalCompositeOperation = isErasing
       ? "destination-out"
-      : "source-over";
+      : canvasBlendMode || "source-over";
     ctx.globalAlpha = Math.max(
       0.01,
       selectedAsset?.kind === "image"
@@ -234,13 +261,49 @@ export default function Grid({
       Math.max(0, cols - wTiles)
     );
 
+    // Determine rotation with optional smart adjacency (square stamps only)
+    const decideRotation = () => {
+      if (!gridSettings?.smartAdjacency) return gridSettings.rotation || 0;
+      if (wTiles !== hTiles) return gridSettings.rotation || 0; // only for squares
+
+      const coversTile = (o, r, c) =>
+        r >= o.row && r < o.row + o.hTiles && c >= o.col && c < o.col + o.wTiles;
+      const sameAssetAt = (r, c) => {
+        if (r < 0 || c < 0 || r >= rows || c >= cols) return false;
+        const arr = objects[currentLayer] || [];
+        for (let i = arr.length - 1; i >= 0; i--) {
+          const o = arr[i];
+          if (o.assetId === selectedAsset.id && coversTile(o, r, c)) return true;
+        }
+        return false;
+      };
+      const run = (dr, dc) => {
+        let count = 0;
+        let r = centerRow + dr;
+        let c = centerCol + dc;
+        while (sameAssetAt(r, c)) {
+          count++;
+          r += dr;
+          c += dc;
+        }
+        return count;
+      };
+      const horiz = run(0, -1) + run(0, 1);
+      const vert = run(-1, 0) + run(1, 0);
+      if (horiz > vert) return 0; // favor horizontal chain
+      if (vert > horiz) return 90; // favor vertical chain
+      return gridSettings.rotation || 0;
+    };
+
+    const autoRotation = decideRotation();
+
     addObject(currentLayer, {
       assetId: selectedAsset.id,
       row: r0,
       col: c0,
       wTiles,
       hTiles,
-      rotation: gridSettings.rotation || 0,
+      rotation: autoRotation,
       flipX: !!gridSettings.flipX,
       flipY: !!gridSettings.flipY,
       opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
@@ -265,7 +328,7 @@ export default function Grid({
       Math.max(0, cols - wTiles)
     );
 
-    // Build updates for N×N
+    // Build updates for NÃ—N
     const updates = [];
     for (let r = 0; r < hTiles; r++) {
       for (let c = 0; c < wTiles; c++) {
@@ -295,6 +358,36 @@ export default function Grid({
     placeTiles([{ row, col }]); // parent uses canvasColor + isErasing
   };
 
+  const placeTokenAt = (centerRow, centerCol) => {
+    if (!selectedAsset || selectedAsset.kind !== "token") return;
+    const wTiles = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
+    const aspect = selectedAsset.aspectRatio || 1;
+    const hTiles = Math.max(1, Math.round(wTiles / aspect));
+    const r0 = clamp(
+      centerRow - Math.floor(hTiles / 2),
+      0,
+      Math.max(0, rows - hTiles)
+    );
+    const c0 = clamp(
+      centerCol - Math.floor(wTiles / 2),
+      0,
+      Math.max(0, cols - wTiles)
+    );
+    addToken?.({
+      assetId: selectedAsset.id,
+      row: r0,
+      col: c0,
+      wTiles,
+      hTiles,
+      rotation: gridSettings.rotation || 0,
+      flipX: !!gridSettings.flipX,
+      flipY: !!gridSettings.flipY,
+      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+      glowColor: '#7dd3fc',
+      meta: { name: selectedAsset?.name || 'Token', hp: 0, initiative: 0 },
+    });
+  };
+
   // ===== global pointerup
   useEffect(() => {
     const up = () => {
@@ -312,6 +405,19 @@ export default function Grid({
 
   useEffect(() => {
     const onKey = (e) => {
+      if (selectedTokenId) {
+        if (e.key === "Delete" || e.key === "Backspace") {
+          onBeginTokenStroke?.();
+          removeTokenById?.(selectedTokenId);
+          setSelectedTokenId(null);
+          onTokenSelectionChange?.(null);
+        } else if (e.key === "Escape") {
+          setSelectedTokenId(null);
+          dragRef.current = null;
+          onTokenSelectionChange?.(null);
+        }
+        return;
+      }
       if (!selectedObjId) return;
       if (e.key === "Delete" || e.key === "Backspace") {
         onBeginObjectStroke?.(currentLayer);
@@ -326,7 +432,22 @@ export default function Grid({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedObjId, currentLayer]);
+  }, [selectedObjId, selectedTokenId, currentLayer]);
+
+  // When switching asset group, clear opposite selections so controls don't update both
+  useEffect(() => {
+    if (assetGroup === 'token') {
+      if (selectedObjId) {
+        setSelectedObjId(null);
+        onSelectionChange?.(null);
+      }
+    } else {
+      if (selectedTokenId) {
+        setSelectedTokenId(null);
+        onTokenSelectionChange?.(null);
+      }
+    }
+  }, [assetGroup]);
 
   // When controls (gridSettings) change and an object is selected, live-update it
   useEffect(() => {
@@ -359,6 +480,31 @@ export default function Grid({
       opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
     });
   }, [gridSettings, selectedObjId, currentLayer, rows, cols]);
+
+  // Live-update selected token when gridSettings change (size/rotation/opacity)
+  useEffect(() => {
+    if (!selectedTokenId) return;
+    const tok = getTokenById(selectedTokenId);
+    if (!tok) return;
+    const wTiles = Math.max(1, Math.round(gridSettings.sizeTiles || tok.wTiles || 1));
+    const hTiles = Math.max(1, Math.round(wTiles / 1));
+    const centerRow = tok.row + (tok.hTiles || 1) / 2;
+    const centerCol = tok.col + (tok.wTiles || 1) / 2;
+    let newRow = Math.round(centerRow - hTiles / 2);
+    let newCol = Math.round(centerCol - wTiles / 2);
+    newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
+    newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
+    updateTokenById?.(selectedTokenId, {
+      wTiles,
+      hTiles,
+      row: newRow,
+      col: newCol,
+      rotation: gridSettings.rotation || 0,
+      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+      flipX: !!gridSettings.flipX,
+      flipY: !!gridSettings.flipY,
+    });
+  }, [gridSettings, selectedTokenId, rows, cols]);
 
   const [panHotkey, setPanHotkey] = useState(false); // spacebar held?
 
@@ -393,9 +539,6 @@ export default function Grid({
       return;
     }
 
-    // Layer lock
-    if (!layerIsVisible) return;
-
     const rect = e.currentTarget.getBoundingClientRect();
     const xCss = e.clientX - rect.left;
     const yCss = e.clientY - rect.top;
@@ -404,53 +547,55 @@ export default function Grid({
     const row = Math.floor((yCss / cssHeight) * rows);
     const col = Math.floor((xCss / cssWidth) * cols);
 
-    // ===== SELECT MODE =====
-    if (interactionMode === "select") {
-      const hitObj = getTopMostObjectAt(currentLayer, row, col);
-      if (hitObj) {
-        onBeginObjectStroke?.(currentLayer);
-        setSelectedObjId(hitObj.id);
-        onSelectionChange?.(hitObj);
-        dragRef.current = {
-          id: hitObj.id,
-          offsetRow: row - hitObj.row,
-          offsetCol: col - hitObj.col,
-        };
-      } else {
-        // click empty: clear selection
-        setSelectedObjId(null);
-        onSelectionChange?.(null);
-      }
-      return; // no stamping/erasing in select mode
+    // Token placement: only in draw mode and only when Token Asset menu is active
+    if (selectedAsset?.kind === 'token' && assetGroup === 'token' && interactionMode !== 'select') {
+      onBeginTokenStroke?.();
+      placeTokenAt(row, col);
+      return;
     }
 
-    if (engine === "grid") {
+    // Layer lock (for non-token operations)
+    if (!layerIsVisible) return;
+
+    // ===== SELECT MODE =====
+    if (interactionMode === "select") {
+      if (assetGroup === 'token') {
+        const hitTok = getTopMostTokenAt(row, col);
+        if (hitTok) {
+          setSelectedTokenId(hitTok.id);
+          onTokenSelectionChange?.(hitTok);
+          dragRef.current = { kind: 'token', id: hitTok.id, offsetRow: row - hitTok.row, offsetCol: col - hitTok.col };
+        } else {
+          setSelectedTokenId(null);
+          onTokenSelectionChange?.(null);
+        }
+        return;
+      } else {
+        const hitObj = getTopMostObjectAt(currentLayer, row, col);
+        if (hitObj) {
+          onBeginObjectStroke?.(currentLayer);
+          setSelectedObjId(hitObj.id);
+          onSelectionChange?.(hitObj);
+          dragRef.current = { kind: 'object', id: hitObj.id, offsetRow: row - hitObj.row, offsetCol: col - hitObj.col };
+        } else {
+          setSelectedObjId(null);
+          onSelectionChange?.(null);
+        }
+        return; // no stamping/erasing in select mode
+      }
+    }
+
+    if (engine === "grid" || (selectedAsset?.kind === 'token' && assetGroup === 'token')) {
       setIsBrushing(true);
       lastTileRef.current = { row: -1, col: -1 };
 
       const hitObj = getTopMostObjectAt(currentLayer, row, col);
-
-      // Selection/dragging takes priority when not erasing
-      if (!isErasing && hitObj) {
-        onBeginObjectStroke?.(currentLayer);
-        setSelectedObjId(hitObj.id);
-        onSelectionChange?.(hitObj); // ← tell parent we selected this
-        dragRef.current = {
-          id: hitObj.id,
-          offsetRow: row - hitObj.row,
-          offsetCol: col - hitObj.col,
-        };
-        return;
-      }
-
-      // Clicked empty space → clear selection in parent
-      if (!isErasing && !hitObj) {
-        setSelectedObjId(null);
-        onSelectionChange?.(null); // ← restore parent’s defaults
-      }
-
+      // In draw mode, ignore selection/drag.
       // Stamping / Erasing
-      if (isErasing) {
+      if (selectedAsset?.kind === 'token' && assetGroup === 'token') {
+        onBeginTokenStroke?.();
+        placeTokenAt(row, col);
+      } else if (isErasing) {
         if (hitObj) onBeginObjectStroke?.(currentLayer);
         else onBeginTileStroke?.(currentLayer);
 
@@ -509,7 +654,7 @@ export default function Grid({
     if (interactionMode === "select") {
       const row = Math.floor((yCss / cssHeight) * rows);
       const col = Math.floor((xCss / cssWidth) * cols);
-      if (dragRef.current && selectedObjId) {
+      if (dragRef.current && dragRef.current.kind === 'object' && selectedObjId) {
         const obj = getObjectById(currentLayer, selectedObjId);
         if (obj) {
           const { offsetRow, offsetCol } = dragRef.current;
@@ -524,6 +669,15 @@ export default function Grid({
             Math.max(0, cols - obj.wTiles)
           );
           moveObject(currentLayer, obj.id, newRow, newCol);
+        }
+      } else if (dragRef.current && dragRef.current.kind === 'token' && selectedTokenId) {
+        const tok = getTokenById(selectedTokenId);
+        if (tok) {
+          const { offsetRow, offsetCol } = dragRef.current;
+          const w = tok.wTiles || 1, h = tok.hTiles || 1;
+          const newRow = clamp(row - offsetRow, 0, Math.max(0, rows - h));
+          const newCol = clamp(col - offsetCol, 0, Math.max(0, cols - w));
+          moveToken?.(tok.id, newRow, newCol);
         }
       }
       return; // no stamping while selecting
@@ -533,30 +687,13 @@ export default function Grid({
       const row = Math.floor((yCss / cssHeight) * rows);
       const col = Math.floor((xCss / cssWidth) * cols);
 
-      // Dragging?
-      if (dragRef.current && selectedObjId) {
-        const obj = getObjectById(currentLayer, selectedObjId);
-        if (obj) {
-          const { offsetRow, offsetCol } = dragRef.current;
-          const newRow = clamp(
-            row - offsetRow,
-            0,
-            Math.max(0, rows - obj.hTiles)
-          );
-          const newCol = clamp(
-            col - offsetCol,
-            0,
-            Math.max(0, cols - obj.wTiles)
-          );
-          moveObject(currentLayer, obj.id, newRow, newCol);
-        }
-        return;
-      }
-
       // De-dupe tile hits
       if (row === lastTileRef.current.row && col === lastTileRef.current.col)
         return;
       lastTileRef.current = { row, col };
+
+      // For token assets, only place on pointer down (single-click), not on move
+      if (selectedAsset?.kind === 'token') return;
 
       if (isErasing) {
         eraseGridStampAt(row, col, {
@@ -584,8 +721,8 @@ export default function Grid({
           ? native.getCoalescedEvents()
           : [native];
 
-      // EMA smoothing factor
-      const alpha = 0.55;
+      // EMA smoothing factor (exposed via settings)
+      const alpha = clamp(canvasSmoothing ?? 0.55, 0.01, 0.99);
 
       let last = lastStampCssRef.current;
       let ema = emaCssRef.current || last;
@@ -607,7 +744,7 @@ export default function Grid({
           x: ema.x + (px - ema.x) * alpha,
           y: ema.y + (py - ema.y) * alpha,
         };
-        // lay stamps between last and ema
+        // lay stamps between last and ema (pixels or objects)
         stampBetweenCanvas(last, ema);
         last = ema;
       }
@@ -627,7 +764,7 @@ export default function Grid({
     if (dragRef.current) {
       dragRef.current = null;
     }
-    if (!dragRef.current && selectedObjId) {
+    if (!dragRef.current && (selectedObjId || selectedTokenId)) {
       // Click release over empty space is handled in pointerDown; nothing extra here
     }
   };
@@ -667,170 +804,84 @@ export default function Grid({
     <div className="relative inline-block" style={{ padding: 16 }}>
       <div style={{ position: "relative", width: cssWidth, height: cssHeight }}>
         {/* 1) Per-layer TILE GRIDS */}
-        {LAYERS.map((layer, i) => (
-          <div
-            key={`tiles-${layer}`}
-            className="absolute top-0 left-0 pointer-events-none"
-            style={{
-              width: cssWidth,
-              height: cssHeight,
-              zIndex: 10 + i * 20,
-              display: layerVisibility[layer] ? "block" : "none",
-            }}
-          >
-            <div
-              className="grid"
-              style={{
-                width: cssWidth,
-                height: cssHeight,
-                gridTemplateRows: `repeat(${rows}, ${tileSize}px)`,
-                gridTemplateColumns: `repeat(${cols}, ${tileSize}px)`,
-              }}
-            >
-              {maps[layer].map((rowArr, ri) =>
-                rowArr.map((val, ci) => (
-                  <div
-                    key={`${layer}-${ri}-${ci}`}
-                    className="border border-gray-600"
-                    style={{
-                      width: tileSize,
-                      height: tileSize,
-                      backgroundColor: cellBg(val),
-                    }}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        ))}
+        <TilesLayer
+          maps={maps}
+          rows={rows}
+          cols={cols}
+          tileSize={tileSize}
+          cssWidth={cssWidth}
+          cssHeight={cssHeight}
+          layerVisibility={layerVisibility}
+          cellBg={cellBg}
+        />
 
-        {/* 2) Per-layer OBJECTS (image stamps) — above tiles, below canvas */}
-        {LAYERS.map((layer, i) => (
-          <div
-            key={`objs-${layer}`}
-            className="absolute top-0 left-0 pointer-events-none"
-            style={{
-              width: cssWidth,
-              height: cssHeight,
-              zIndex: 11 + i * 20,
-              display: layerVisibility[layer] ? "block" : "none",
-            }}
-          >
-            {objects[layer].map((o) => {
-              const a = getAssetById(o.assetId);
-              if (!a || a.kind !== "image") return null;
-              const left = o.col * tileSize;
-              const top = o.row * tileSize;
-              const w = o.wTiles * tileSize;
-              const h = o.hTiles * tileSize;
-              const rot = o.rotation || 0;
-              const sx = o.flipX ? -1 : 1;
-              const sy = o.flipY ? -1 : 1;
+        {/* 2) Per-layer OBJECTS (image stamps) - above tiles, below tokens/canvas */}
+        <ObjectsLayer
+          objects={objects}
+          assets={assets}
+          tileSize={tileSize}
+          cssWidth={cssWidth}
+          cssHeight={cssHeight}
+          layerVisibility={layerVisibility}
+        />
 
-              return (
-                <div
-                  key={o.id}
-                  className="absolute"
-                  style={{
-                    left,
-                    top,
-                    width: w,
-                    height: h,
-                    transformOrigin: "center",
-                    transform: `translate(0,0) rotate(${rot}deg) scale(${sx}, ${sy})`,
-                    opacity: o.opacity ?? 1,
-                  }}
-                >
-                  <img
-                    src={a.src}
-                    alt={a.name}
-                    className="w-full h-full object-fill pointer-events-none select-none"
-                  />
-                </div>
-              );
-            })}
-          </div>
-        ))}
+        {/* 3) Tokens overlay */}
+        <TokenLayer
+          tokens={tokens}
+          assets={assets}
+          tileSize={tileSize}
+          cssWidth={cssWidth}
+          cssHeight={cssHeight}
+          visible={tokensVisible}
+          showHUD={tokenHUDVisible}
+        />
 
-        {/* Selection overlay (on top of objects, below canvas) */}
-        {LAYERS.map((layer, i) => {
-          const sel =
-            layer === currentLayer ? getObjectById(layer, selectedObjId) : null;
-          if (!sel || !layerVisibility[layer]) return null;
+        {/* 4) Selection overlay (on top of objects, below canvas) */}
+        <SelectionOverlay
+          objects={objects}
+          currentLayer={currentLayer}
+          selectedObjId={selectedObjId}
+          tileSize={tileSize}
+          cssWidth={cssWidth}
+          cssHeight={cssHeight}
+          layerVisibility={layerVisibility}
+        />
 
-          const left = sel.col * tileSize;
-          const top = sel.row * tileSize;
-          const w = sel.wTiles * tileSize;
-          const h = sel.hTiles * tileSize;
+        {/* 5) Per-layer CANVASES (VFX) - on top */}
+        <CanvasLayers
+          canvasRefs={canvasRefs}
+          bufferWidth={bufferWidth}
+          bufferHeight={bufferHeight}
+          cssWidth={cssWidth}
+          cssHeight={cssHeight}
+          layerVisibility={layerVisibility}
+        />
 
-          return (
-            <div
-              key={`sel-${layer}`}
-              className="absolute pointer-events-none"
-              style={{
-                left,
-                top,
-                width: w,
-                height: h,
-                zIndex: 12 + i * 20 - 1, // just above objects layer
-                border: "2px dashed #4ade80", // green dashed outline
-                boxShadow: "0 0 0 2px rgba(74,222,128,0.3) inset",
-              }}
-            />
-          );
-        })}
+        {/* 6) Canvas brush preview */}
+        <BrushPreview
+          engine={engine}
+          layerIsVisible={layerIsVisible}
+          mousePos={mousePos}
+          brushSize={brushSize}
+          tileSize={tileSize}
+          selectedAsset={selectedAsset}
+        />
 
-        {/* 3) Per-layer CANVASES (VFX) — on top */}
-        {LAYERS.map((layer, i) => (
-          <canvas
-            key={`canvas-${layer}`}
-            ref={canvasRefs?.[layer]}
-            width={bufferWidth}
-            height={bufferHeight}
-            style={{
-              width: cssWidth,
-              height: cssHeight,
-              zIndex: 12 + i * 20,
-              display: layerVisibility[layer] ? "block" : "none",
-            }}
-            className="absolute top-0 left-0 pointer-events-none"
-          />
-        ))}
-
-        {/* 4) Canvas brush preview */}
-        {engine === "canvas" && layerIsVisible && mousePos && (
-          <div
-            className="absolute rounded-full border border-white pointer-events-none"
-            style={{
-              left: mousePos.x - brushSize * tileSize * 0.5,
-              top: mousePos.y - brushSize * tileSize * 0.5,
-              width: brushSize * tileSize,
-              height: brushSize * tileSize,
-              zIndex: 99,
-              backgroundColor:
-                selectedAsset?.kind === "image"
-                  ? "transparent"
-                  : "rgba(255,255,255,0.1)",
-            }}
-          />
-        )}
-
-        {/* 5) Pointer overlay */}
-        <div
-          className="absolute top-0 left-0"
-          style={{
-            width: cssWidth,
-            height: cssHeight,
-            zIndex: 100,
-            cursor: cursorStyle, // ← use the computed value
-            touchAction: "none",
-          }}
+        {/* 7) Pointer overlay */}
+        <PointerOverlay
+          cssWidth={cssWidth}
+          cssHeight={cssHeight}
+          cursorStyle={cursorStyle}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onContextMenu={(e) => e.preventDefault()} // optional (future right-click pan)
         />
+
+
+        
+
       </div>
     </div>
   );
 }
+

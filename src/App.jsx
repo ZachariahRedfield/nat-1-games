@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import MainMenu from "./components/Menu/MainMenu";
-import MapBuilder from "./components/Menu/MapBuilder";
-import StartSession from "./components/Menu/StartSession";
-import AssetCreation from "./components/Menu/AssetCreation";
+import MainMenu from "./components/Menu/MainMenu/MainMenu";
+import MapBuilder from "./components/Menu/MapBuilder/MapBuilder";
+import StartSession from "./components/Menu/SessonManager/StartSession";
+import AssetCreation from "./components/Menu/AssetCreation/AssetCreation";
 
 function App() {
   const [screen, setScreen] = useState("menu");
