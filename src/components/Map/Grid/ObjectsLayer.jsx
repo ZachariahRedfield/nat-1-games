@@ -26,7 +26,7 @@ export default function ObjectsLayer({
         >
           {(objects[layer] || []).map((o) => {
             const a = getAssetById(o.assetId);
-            if (!a || a.kind !== "image") return null;
+            if (!a || (a.kind !== "image" && a.kind !== 'natural')) return null;
             const left = o.col * tileSize;
             const top = o.row * tileSize;
             const w = o.wTiles * tileSize;
@@ -49,11 +49,19 @@ export default function ObjectsLayer({
                   opacity: o.opacity ?? 1,
                 }}
               >
-                <img
-                  src={a.src}
-                  alt={a.name}
-                  className="w-full h-full object-fill pointer-events-none select-none"
-                />
+                {a.kind === 'natural' ? (
+                  <img
+                    src={a.variants?.[(o.variantIndex || 0)]?.src}
+                    alt={a.name}
+                    className="w-full h-full object-fill pointer-events-none select-none"
+                  />
+                ) : (
+                  <img
+                    src={a.src}
+                    alt={a.name}
+                    className="w-full h-full object-fill pointer-events-none select-none"
+                  />
+                )}
               </div>
             );
           })}
@@ -62,4 +70,3 @@ export default function ObjectsLayer({
     </>
   );
 }
-

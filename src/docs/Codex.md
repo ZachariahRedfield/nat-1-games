@@ -54,3 +54,13 @@ This codex tracks cross-project concepts, roadmap items, and running ideas that 
 
 - This document supersedes the previous MapBuilderCodex.md; consolidating under a project-wide Codex keeps design notes centralized as features span multiple areas (builder, session, assets).
 
+---
+
+## Map Builder Codex (Merged)
+
+The following content is merged verbatim from `src/docs/MapBuilderCodex.md` to preserve existing design notes, conventions, and roadmap context for the Map Builder. Future edits should be made in this Codex.
+
+```
+[MERGED FROM MapBuilderCodex.md]
+```
+

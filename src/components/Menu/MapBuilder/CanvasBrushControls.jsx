@@ -16,7 +16,6 @@ export default function CanvasBrushControls({
 }) {
   return (
     <div>
-      <h3 className="font-bold text-sm mb-2">Canvas Brush</h3>
 
       {/* Brush Size */}
       <div className="mt-1">

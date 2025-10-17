@@ -4,6 +4,8 @@ import Grid from "../../Map/Grid/Grid";
 
 import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
 import CanvasBrushControls from "./CanvasBrushControls";
+import BrushSettings from "./BrushSettings";
+import AssetCreator from "./AssetCreator";
 
 export default function MapBuilder({ goBack }) {
   // --- dimensions ---
@@ -63,7 +65,7 @@ export default function MapBuilder({ goBack }) {
   const [layerVisibility, setLayerVisibility] = useState({
     background: true,
     base: true,
-    sky: true,
+    sky: false, // start with sky layer hidden
   });
 
   // ====== ASSETS (WHAT) ======
@@ -83,7 +85,7 @@ export default function MapBuilder({ goBack }) {
     ];
   });
   const [selectedAssetId, setSelectedAssetId] = useState(assets[0].id);
-  const [assetGroup, setAssetGroup] = useState("image"); // 'image' | 'token' | 'material'
+  const [assetGroup, setAssetGroup] = useState("image"); // 'image' | 'token' | 'material' | 'natural'
   const [showAssetKindMenu, setShowAssetKindMenu] = useState(false);
 
   // ====== ENGINE (HOW) ======
@@ -98,6 +100,8 @@ export default function MapBuilder({ goBack }) {
   const selectAsset = (id) => {
     const a = getAsset(id);
     setSelectedAssetId(id);
+    // Close any open creator when selecting an existing asset
+    setCreatorOpen(false);
     if (!a) return;
     const prefer = a.defaultEngine || "canvas";
     if (a.kind === "token") {
@@ -115,18 +119,24 @@ export default function MapBuilder({ goBack }) {
     if (a.kind === "color" && a.color) setCanvasColor(a.color);
   };
 
-  // When asset group changes, auto-select a matching asset and force Grid engine for Token group
+  // When asset group changes, auto-select a matching asset and force Grid engine for Token/Natural groups
   React.useEffect(() => {
-    const ensureSelection = (kind) => {
-      if (selectedAsset?.kind !== kind) {
-        const next = assets.find((x) => x.kind === kind);
-        if (next) setSelectedAssetId(next.id);
-      }
+    const ensureSelectionBy = (pred) => {
+      const cur = selectedAsset;
+      const ok = cur && pred(cur);
+      if (ok) return;
+      const next = assets.find(pred);
+      if (next) setSelectedAssetId(next.id);
     };
-    if (assetGroup === "image") ensureSelection("image");
-    else if (assetGroup === "material") ensureSelection("color");
+    // Close any open asset creator when changing groups
+    setCreatorOpen(false);
+    if (assetGroup === "image") ensureSelectionBy((x) => x.kind === "image");
+    else if (assetGroup === "material") ensureSelectionBy((x) => x.kind === "color");
     else if (assetGroup === "token") {
-      ensureSelection("token");
+      ensureSelectionBy((x) => x.kind === "token");
+      setEngine("grid");
+    } else if (assetGroup === "natural") {
+      ensureSelectionBy((x) => x.kind === "natural");
       setEngine("grid");
     }
   }, [assetGroup, assets]);
@@ -140,6 +150,7 @@ export default function MapBuilder({ goBack }) {
     flipY: false,
     opacity: 1,
     snapToGrid: true, // engine toggle essentially
+    snapStep: 0.25,
     smartAdjacency: true, // neighbor-aware alignment for grid stamps
   });
 
@@ -151,9 +162,27 @@ export default function MapBuilder({ goBack }) {
   const [canvasBlendMode, setCanvasBlendMode] = useState("source-over");
   const [canvasSmoothing, setCanvasSmoothing] = useState(0.55); // EMA smoothing factor (0..1)
   const [showAssetPreviews, setShowAssetPreviews] = useState(true);
-  const [showAddColor, setShowAddColor] = useState(false);
-  const [showAddToken, setShowAddToken] = useState(false);
-  const [showAddText, setShowAddText] = useState(false);
+  // Legacy add-* panels removed in favor of unified AssetCreator
+  const [creatorOpen, setCreatorOpen] = useState(false);
+  const [creatorKind, setCreatorKind] = useState('image');
+  const openCreator = (k) => { setCreatorKind(k); setCreatorOpen(true); };
+  const handleCreatorCreate = (asset, group) => {
+    if (!asset) return;
+    const withId = { ...asset, id: uid() };
+    if (withId.kind === 'image') {
+      // ensure img present if src exists
+      if (!withId.img && withId.src) {
+        const im = new Image();
+        im.src = withId.src;
+        withId.img = im;
+      }
+    }
+    setAssets((prev)=> [withId, ...prev]);
+    setAssetGroup(group === 'material' ? 'material' : group === 'natural' ? 'natural' : group === 'token' ? 'token' : 'image');
+    setSelectedAssetId(withId.id);
+    setEngine('grid');
+    setCreatorOpen(false);
+  };
   const [addColorMode, setAddColorMode] = useState('palette');
   const [newColorName, setNewColorName] = useState("");
   const [newColorHex, setNewColorHex] = useState("#66ccff");
@@ -165,6 +194,15 @@ export default function MapBuilder({ goBack }) {
   const [flowHue, setFlowHue] = useState(200);
   const [flowSat, setFlowSat] = useState(70);
   const [flowLight, setFlowLight] = useState(55);
+  // Natural randomization settings
+  const [naturalSettings, setNaturalSettings] = useState({
+    randomRotation: false,
+    randomFlipX: false,
+    randomFlipY: false,
+    randomSize: { enabled: false, min: 1, max: 1 },
+    randomOpacity: { enabled: false, min: 1, max: 1 },
+    randomVariant: true,
+  });
   // Clear token selection when leaving Token assets menu
   React.useEffect(() => {
     if (assetGroup !== 'token' && selectedToken) setSelectedToken(null);
@@ -319,6 +357,7 @@ export default function MapBuilder({ goBack }) {
           canvasSpacing,
           canvasBlendMode,
           canvasSmoothing,
+          naturalSettings: { ...naturalSettings },
         },
       },
     ]);
@@ -412,6 +451,7 @@ export default function MapBuilder({ goBack }) {
             canvasSpacing,
             canvasBlendMode,
             canvasSmoothing,
+            naturalSettings: { ...naturalSettings },
           },
         },
       ]);
@@ -423,6 +463,21 @@ export default function MapBuilder({ goBack }) {
         setCanvasBlendMode(entry.settings.canvasBlendMode);
       if (typeof entry.settings.canvasSmoothing === 'number')
         setCanvasSmoothing(entry.settings.canvasSmoothing);
+      if (entry.settings.naturalSettings)
+        setNaturalSettings(entry.settings.naturalSettings);
+    } else if (entry.type === 'bundle') {
+      // undo combined assets + objects change
+      setRedoStack((r) => [
+        ...r,
+        {
+          type: 'bundle',
+          layer: entry.layer,
+          assets: assets.map((a) => ({ ...a })),
+          objects: deepCopyObjects(objects[entry.layer] || []),
+        },
+      ]);
+      if (entry.assets) setAssets(entry.assets.map((a) => ({ ...a })));
+      if (entry.objects) setObjects((prev) => ({ ...prev, [entry.layer]: deepCopyObjects(entry.objects) }));
     }
   };
 
@@ -484,6 +539,7 @@ export default function MapBuilder({ goBack }) {
             canvasSpacing,
             canvasBlendMode,
             canvasSmoothing,
+            naturalSettings: { ...naturalSettings },
           },
         },
       ]);
@@ -495,11 +551,48 @@ export default function MapBuilder({ goBack }) {
         setCanvasBlendMode(entry.settings.canvasBlendMode);
       if (typeof entry.settings.canvasSmoothing === 'number')
         setCanvasSmoothing(entry.settings.canvasSmoothing);
+      if (entry.settings.naturalSettings)
+        setNaturalSettings(entry.settings.naturalSettings);
+    } else if (entry.type === 'bundle') {
+      setUndoStack((u) => [
+        ...u,
+        {
+          type: 'bundle',
+          layer: entry.layer,
+          assets: assets.map((a) => ({ ...a })),
+          objects: deepCopyObjects(objects[entry.layer] || []),
+        },
+      ]);
+      if (entry.assets) setAssets(entry.assets.map((a) => ({ ...a })));
+      if (entry.objects) setObjects((prev) => ({ ...prev, [entry.layer]: deepCopyObjects(entry.objects) }));
     }
   };
 
   // ====== save / load (tiles + objects; canvas pixels not persisted yet) ======
   const saveProject = () => {
+    // Clean up hidden, unreferenced assets before saving
+    const { assetsAfter } = (function(){
+      try {
+        const referenced = new Set();
+        for (const l of LAYERS) {
+          for (const o of (objects[l] || [])) referenced.add(o.assetId);
+        }
+        for (const t of (tokens || [])) referenced.add(t.assetId);
+        const newAssets = assets.filter((a) => !a.hiddenFromUI || referenced.has(a.id));
+        const removedCount = assets.length - newAssets.length;
+        if (removedCount > 0) {
+          setUndoStack((prev) => [
+            ...prev,
+            { type: 'bundle', layer: currentLayer, assets: assets.map((x) => ({ ...x })) },
+          ]);
+          setRedoStack([]);
+          setAssets(newAssets);
+        }
+        return { assetsAfter: newAssets };
+      } catch {
+        return { assetsAfter: assets };
+      }
+    })();
     // Capture per-layer canvas buffers as PNG data URLs
     const canvases = {};
     for (const layer of LAYERS) {
@@ -515,7 +608,7 @@ export default function MapBuilder({ goBack }) {
       objects,
       tokens,
       canvases,
-      assets: assets.map(({ img, ...a }) => a), // strip in-memory img
+      assets: (assetsAfter || assets).map(({ img, ...a }) => a), // strip in-memory img
     };
     localStorage.setItem("mapProjectV4", JSON.stringify(payload));
     alert("Project saved (tiles, objects, canvases, assets).");
@@ -597,6 +690,44 @@ export default function MapBuilder({ goBack }) {
     img.src = src;
   };
 
+  // ====== create Natural asset -> image variants ======
+  const handleCreateNatural = async (filesOrVariants, nameInput) => {
+    const name = (nameInput || 'Natural').trim() || 'Natural';
+    let variants = [];
+    if (!filesOrVariants) return;
+    if (filesOrVariants instanceof FileList || Array.isArray(filesOrVariants) && filesOrVariants[0] instanceof File) {
+      const fileArr = Array.from(filesOrVariants || []).slice(0, 16);
+      if (!fileArr.length) return;
+      const readOne = (file) =>
+        new Promise((resolve) => {
+          const src = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => {
+            resolve({ src, aspectRatio: (img.width && img.height) ? img.width / img.height : 1 });
+          };
+          img.src = src;
+        });
+      variants = await Promise.all(fileArr.map(readOne));
+    } else {
+      // assume precomputed variant list [{src, aspectRatio}]
+      variants = Array.isArray(filesOrVariants) ? filesOrVariants.slice(0, 16) : [];
+    }
+    const a = {
+      id: uid(),
+      name,
+      kind: 'natural',
+      variants,
+      defaultEngine: 'grid',
+      allowedEngines: [],
+      defaults: { sizeTiles: 1, opacity: 1, snap: true },
+    };
+    setAssets((prev) => [a, ...prev]);
+    setSelectedAssetId(a.id);
+    setAssetGroup('natural');
+    setEngine('grid');
+    // legacy panel closed; unified creator handles natural creation
+  };
+
   // ====== create Text/Label -> new image asset ======
   const createTextLabelAsset = () => {
     const text = (newLabelText || "Label").trim();
@@ -647,7 +778,6 @@ export default function MapBuilder({ goBack }) {
       setAssets((prev) => [a, ...prev]);
       setSelectedAssetId(a.id);
       setEngine(a.defaultEngine);
-      setShowAddText(false);
       setNewLabelText("");
     };
     img.src = src;
@@ -676,6 +806,70 @@ export default function MapBuilder({ goBack }) {
       setHasSelection(false);
       setSelectedObj(null);
     }
+  };
+
+  // ====== Label asset update per-instance (clone asset, reassign object) ======
+  const regenerateLabelInstance = (assetId, meta) => {
+    const a = assets.find((x) => x.id === assetId);
+    if (!a || !selectedObj) return;
+    // Snapshot for undo (assets + current layer objects)
+    setUndoStack((prev) => [
+      ...prev,
+      {
+        type: 'bundle',
+        layer: currentLayer,
+        assets: assets.map((x) => ({ ...x })),
+        objects: deepCopyObjects(objects[currentLayer] || []),
+      },
+    ]);
+    setRedoStack([]);
+    const text = (meta?.text ?? a.labelMeta?.text ?? 'Label');
+    const size = Math.max(8, Math.min(128, parseInt(meta?.size ?? a.labelMeta?.size ?? 28) || 28));
+    const color = meta?.color ?? a.labelMeta?.color ?? '#ffffff';
+    const font = meta?.font ?? a.labelMeta?.font ?? 'Arial';
+    const padding = Math.round(size * 0.35);
+
+    const measureCanvas = document.createElement('canvas');
+    const mctx = measureCanvas.getContext('2d');
+    mctx.font = `${size}px ${font}`;
+    const metrics = mctx.measureText(text);
+    const textW = Math.ceil(metrics.width);
+    const textH = Math.ceil(size * 1.2);
+    const w = Math.max(1, textW + padding * 2);
+    const h = Math.max(1, textH + padding * 2);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    ctx.font = `${size}px ${font}`;
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = color;
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = Math.max(2, Math.round(size * 0.08));
+    ctx.fillText(text, padding, padding);
+
+    const src = canvas.toDataURL('image/png');
+    const img = new Image();
+    img.onload = () => {
+      const newAsset = {
+        id: uid(),
+        name: a.name || text,
+        kind: 'image',
+        src,
+        img,
+        aspectRatio: img.width && img.height ? img.width / img.height : (a.aspectRatio || 1),
+        defaultEngine: 'grid',
+        allowedEngines: ['grid','canvas'],
+        defaults: a.defaults || { sizeTiles: 1, opacity: 1, snap: true },
+        hiddenFromUI: true,
+        labelMeta: { text, color, font, size },
+      };
+      setAssets((prev) => [newAsset, ...prev]);
+      // reassign currently selected object to new asset id (per-instance update)
+      updateObjectById(currentLayer, selectedObj.id, { assetId: newAsset.id });
+    };
+    img.src = src;
   };
 
   const handleTokenSelectionChange = (tok) => {
@@ -776,352 +970,182 @@ export default function MapBuilder({ goBack }) {
         {showToolbar && (
           <div className="w-72 bg-gray-800 text-white border-r-2 border-gray-600 flex flex-col min-h-0">
             <div className="p-4 space-y-5 overflow-y-auto">
+              {/* GRID / ZOOM */}
+              <div className="mb-2">
+                <h3 className="font-bold text-sm mb-2">Grid</h3>
+                <div className="grid grid-cols-3 gap-2 items-end">
+                  <label className="text-xs">Rows
+                    <input type="number" min="1" max="200" value={rowsInput} onChange={(e)=>setRowsInput(e.target.value)} className="w-full p-1 text-black rounded" />
+                  </label>
+                  <label className="text-xs">Cols
+                    <input type="number" min="1" max="200" value={colsInput} onChange={(e)=>setColsInput(e.target.value)} className="w-full p-1 text-black rounded" />
+                  </label>
+                  <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={updateGridSizes}>Apply</button>
+                </div>
+                <div className="mt-3">
+                  <label className="block text-xs mb-1">Zoom</label>
+                  <div className="flex items-center gap-2">
+                    <button className="px-2 py-1 bg-gray-700 rounded" onClick={()=> setTileSize((s)=> Math.max(8, s-4))}>-</button>
+                    <input type="range" min="8" max="128" step="4" value={tileSize} onChange={(e)=> setTileSize(parseInt(e.target.value)||32)} className="flex-1" />
+                    <button className="px-2 py-1 bg-gray-700 rounded" onClick={()=> setTileSize((s)=> Math.min(128, s+4))}>+</button>
+                    <div className="text-xs w-12 text-right">{Math.round((tileSize/32)*100)}%</div>
+                  </div>
+                </div>
+              </div>
               {/* ASSETS (WHAT) */}
               <div className="relative">
                 <button
                   className="font-bold text-sm mb-2 px-2 py-1 bg-gray-700 rounded inline-flex items-center gap-2"
                   onClick={() => setShowAssetKindMenu((s)=>!s)}
+                  onMouseEnter={() => setShowAssetKindMenu(true)}
                 >
                   Assets
-                  <span className="text-xs opacity-80">{assetGroup === 'image' ? 'Image' : assetGroup === 'token' ? 'Token' : 'Materials'}</span>
+                  <span className="text-xs opacity-80">
+                    {assetGroup === 'image' ? 'Image' : assetGroup === 'token' ? 'Token' : assetGroup === 'material' ? 'Materials' : 'Natural'}
+                  </span>
                 </button>
-                {showAssetKindMenu && (
+                {/* Inline panel that expands and pushes content */}
+                <div
+                  className={`overflow-y-hidden overflow-x-visible transition-[max-height,opacity] duration-200 ${
+                    showAssetKindMenu ? 'max-h-[140px] opacity-100 pointer-events-auto mb-3' : 'max-h-0 opacity-0 pointer-events-none'
+                  }`}
+                >
                   <div
-                    className="absolute z-50 mt-1 p-2 bg-gray-800 border border-gray-700 rounded grid grid-cols-2 gap-2"
+                    className="mt-1 p-2 bg-gray-800 border border-gray-700 rounded flex flex-wrap gap-0"
+                    onMouseEnter={() => setShowAssetKindMenu(true)}
                     onMouseLeave={() => setShowAssetKindMenu(false)}
                   >
-                    <button className={`px-2 py-1 rounded ${assetGroup==='image'?'bg-blue-600':'bg-gray-700'}`} onClick={()=>setAssetGroup('image')}>Image</button>
-                    <button className={`px-2 py-1 rounded ${assetGroup==='token'?'bg-blue-600':'bg-gray-700'}`} onClick={()=>setAssetGroup('token')}>Token</button>
-                    <button className={`col-span-2 px-2 py-1 rounded ${assetGroup==='material'?'bg-blue-600':'bg-gray-700'}`} onClick={()=>setAssetGroup('material')}>Materials</button>
-                    <div className="col-span-2 text-[10px] text-gray-300">Materials currently includes Color assets.</div>
-                  </div>
-                )}
-                <div className="flex gap-2 mb-2 items-center">
-                  {assetGroup === 'image' && (
-                    <label className="px-2 py-1 bg-gray-700 rounded cursor-pointer text-sm" title="Upload">
-                      Upload
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          snapshotSettings();
-                          handleUpload(e.target.files?.[0]);
-                        }}
-                      />
-                    </label>
-                  )}
-                  {assetGroup === 'image' && (
-                    <button className="px-2 py-1 bg-gray-700 rounded text-sm" onClick={() => setShowAddText((s)=>!s)}>
-                      {showAddText ? 'Close' : 'Add Text/Label'}
+                    <button
+                      className={`px-2 py-1 text-xs rounded ${assetGroup==='image'?'bg-blue-600':'bg-gray-700'}`}
+                      onClick={() => { setAssetGroup('image'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
+                    >
+                      Image
                     </button>
+                    <button
+                      className={`px-2 py-1 text-xs rounded ${assetGroup==='token'?'bg-blue-600':'bg-gray-700'}`}
+                      onClick={() => { setAssetGroup('token'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
+                    >
+                      Token
+                    </button>
+                    <button
+                      className={`px-2 py-1 text-xs rounded ${assetGroup==='material'?'bg-blue-600':'bg-gray-700'}`}
+                      onClick={() => { setAssetGroup('material'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
+                    >
+                      Materials
+                    </button>
+                    <button
+                      className={`px-2 py-1 text-xs rounded ${assetGroup==='natural'?'bg-blue-600':'bg-gray-700'}`}
+                      onClick={() => { setAssetGroup('natural'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
+                    >
+                      Natural
+                    </button>
+                  </div>
+                </div>
+
+                {/* Creation buttons row positioned just above the ASSETS list */}
+                <div className="mt-1 mb-3 flex flex-wrap items-center gap-2">
+                  {assetGroup === 'image' && (
+                    <>
+                      <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('image')}>Create Image</button>
+                      <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('text')}>Text/Label</button>
+                    </>
+                  )}
+                  {assetGroup === 'natural' && (
+                    <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('natural')}>Add Natural</button>
                   )}
                   {assetGroup === 'material' && (
-                    <button className="px-2 py-1 bg-gray-700 rounded text-sm" onClick={() => setShowAddColor((s) => !s)}>
-                      {showAddColor ? "Close" : "Add Color"}
-                    </button>
+                    <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('material')}>Add Color</button>
                   )}
                   {assetGroup === 'token' && (
-                    <button className="px-2 py-1 bg-purple-700 hover:bg-purple-600 rounded text-sm" onClick={() => setShowAddToken((s)=>!s)}>
-                      {showAddToken ? 'Close' : 'Add Token'}
-                    </button>
+                    <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('token')}>Add Token</button>
                   )}
                 </div>
-                <div className="mb-2">
-                  <button className="w-full text-left px-2 py-1 bg-gray-700 rounded text-sm" onClick={() => setShowAssetPreviews((s) => !s)}>
-                    {showAssetPreviews ? "Hide Previews" : "Show Previews"}
-                  </button>
-                </div>
-                {(assetGroup === 'image' || assetGroup === 'token') && selectedAsset && (
-                  <div className="mb-2">
-                    <button
-                      className="w-full text-left px-2 py-1 bg-red-700 hover:bg-red-600 rounded text-sm"
-                      onClick={() => {
-                        const a = selectedAsset;
-                        if (!a) return;
-                        if (a.kind === 'token') {
-                          const useCount = (tokens || []).filter(t => t.assetId === a.id).length;
-                          if (useCount > 0) {
-                            alert(`Cannot delete token asset in use by ${useCount} token(s). Delete tokens first.`);
-                            return;
-                          }
-                        } else if (a.kind === 'image') {
-                          const countInObjects = ['background','base','sky'].reduce((acc, l) => acc + (objects?.[l]||[]).filter(o => o.assetId === a.id).length, 0);
-                          if (countInObjects > 0) {
-                            alert(`Cannot delete image asset in use by ${countInObjects} object(s). Delete stamps first.`);
-                            return;
-                          }
-                        }
-                        if (confirm(`Delete asset "${a.name}"?`)) {
-                          setAssets(prev => prev.filter(x => x.id !== a.id));
-                          // Select another asset in the same group if possible
-                          const next = assets.find(x => x.id !== a.id && (assetGroup==='image' ? x.kind==='image' : assetGroup==='token' ? x.kind==='token' : true));
-                          if (next) setSelectedAssetId(next.id);
-                        }
-                      }}
-                    >
-                      Delete Asset
+                {/* Asset deletion is handled in-tile within the asset grid when selected */}
+                {creatorOpen && (
+                  <AssetCreator
+                    kind={creatorKind}
+                    onClose={() => setCreatorOpen(false)}
+                    onCreate={handleCreatorCreate}
+                    selectedImageSrc={selectedAsset?.kind==='image' ? selectedAsset?.src : null}
+                  />
+                )}
+                <div className="mb-2 border border-gray-600 rounded overflow-hidden">
+                  <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
+                    <span className="text-xs uppercase tracking-wide">Assets</span>
+                    <button className="text-xs px-2 py-0.5 bg-gray-800 rounded" onClick={() => setShowAssetPreviews((s) => !s)}>
+                      {showAssetPreviews ? "Hide Previews" : "Show Previews"}
                     </button>
                   </div>
-                )}
-                {assetGroup === 'token' && showAddToken && (
-                  <div className="mb-3 p-2 border border-gray-600 rounded space-y-2">
-                    <div className="text-xs text-gray-300">Create Token Asset</div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="text-xs col-span-2">Name
-                        <input type="text" className="w-full p-1 text-black rounded" id="newTokenNameInput" placeholder="Token name" />
-                      </label>
-                      <label className="text-xs">Glow Color
-                        <input type="color" id="newTokenGlowInput" defaultValue="#7dd3fc" className="w-full h-8 p-0 border border-gray-500 rounded" />
-                      </label>
-                      <label className="text-xs">Upload Image
-                        <input type="file" id="newTokenFileInput" accept="image/*" className="w-full text-xs" />
-                      </label>
-                    </div>
-                    <div className="text-[10px] text-gray-300">Tip: If you don't upload, the currently selected image (if any) will be used.</div>
-                    <div className="flex gap-2">
-                      <button
-                        className="px-2 py-1 bg-purple-700 hover:bg-purple-600 rounded text-sm"
-                        onClick={() => {
-                          const nameEl = document.getElementById('newTokenNameInput');
-                          const glowEl = document.getElementById('newTokenGlowInput');
-                          const fileEl = document.getElementById('newTokenFileInput');
-                          const name = (nameEl?.value || 'Token').trim();
-                          const glow = glowEl?.value || '#7dd3fc';
-                          const file = fileEl?.files?.[0];
-
-                          const makeWithSrc = (src, imgW=1, imgH=1) => {
-                            const aspectRatio = (imgW && imgH) ? (imgW / imgH) : 1;
-                            const a = {
-                              id: uid(),
-                              name,
-                              kind: 'token',
-                              src,
-                              aspectRatio,
-                              defaultEngine: 'grid',
-                              allowedEngines: [],
-                              defaults: { sizeTiles: 1, opacity: 1, snap: true },
-                            };
-                            setAssets(prev => [a, ...prev]);
-                            setSelectedAssetId(a.id);
-                            setShowAddToken(false);
-                          };
-
-                          if (file) {
-                            const src = URL.createObjectURL(file);
-                            const img = new Image();
-                            img.onload = () => makeWithSrc(src, img.width, img.height);
-                            img.src = src;
-                          } else if (selectedAsset && selectedAsset.kind === 'image') {
-                            makeWithSrc(selectedAsset.src, (selectedAsset.img?.width)||1, (selectedAsset.img?.height)||1);
-                          } else {
-                            alert('Please upload an image or select an Image asset first.');
-                          }
-                        }}
-                      >
-                        Create Token
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {assetGroup === 'image' && showAddText && (
-                  <div className="mb-3 p-2 border border-gray-600 rounded space-y-2">
-                    <div className="text-xs text-gray-300">Create Text/Label Asset</div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="text-xs col-span-2">Text
-                        <input type="text" className="w-full p-1 text-black rounded" value={newLabelText} onChange={(e)=>setNewLabelText(e.target.value)} placeholder="Label text" />
-                      </label>
-                      <label className="text-xs">Color
-                        <input type="color" className="w-full h-8 p-0 border border-gray-500 rounded" value={newLabelColor} onChange={(e)=>setNewLabelColor(e.target.value)} />
-                      </label>
-                      <label className="text-xs">Font Size
-                        <input type="number" min="8" max="128" className="w-full p-1 text-black rounded" value={newLabelSize} onChange={(e)=>setNewLabelSize(parseInt(e.target.value)||28)} />
-                      </label>
-                      <label className="text-xs col-span-2">Font Family
-                        <input type="text" className="w-full p-1 text-black rounded" value={newLabelFont} onChange={(e)=>setNewLabelFont(e.target.value)} placeholder="Arial" />
-                      </label>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={createTextLabelAsset}>Create Label</button>
-                    </div>
-                  </div>
-                )}
-                {assetGroup === 'material' && showAddColor && (
-                  <div className="mb-3 p-2 border border-gray-600 rounded">
-                    <div className="text-xs text-gray-300 mb-2">Create Color Asset</div>
-                    <div className="flex gap-2 mb-2 text-xs">
-                      <button className={`px-2 py-1 rounded ${addColorMode === 'palette' ? 'bg-blue-600' : 'bg-gray-700'}`} onClick={() => setAddColorMode('palette')}>Palette</button>
-                      <button className={`px-2 py-1 rounded ${addColorMode === 'flow' ? 'bg-blue-600' : 'bg-gray-700'}`} onClick={() => setAddColorMode('flow')}>Flow</button>
-                      <button className={`px-2 py-1 rounded ${addColorMode === 'hex' ? 'bg-blue-600' : 'bg-gray-700'}`} onClick={() => setAddColorMode('hex')}>Hex Grid</button>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3">
-                      {addColorMode === 'palette' && (
-                      <div>
-                        <div className="text-xs mb-1">Palette</div>
-                        <input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="w-full h-8 p-0 border-0" />
-                        <input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="Name (optional)" className="mt-2 w-full p-1 text-black rounded" />
-                        <button
-                          className="mt-2 px-2 py-1 bg-blue-600 rounded"
-                          onClick={() => {
-                            const name = newColorName || "Custom Color";
-                            const a = {
-                              id: uid(),
-                              name,
-                              kind: "color",
-                              color: newColorHex,
-                              defaultEngine: "canvas",
-                              allowedEngines: ["grid", "canvas"],
-                              defaults: { sizeTiles: 1, sizePx: 32, opacity: 0.6, snap: false },
-                            };
-                            setAssets((prev) => [a, ...prev]);
-                            setSelectedAssetId(a.id);
-                            setEngine(a.defaultEngine);
-                            setCanvasColor(a.color);
-                            setShowAddColor(false);
-                            setNewColorName("");
-                          }}
+                  <div className="p-2 grid grid-cols-3 gap-2">
+                    {assets
+                      .filter((a) => !a.hiddenFromUI)
+                      .filter((a) => (
+                        assetGroup === 'image'
+                          ? a.kind === 'image'
+                          : assetGroup === 'token'
+                          ? a.kind === 'token'
+                          : assetGroup === 'material'
+                          ? a.kind === 'color'
+                          : assetGroup === 'natural'
+                          ? a.kind === 'natural'
+                          : true
+                      ))
+                      .map((a) => (
+                        <div
+                          key={a.id}
+                          onClick={() => selectAsset(a.id)}
+                          className={`relative border rounded p-1 text-xs cursor-pointer ${
+                            selectedAssetId === a.id ? 'border-blue-400 bg-blue-600/20' : 'border-gray-600 bg-gray-700/40'
+                          }`}
+                          title={a.name}
                         >
-                          Add Color
-                        </button>
-                      </div>
-                      )}
-                      {addColorMode === 'hex' && (
-                      <div>
-                        <div className="text-xs mb-1">Hex Grid</div>
-                        <div className="grid grid-cols-8 gap-2 p-2">
-                          {[
-                            '#ff0000','#ff4000','#ff8000','#ffbf00','#ffff00','#bfff00','#80ff00','#40ff00',
-                            '#00ff00','#00ff40','#00ff80','#00ffbf','#00ffff','#00bfff','#0080ff','#0040ff',
-                            '#0000ff','#4000ff','#8000ff','#bf00ff','#ff00ff','#ff00bf','#ff0080','#ff0040',
-                            '#ff6666','#ff9966','#ffcc66','#ffff66','#ccff66','#99ff66','#66ff66','#66ff99',
-                            '#66ffcc','#66ffff','#66ccff','#6699ff','#6666ff','#9966ff','#cc66ff','#ff66ff',
-                            '#ff9999','#ffcc99','#ffee99','#ffff99','#eeff99','#ccff99','#99ff99','#99ffcc',
-                            '#99ffff','#99ccff','#99aaff','#9999ff','#cc99ff','#ee99ff','#ff99ff','#ff99cc',
-                            '#804000','#a0522d','#8b4513','#a97454','#c0c0c0','#9e9e9e','#6e6e6e','#2e2e2e'
-                          ].map((hex,i) => (
-                            <div key={i} onClick={() => setNewColorHex(hex)} title={hex}
-                              className="w-6 h-6 cursor-pointer"
-                              style={{ clipPath: 'polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0% 50%)', backgroundColor: hex, border: newColorHex===hex? '2px solid #fff':'1px solid #444' }} />
-                          ))}
+                          {(a.kind === 'image' || a.kind === 'token' || a.kind === 'natural') ? (
+                            showAssetPreviews ? (
+                              a.kind === 'natural'
+                                ? (a.variants?.length
+                                    ? <img src={a.variants[0]?.src} alt={a.name} className="w-full h-12 object-contain" />
+                                    : <div className="w-full h-12 flex items-center justify-center text-[10px] opacity-80">0 variants</div>)
+                                : (<img src={a.src} alt={a.name} className="w-full h-12 object-contain" />)
+                            ) : (
+                              <div className="w-full h-12 flex items-center justify-center text-xs font-medium truncate">{a.name}</div>
+                            )
+                          ) : (
+                            <div className="w-full h-12 rounded" style={{ backgroundColor: a.color || '#cccccc' }} />
+                          )}
+                          {showAssetPreviews && <div className="mt-1 truncate">{a.name}</div>}
+                          {selectedAssetId === a.id && (a.kind === 'image' || a.kind === 'token' || a.kind === 'natural') && (
+                            <button
+                              className="absolute top-1 right-1 px-1.5 py-0.5 bg-red-700 hover:bg-red-600 rounded text-[10px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const useCountTokens = (tokens || []).filter((t) => t.assetId === a.id).length;
+                                const countInObjects = ['background', 'base', 'sky'].reduce(
+                                  (acc, l) => acc + (objects?.[l] || []).filter((o) => o.assetId === a.id).length,
+                                  0
+                                );
+                                if (a.kind === 'token' && useCountTokens > 0) {
+                                  alert(`Cannot delete token asset in use by ${useCountTokens} token(s). Delete tokens first.`);
+                                  return;
+                                }
+                                if ((a.kind === 'image' || a.kind === 'natural') && countInObjects > 0) {
+                                  alert(`Cannot delete image asset in use by ${countInObjects} object(s). Delete stamps first.`);
+                                  return;
+                                }
+                                if (confirm(`Delete asset "${a.name}"?`)) {
+                                  setAssets((prev) => prev.filter((x) => x.id !== a.id));
+                                  const next = assets.find(
+                                    (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? x.kind === 'token' : assetGroup === 'natural' ? x.kind === 'natural' : true)
+                                  );
+                                  if (next) setSelectedAssetId(next.id);
+                                }
+                              }}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
-                        <div className="mt-2">
-                          <input
-                            type="text"
-                            value={newColorName}
-                            onChange={(e) => setNewColorName(e.target.value)}
-                            placeholder="Name (optional)"
-                            className="w-full p-1 text-black rounded"
-                          />
-                        </div>
-                        <button
-                          className="mt-2 px-2 py-1 bg-blue-600 rounded"
-                          onClick={() => {
-                            const name = newColorName || 'Hex Color';
-                            const a = {
-                              id: uid(),
-                              name,
-                              kind: 'color',
-                              color: newColorHex,
-                              defaultEngine: 'canvas',
-                              allowedEngines: ['grid','canvas'],
-                              defaults: { sizeTiles: 1, sizePx: 32, opacity: 0.6, snap: false },
-                            };
-                            setAssets((prev) => [a, ...prev]);
-                            setSelectedAssetId(a.id);
-                            setEngine(a.defaultEngine);
-                            setCanvasColor(a.color);
-                            setShowAddColor(false);
-                            setNewColorName('');
-                          }}
-                        >
-                          Add Selected Color
-                        </button>
-                      </div>
-                      )}
-                      {addColorMode === 'flow' && (
-                      <div>
-                        <div className="text-xs mb-1">Flow (experimental)</div>
-                        <div className="text-xs">Hue</div>
-                        <input type="range" min="0" max="360" value={flowHue} onChange={(e) => setFlowHue(parseInt(e.target.value))} className="w-full" />
-                        <div className="text-xs mt-1">Saturation</div>
-                        <input type="range" min="0" max="100" value={flowSat} onChange={(e) => setFlowSat(parseInt(e.target.value))} className="w-full" />
-                        <div className="text-xs mt-1">Lightness</div>
-                        <input type="range" min="0" max="100" value={flowLight} onChange={(e) => setFlowLight(parseInt(e.target.value))} className="w-full" />
-                        <div className="mt-2 h-8 rounded" style={{ backgroundColor: `hsl(${flowHue} ${flowSat}% ${flowLight}%)` }} />
-                        <div className="mt-2">
-                          <input
-                            type="text"
-                            value={newColorName}
-                            onChange={(e) => setNewColorName(e.target.value)}
-                            placeholder="Name (optional)"
-                            className="w-full p-1 text-black rounded"
-                          />
-                        </div>
-                        <button
-                          className="mt-2 px-2 py-1 bg-blue-600 rounded"
-                          onClick={() => {
-                            const hex = (() => {
-                              const h = flowHue / 360, s = flowSat / 100, l = flowLight / 100;
-                              const f = (n) => {
-                                const k = (n + h * 12) % 12;
-                                const a = s * Math.min(l, 1 - l);
-                                const c = l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
-                                return Math.round(255 * c);
-                              };
-                              const r = f(0), g = f(8), b = f(4);
-                              return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-                            })();
-                            const name = newColorName || "Flow Color";
-                            const a = {
-                              id: uid(),
-                              name,
-                              kind: "color",
-                              color: hex,
-                              defaultEngine: "canvas",
-                              allowedEngines: ["grid", "canvas"],
-                              defaults: { sizeTiles: 1, sizePx: 32, opacity: 0.6, snap: false },
-                            };
-                            setAssets((prev) => [a, ...prev]);
-                            setSelectedAssetId(a.id);
-                            setEngine(a.defaultEngine);
-                            setCanvasColor(a.color);
-                            setShowAddColor(false);
-                            setNewColorName("");
-                          }}
-                        >
-                          Add Flow Color
-                        </button>
-                      </div>
-                      )}
-                    </div>
+                      ))}
                   </div>
-                )}
-                <div className="grid grid-cols-3 gap-2">
-                  {assets.filter((a)=> assetGroup==='image'? a.kind==='image' : assetGroup==='token' ? a.kind==='token' : a.kind==='color').map((a) => (
-                    <button
-                      key={a.id}
-                      onClick={() => selectAsset(a.id)}
-                      className={`border rounded p-1 text-xs ${
-                        selectedAssetId === a.id
-                          ? "border-blue-400 bg-blue-600/20"
-                          : "border-gray-600 bg-gray-700/40"
-                      }`}
-                      title={a.name}
-                    >
-                      {a.kind === "image" || a.kind === 'token' ? (
-                        showAssetPreviews ? (
-                          <img src={a.src} alt={a.name} className="w-full h-12 object-contain" />
-                        ) : (
-                          <div className="w-full h-12 flex items-center justify-center text-xs font-medium truncate">{a.name}</div>
-                        )
-                      ) : (
-                        <div className="w-full h-12 rounded" style={{ backgroundColor: a.color || "#cccccc" }} />
-                      )}
-                      {showAssetPreviews && (
-                        <div className="mt-1 truncate">{a.name}</div>
-                      )}
-                    </button>
-                  ))}
                 </div>
               </div>
 
@@ -1145,27 +1169,59 @@ export default function MapBuilder({ goBack }) {
                 </div>
               </div>
 
-              {/* SETTINGS: Grid or Token */}
+              {/* SETTINGS (Brush) or Token */}
               {(engine === "grid" || interactionMode === "select") && (
                 <div>
                   {!selectedToken ? (
                     <>
-                      <h3 className="font-bold text-sm mb-2">{assetGroup === 'token' ? 'Token Settings' : 'Grid Settings'}</h3>
-                      <div className="grid gap-2">
-                        <label className="block text-xs">Size (tiles)</label>
-                        <input type="range" min="1" max="20" value={gridSettings.sizeTiles} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, sizeTiles: parseInt(e.target.value) })); }} />
-                        <label className="block text-xs">Rotation</label>
-                        <input type="range" min="0" max="359" value={gridSettings.rotation} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, rotation: parseInt(e.target.value) })); }} />
-                        <div className="flex gap-2">
-                          <label className="text-xs"><input type="checkbox" checked={gridSettings.flipX} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, flipX: e.target.checked })); }} />{" "}Flip X</label>
-                          <label className="text-xs"><input type="checkbox" checked={gridSettings.flipY} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, flipY: e.target.checked })); }} />{" "}Flip Y</label>
+                      <BrushSettings
+                        kind={interactionMode === 'select' ? 'grid' : (assetGroup === 'natural' ? 'natural' : 'grid')}
+                        titleOverride={interactionMode === 'select' ? 'Settings' : undefined}
+                        gridSettings={gridSettings}
+                        setGridSettings={setGridSettings}
+                        naturalSettings={naturalSettings}
+                        setNaturalSettings={setNaturalSettings}
+                        brushSize={brushSize}
+                        setBrushSize={setBrushSize}
+                        canvasOpacity={canvasOpacity}
+                        setCanvasOpacity={setCanvasOpacity}
+                        canvasSpacing={canvasSpacing}
+                        setCanvasSpacing={setCanvasSpacing}
+                        canvasBlendMode={canvasBlendMode}
+                        setCanvasBlendMode={setCanvasBlendMode}
+                        canvasSmoothing={canvasSmoothing}
+                        setCanvasSmoothing={setCanvasSmoothing}
+                        tileSize={tileSize}
+                        snapshotSettings={snapshotSettings}
+                      />
+
+                      {/* Label Settings when selecting a label/text object */}
+                      {selectedObj && (() => {
+                        const a = assets.find((x) => x.id === selectedObj.assetId);
+                        return a && a.kind === 'image' && a.labelMeta;
+                      })() && (
+                        <div className="mt-3">
+                          <h3 className="font-bold text-sm mb-2">Label Settings</h3>
+                          {(() => { const a = assets.find((x)=> x.id === selectedObj.assetId) || {}; const lm = a.labelMeta || {}; return (
+                            <div className="grid gap-2">
+                              <label className="text-xs">Text
+                                <input type="text" className="w-full p-1 text-black rounded" value={lm.text || ''} onChange={(e)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, text: e.target.value }); }} />
+                              </label>
+                              <div className="grid grid-cols-2 gap-2">
+                                <label className="text-xs">Color
+                                  <input type="color" className="w-full h-8 p-0 border border-gray-500 rounded" value={lm.color || '#ffffff'} onChange={(e)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, color: e.target.value }); }} />
+                                </label>
+                                <label className="text-xs">Font Size
+                                  <input type="number" min="8" max="128" className="w-full p-1 text-black rounded" value={lm.size || 28} onChange={(e)=>{ const v = Math.max(8, Math.min(128, parseInt(e.target.value)||28)); snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, size: v }); }} />
+                                </label>
+                                <label className="text-xs col-span-2">Font Family
+                                  <input type="text" className="w-full p-1 text-black rounded" value={lm.font || 'Arial'} onChange={(e)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, font: e.target.value }); }} />
+                                </label>
+                              </div>
+                            </div>
+                          ); })()}
                         </div>
-                        <label className="block text-xs">Opacity</label>
-                        <input className="w-full" type="range" min="0.05" max="1" step="0.05" value={gridSettings.opacity} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) })); }} />
-                        {assetGroup !== 'token' && (
-                          <label className="text-xs inline-flex items-center gap-2 mt-1"><input type="checkbox" checked={!!gridSettings.smartAdjacency} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, smartAdjacency: e.target.checked })); }} /> Smart Adjacency</label>
-                        )}
-                      </div>
+                      )}
                     </>
                   ) : (
                     <>
@@ -1221,9 +1277,14 @@ export default function MapBuilder({ goBack }) {
                 </div>
               )}
 
-              {/* CANVAS BRUSH */}
-              {assetGroup !== 'token' && engine === "canvas" && (
-                <CanvasBrushControls
+              {/* CANVAS BRUSH SETTINGS */}
+              {assetGroup !== 'token' && engine === "canvas" && interactionMode !== 'select' && (
+                <BrushSettings
+                  kind="canvas"
+                  gridSettings={gridSettings}
+                  setGridSettings={setGridSettings}
+                  naturalSettings={naturalSettings}
+                  setNaturalSettings={setNaturalSettings}
                   brushSize={brushSize}
                   setBrushSize={setBrushSize}
                   canvasOpacity={canvasOpacity}
@@ -1238,52 +1299,7 @@ export default function MapBuilder({ goBack }) {
                   snapshotSettings={snapshotSettings}
                 />
               )}
-              
 
-
-                            {/* LAYERS */}
-              <div className="mt-4">
-                <h3 className="font-bold text-sm mb-2">Layers</h3>
-                <div className="flex gap-2 mb-2">
-                  <button className="px-2 py-1 bg-gray-700 rounded" onClick={showAllLayers}>Show All</button>
-                  <button className="px-2 py-1 bg-gray-700 rounded" onClick={hideAllLayers}>Hide All</button>
-                </div>
-                <div className="space-y-2">
-                  {LAYERS.map((l) => (
-                    <div key={l} className="flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => setCurrentLayer(l)}
-                        className={`px-2 py-1 rounded text-left flex-1 ${currentLayer === l ? "bg-blue-600" : "bg-gray-700"}`}
-                      >
-                        {l}
-                      </button>
-                      <button
-                        onClick={() => toggleLayerVisibility(l)}
-                        className={`px-2 py-1 rounded ${layerVisibility[l] ? "bg-green-700" : "bg-gray-700"}`}
-                        title={layerVisibility[l] ? "Visible" : "Hidden"}
-                      >
-                        {layerVisibility[l] ? "Visible" : "Hidden"}
-                      </button>
-                    </div>
-                  ))}
-                  {/* Token Layer row */}
-                  <div className="flex items-center justify-between gap-2">
-                    <button
-                      onClick={() => setInteractionMode('select')}
-                      className={`px-2 py-1 rounded text-left flex-1 ${selectedToken ? 'bg-blue-600' : 'bg-gray-700'}`}
-                    >
-                      tokens
-                    </button>
-                    <button
-                      onClick={() => setTokensVisible((v) => !v)}
-                      className={`px-2 py-1 rounded ${tokensVisible ? 'bg-green-700' : 'bg-gray-700'}`}
-                      title={tokensVisible ? 'Visible' : 'Hidden'}
-                    >
-                      {tokensVisible ? 'Visible' : 'Hidden'}
-                    </button>
-                  </div>
-                </div>
-              </div>
 
               {/* STATUS */}
               <MapStatus selectedAsset={selectedAsset} engine={engine} currentLayer={currentLayer} layerVisibility={layerVisibility} />
@@ -1302,6 +1318,43 @@ export default function MapBuilder({ goBack }) {
               backgroundColor: "#f4e4c1",
             }}
           >
+            {/* Top layer bar (slim, horizontal) */}
+            <div className="sticky top-0 left-0 right-0 z-40 bg-gray-800/80 text-white backdrop-blur px-2 py-1 border-b border-gray-700">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] uppercase opacity-80 mr-1">Layers</span>
+                <button className="px-2 py-0.5 text-[12px] bg-gray-700 rounded" onClick={showAllLayers}>Show All</button>
+                <button className="px-2 py-0.5 text-[12px] bg-gray-700 rounded" onClick={hideAllLayers}>Hide All</button>
+                <div className="h-4 w-px bg-gray-600 mx-1" />
+                {LAYERS.map((l) => (
+                  <div key={`layerbar-${l}`} className="flex items-center gap-1">
+                    <button
+                      onClick={() => setCurrentLayer(l)}
+                      className={`px-2 py-0.5 text-[12px] rounded ${currentLayer === l ? 'bg-blue-600' : 'bg-gray-700'}`}
+                      title={`Edit ${l}`}
+                    >
+                      {l}
+                    </button>
+                    <button
+                      onClick={() => toggleLayerVisibility(l)}
+                      className={`px-2 py-0.5 text-[12px] rounded ${layerVisibility[l] ? 'bg-gray-600' : 'bg-gray-700'}`}
+                      title={layerVisibility[l] ? 'Visible' : 'Hidden'}
+                    >
+                      {layerVisibility[l] ? '👁' : '🚫'}
+                    </button>
+                  </div>
+                ))}
+                <div className="h-4 w-px bg-gray-600 mx-1" />
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setTokensVisible((v) => !v)}
+                    className={`px-2 py-0.5 text-[12px] rounded ${tokensVisible ? 'bg-gray-600' : 'bg-gray-700'}`}
+                    title={tokensVisible ? 'Hide tokens layer' : 'Show tokens layer'}
+                  >
+                    tokens {tokensVisible ? '👁' : '🚫'}
+                  </button>
+                </div>
+              </div>
+            </div>
             <div className="min-w-full min-h-full flex justify-center items-start md:items-center p-6">
               <Grid
                 maps={maps}
@@ -1317,6 +1370,7 @@ export default function MapBuilder({ goBack }) {
                 canvasSpacing={canvasSpacing}
                 canvasBlendMode={canvasBlendMode}
                 canvasSmoothing={canvasSmoothing}
+                naturalSettings={naturalSettings}
                 isErasing={isErasing}
                 interactionMode={interactionMode}
                 tileSize={tileSize}

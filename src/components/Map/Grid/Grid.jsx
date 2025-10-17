@@ -28,6 +28,7 @@ export default function Grid({
   canvasSpacing = 0.27, // fraction of radius
   canvasBlendMode = "source-over",
   canvasSmoothing = 0.55,
+  naturalSettings = { randomRotation: false, randomFlipX: false, randomFlipY: false, randomSize: { enabled: false, min: 1, max: 1 }, randomOpacity: { enabled: false, min: 1, max: 1 }, randomVariant: true },
   isErasing = false,
   interactionMode = "draw", // 'draw' | 'select',
 
@@ -89,6 +90,11 @@ export default function Grid({
   const lastTileRef = useRef({ row: -1, col: -1 });
 
   // ===== Helpers (instance-bound)
+
+  const quantize = (v, step) => {
+    if (!step || step <= 0) return v;
+    return Math.round(v / step) * step;
+  };
 
   const toCanvasCoords = (xCss, yCss) => {
     const scaleX = bufferWidth / cssWidth;
@@ -243,10 +249,26 @@ export default function Grid({
 
   // ===== GRID STAMP (image objects) or GRID COLOR (tiles)
   const placeGridImageAt = (centerRow, centerCol) => {
-    if (!selectedAsset || selectedAsset.kind !== "image") return;
+    if (!selectedAsset || (selectedAsset.kind !== "image" && selectedAsset.kind !== "natural")) return;
 
-    const wTiles = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
-    const aspect = selectedAsset.aspectRatio || 1;
+    const isNatural = selectedAsset.kind === 'natural';
+    const variants = isNatural ? (selectedAsset.variants || []) : null;
+    const chooseVariantIndex = () => {
+      if (!isNatural) return undefined;
+      const n = variants?.length || 0;
+      if (n <= 0) return 0;
+      if (naturalSettings?.randomVariant) return Math.floor(Math.random() * n);
+      return 0;
+    };
+    const variantIndex = chooseVariantIndex();
+    const variantAspect = isNatural ? (variants?.[variantIndex || 0]?.aspectRatio || 1) : (selectedAsset.aspectRatio || 1);
+
+    const baseSize = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
+    const sizeTiles = naturalSettings?.randomSize?.enabled
+      ? Math.max(1, Math.round(Math.min(naturalSettings.randomSize.max || baseSize, Math.max(naturalSettings.randomSize.min || 1, Math.random() * ((naturalSettings.randomSize.max || baseSize) - (naturalSettings.randomSize.min || 1)) + (naturalSettings.randomSize.min || 1)))))
+      : baseSize;
+    const wTiles = sizeTiles;
+    const aspect = variantAspect;
     const hTiles = Math.max(1, Math.round(wTiles / aspect));
 
     // Center on hovered tile, then clamp so the footprint stays in-bounds
@@ -262,40 +284,17 @@ export default function Grid({
     );
 
     // Determine rotation with optional smart adjacency (square stamps only)
-    const decideRotation = () => {
-      if (!gridSettings?.smartAdjacency) return gridSettings.rotation || 0;
-      if (wTiles !== hTiles) return gridSettings.rotation || 0; // only for squares
+    const decideRotation = () => gridSettings.rotation || 0;
 
-      const coversTile = (o, r, c) =>
-        r >= o.row && r < o.row + o.hTiles && c >= o.col && c < o.col + o.wTiles;
-      const sameAssetAt = (r, c) => {
-        if (r < 0 || c < 0 || r >= rows || c >= cols) return false;
-        const arr = objects[currentLayer] || [];
-        for (let i = arr.length - 1; i >= 0; i--) {
-          const o = arr[i];
-          if (o.assetId === selectedAsset.id && coversTile(o, r, c)) return true;
-        }
-        return false;
-      };
-      const run = (dr, dc) => {
-        let count = 0;
-        let r = centerRow + dr;
-        let c = centerCol + dc;
-        while (sameAssetAt(r, c)) {
-          count++;
-          r += dr;
-          c += dc;
-        }
-        return count;
-      };
-      const horiz = run(0, -1) + run(0, 1);
-      const vert = run(-1, 0) + run(1, 0);
-      if (horiz > vert) return 0; // favor horizontal chain
-      if (vert > horiz) return 90; // favor vertical chain
-      return gridSettings.rotation || 0;
-    };
+    const autoRotation = naturalSettings?.randomRotation
+      ? [0, 90, 180, 270][Math.floor(Math.random() * 4)]
+      : decideRotation();
 
-    const autoRotation = decideRotation();
+    const flipX = naturalSettings?.randomFlipX ? (Math.random() < 0.5) : !!gridSettings.flipX;
+    const flipY = naturalSettings?.randomFlipY ? (Math.random() < 0.5) : !!gridSettings.flipY;
+    const opacity = naturalSettings?.randomOpacity?.enabled
+      ? Math.max(0.05, Math.min(1, (naturalSettings.randomOpacity.min ?? 0.05) + Math.random() * Math.max(0, (naturalSettings.randomOpacity.max ?? 1) - (naturalSettings.randomOpacity.min ?? 0.05)) ))
+      : Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1));
 
     addObject(currentLayer, {
       assetId: selectedAsset.id,
@@ -304,9 +303,10 @@ export default function Grid({
       wTiles,
       hTiles,
       rotation: autoRotation,
-      flipX: !!gridSettings.flipX,
-      flipY: !!gridSettings.flipY,
-      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+      flipX,
+      flipY,
+      opacity,
+      ...(isNatural ? { variantIndex: variantIndex || 0 } : {}),
     });
   };
 
@@ -364,12 +364,12 @@ export default function Grid({
     const aspect = selectedAsset.aspectRatio || 1;
     const hTiles = Math.max(1, Math.round(wTiles / aspect));
     const r0 = clamp(
-      centerRow - Math.floor(hTiles / 2),
+      (gridSettings?.snapToGrid ? (centerRow - Math.floor(hTiles / 2)) : (centerRow - hTiles / 2)),
       0,
       Math.max(0, rows - hTiles)
     );
     const c0 = clamp(
-      centerCol - Math.floor(wTiles / 2),
+      (gridSettings?.snapToGrid ? (centerCol - Math.floor(wTiles / 2)) : (centerCol - wTiles / 2)),
       0,
       Math.max(0, cols - wTiles)
     );
@@ -544,8 +544,14 @@ export default function Grid({
     const yCss = e.clientY - rect.top;
     setMousePos({ x: xCss, y: yCss });
 
-    const row = Math.floor((yCss / cssHeight) * rows);
-    const col = Math.floor((xCss / cssWidth) * cols);
+    let rowRaw = (yCss / cssHeight) * rows;
+    let colRaw = (xCss / cssWidth) * cols;
+    if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
+      rowRaw = quantize(rowRaw, gridSettings.snapStep);
+      colRaw = quantize(colRaw, gridSettings.snapStep);
+    }
+    const row = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
+    const col = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
 
     // Token placement: only in draw mode and only when Token Asset menu is active
     if (selectedAsset?.kind === 'token' && assetGroup === 'token' && interactionMode !== 'select') {
@@ -560,7 +566,7 @@ export default function Grid({
     // ===== SELECT MODE =====
     if (interactionMode === "select") {
       if (assetGroup === 'token') {
-        const hitTok = getTopMostTokenAt(row, col);
+        const hitTok = getTopMostTokenAt(Math.floor(row), Math.floor(col));
         if (hitTok) {
           setSelectedTokenId(hitTok.id);
           onTokenSelectionChange?.(hitTok);
@@ -571,7 +577,7 @@ export default function Grid({
         }
         return;
       } else {
-        const hitObj = getTopMostObjectAt(currentLayer, row, col);
+        const hitObj = getTopMostObjectAt(currentLayer, Math.floor(row), Math.floor(col));
         if (hitObj) {
           onBeginObjectStroke?.(currentLayer);
           setSelectedObjId(hitObj.id);
@@ -599,7 +605,7 @@ export default function Grid({
         if (hitObj) onBeginObjectStroke?.(currentLayer);
         else onBeginTileStroke?.(currentLayer);
 
-        eraseGridStampAt(row, col, {
+        eraseGridStampAt(Math.floor(row), Math.floor(col), {
           rows,
           cols,
           gridSettings,
@@ -608,7 +614,7 @@ export default function Grid({
           placeTiles,
           removeObjectById,
         });
-      } else if (selectedAsset?.kind === "image") {
+      } else if (selectedAsset?.kind === "image" || selectedAsset?.kind === 'natural') {
         onBeginObjectStroke?.(currentLayer);
         placeGridImageAt(row, col);
       } else {
@@ -652,8 +658,14 @@ export default function Grid({
 
     // SELECT MODE drag
     if (interactionMode === "select") {
-      const row = Math.floor((yCss / cssHeight) * rows);
-      const col = Math.floor((xCss / cssWidth) * cols);
+      let rowRaw = (yCss / cssHeight) * rows;
+      let colRaw = (xCss / cssWidth) * cols;
+      if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
+        rowRaw = quantize(rowRaw, gridSettings.snapStep);
+        colRaw = quantize(colRaw, gridSettings.snapStep);
+      }
+      const row = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
+      const col = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
       if (dragRef.current && dragRef.current.kind === 'object' && selectedObjId) {
         const obj = getObjectById(currentLayer, selectedObjId);
         if (obj) {
@@ -684,13 +696,20 @@ export default function Grid({
     }
 
     if (engine === "grid") {
-      const row = Math.floor((yCss / cssHeight) * rows);
-      const col = Math.floor((xCss / cssWidth) * cols);
+    let rowRaw = (yCss / cssHeight) * rows;
+    let colRaw = (xCss / cssWidth) * cols;
+    if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
+      rowRaw = quantize(rowRaw, gridSettings.snapStep);
+      colRaw = quantize(colRaw, gridSettings.snapStep);
+    }
+    const row = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
+    const col = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
 
-      // De-dupe tile hits
-      if (row === lastTileRef.current.row && col === lastTileRef.current.col)
-        return;
-      lastTileRef.current = { row, col };
+      // De-dupe only when snapping; in free-place we allow continuous stamps
+      if (gridSettings?.snapToGrid) {
+        if (row === lastTileRef.current.row && col === lastTileRef.current.col) return;
+        lastTileRef.current = { row, col };
+      }
 
       // For token assets, only place on pointer down (single-click), not on move
       if (selectedAsset?.kind === 'token') return;
@@ -705,7 +724,7 @@ export default function Grid({
           placeTiles,
           removeObjectById,
         });
-      } else if (selectedAsset?.kind === "image") {
+      } else if (selectedAsset?.kind === "image" || selectedAsset?.kind === 'natural') {
         placeGridImageAt(row, col);
       } else {
         placeGridColorStampAt(row, col);

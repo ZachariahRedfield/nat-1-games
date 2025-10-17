@@ -1,0 +1,307 @@
+import React from "react";
+import CanvasBrushControls from "./CanvasBrushControls";
+
+export default function BrushSettings({
+  kind = 'grid', // 'grid' | 'natural' | 'canvas'
+  // grid
+  gridSettings,
+  setGridSettings,
+  // natural
+  naturalSettings,
+  setNaturalSettings,
+  // canvas
+  brushSize,
+  setBrushSize,
+  canvasOpacity,
+  setCanvasOpacity,
+  canvasSpacing,
+  setCanvasSpacing,
+  canvasBlendMode,
+  setCanvasBlendMode,
+  canvasSmoothing,
+  setCanvasSmoothing,
+  tileSize,
+  titleOverride,
+  // shared
+  snapshotSettings,
+}) {
+  if (kind === 'canvas') {
+    return (
+      <div>
+        <h3 className="font-bold text-sm mb-2">{titleOverride || 'Canvas Settings'}</h3>
+        <CanvasBrushControls
+          brushSize={brushSize}
+          setBrushSize={setBrushSize}
+          canvasOpacity={canvasOpacity}
+          setCanvasOpacity={setCanvasOpacity}
+          canvasSpacing={canvasSpacing}
+          setCanvasSpacing={setCanvasSpacing}
+          canvasBlendMode={canvasBlendMode}
+          setCanvasBlendMode={setCanvasBlendMode}
+          canvasSmoothing={canvasSmoothing}
+          setCanvasSmoothing={setCanvasSmoothing}
+          tileSize={tileSize}
+          snapshotSettings={snapshotSettings}
+        />
+      </div>
+    );
+  }
+
+  if (kind === 'natural') {
+    return (
+      <div>
+        <h3 className="font-bold text-sm mb-2">{titleOverride || 'Natural Brush Settings'}</h3>
+        <div className="grid gap-2">
+          <label className="block text-xs">Size (tiles)</label>
+          <input
+            type="range"
+            min="1"
+            max="20"
+            value={gridSettings.sizeTiles}
+            onChange={(e) => {
+              snapshotSettings?.();
+              setGridSettings((s) => ({ ...s, sizeTiles: parseInt(e.target.value) }));
+            }}
+          />
+
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <label className="text-xs inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={naturalSettings?.randomRotation || false}
+                onChange={(e) => {
+                  snapshotSettings?.();
+                  setNaturalSettings((s) => ({ ...s, randomRotation: e.target.checked }));
+                }}
+              />
+              Random Rotation
+            </label>
+            <label className="text-xs inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={naturalSettings?.randomVariant || false}
+                onChange={(e) => {
+                  snapshotSettings?.();
+                  setNaturalSettings((s) => ({ ...s, randomVariant: e.target.checked }));
+                }}
+              />
+              Random Variant
+            </label>
+            <label className="text-xs inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={naturalSettings?.randomFlipX || false}
+                onChange={(e) => {
+                  snapshotSettings?.();
+                  setNaturalSettings((s) => ({ ...s, randomFlipX: e.target.checked }));
+                }}
+              />
+              Random Flip X
+            </label>
+            <label className="text-xs inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={naturalSettings?.randomFlipY || false}
+                onChange={(e) => {
+                  snapshotSettings?.();
+                  setNaturalSettings((s) => ({ ...s, randomFlipY: e.target.checked }));
+                }}
+              />
+              Random Flip Y
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="text-xs">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!naturalSettings?.randomSize?.enabled}
+                  onChange={(e) => {
+                    snapshotSettings?.();
+                    setNaturalSettings((s) => ({
+                      ...s,
+                      randomSize: { ...(s.randomSize || { min: 1, max: 1 }), enabled: e.target.checked },
+                    }));
+                  }}
+                />
+                Random Size
+              </label>
+              <div className="flex items-center gap-1 mt-1">
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={naturalSettings?.randomSize?.min ?? 1}
+                  onChange={(e) => {
+                    const v = Math.max(1, Math.min(20, parseInt(e.target.value) || 1));
+                    snapshotSettings?.();
+                    setNaturalSettings((s) => ({
+                      ...s,
+                      randomSize: { ...(s.randomSize || { enabled: false, max: 1 }), min: v },
+                    }));
+                  }}
+                  className="w-12 p-1 text-black rounded"
+                />
+                <span>to</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={naturalSettings?.randomSize?.max ?? 1}
+                  onChange={(e) => {
+                    const v = Math.max(1, Math.min(20, parseInt(e.target.value) || 1));
+                    snapshotSettings?.();
+                    setNaturalSettings((s) => ({
+                      ...s,
+                      randomSize: { ...(s.randomSize || { enabled: false, min: 1 }), max: v },
+                    }));
+                  }}
+                  className="w-12 p-1 text-black rounded"
+                />
+              </div>
+            </div>
+            <div className="text-xs">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!naturalSettings?.randomOpacity?.enabled}
+                  onChange={(e) => {
+                    snapshotSettings?.();
+                    setNaturalSettings((s) => ({
+                      ...s,
+                      randomOpacity: { ...(s.randomOpacity || { min: 1, max: 1 }), enabled: e.target.checked },
+                    }));
+                  }}
+                />
+                Random Opacity
+              </label>
+              <div className="flex items-center gap-1 mt-1">
+                <input
+                  type="number"
+                  min="0.05"
+                  max="1"
+                  step="0.05"
+                  value={naturalSettings?.randomOpacity?.min ?? 1}
+                  onChange={(e) => {
+                    const v = Math.max(0.05, Math.min(1, parseFloat(e.target.value) || 0.05));
+                    snapshotSettings?.();
+                    setNaturalSettings((s) => ({
+                      ...s,
+                      randomOpacity: { ...(s.randomOpacity || { enabled: false, max: 1 }), min: v },
+                    }));
+                  }}
+                  className="w-14 p-1 text-black rounded"
+                />
+                <span>to</span>
+                <input
+                  type="number"
+                  min="0.05"
+                  max="1"
+                  step="0.05"
+                  value={naturalSettings?.randomOpacity?.max ?? 1}
+                  onChange={(e) => {
+                    const v = Math.max(0.05, Math.min(1, parseFloat(e.target.value) || 1));
+                    snapshotSettings?.();
+                    setNaturalSettings((s) => ({
+                      ...s,
+                      randomOpacity: { ...(s.randomOpacity || { enabled: false, min: 1 }), max: v },
+                    }));
+                  }}
+                  className="w-14 p-1 text-black rounded"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // default: grid
+  return (
+    <div>
+      <h3 className="font-bold text-sm mb-2">{titleOverride || 'Grid Brush Settings'}</h3>
+      <div className="grid gap-2">
+        <label className="block text-xs">Size (tiles)</label>
+        <input
+          type="range"
+          min="1"
+          max="20"
+          value={gridSettings.sizeTiles}
+          onChange={(e) => {
+            snapshotSettings?.();
+            setGridSettings((s) => ({ ...s, sizeTiles: parseInt(e.target.value) }));
+          }}
+        />
+        <label className="text-xs inline-flex items-center gap-2"><input type="checkbox" checked={!!gridSettings.snapToGrid} onChange={(e)=>{ snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapToGrid: e.target.checked })); }} /> Snap to Grid</label>
+        {!gridSettings.snapToGrid && (
+          <div className="grid grid-cols-2 gap-2 items-center">
+            <label className="text-xs">Grid Step (tiles)</label>
+            <input
+              type="number"
+              min="0.05"
+              max="1"
+              step="0.05"
+              className="w-full p-1 text-black rounded"
+              value={gridSettings.snapStep ?? 0.25}
+              onChange={(e)=>{
+                const v = Math.max(0.05, Math.min(1, parseFloat(e.target.value)||0.25));
+                snapshotSettings?.();
+                setGridSettings((s)=> ({ ...s, snapStep: v }));
+              }}
+            />
+          </div>
+        )}
+        <label className="block text-xs">Rotation</label>
+        <input
+          type="range"
+          min="0"
+          max="359"
+          value={gridSettings.rotation}
+          onChange={(e) => {
+            snapshotSettings?.();
+            setGridSettings((s) => ({ ...s, rotation: parseInt(e.target.value) }));
+          }}
+        />
+        <div className="flex gap-2">
+          <label className="text-xs">
+            <input
+              type="checkbox"
+              checked={gridSettings.flipX}
+              onChange={(e) => {
+                snapshotSettings?.();
+                setGridSettings((s) => ({ ...s, flipX: e.target.checked }));
+              }}
+            />{" "}
+            Flip X
+          </label>
+          <label className="text-xs">
+            <input
+              type="checkbox"
+              checked={gridSettings.flipY}
+              onChange={(e) => {
+                snapshotSettings?.();
+                setGridSettings((s) => ({ ...s, flipY: e.target.checked }));
+              }}
+            />{" "}
+            Flip Y
+          </label>
+        </div>
+        <label className="block text-xs">Opacity</label>
+        <input
+          className="w-full"
+          type="range"
+          min="0.05"
+          max="1"
+          step="0.05"
+          value={gridSettings.opacity}
+          onChange={(e) => {
+            snapshotSettings?.();
+            setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) }));
+          }}
+        />
+      </div>
+    </div>
+  );
+}
