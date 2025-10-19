@@ -80,8 +80,8 @@ Backend Implementation (Supabase)
 
 - Use Supabase for storage and verification (no custom serverless needed for MVP).
 - Env vars (client via Vite):
-  - `SUPABASE_URL`
-  - `SUPABASE_ANON_KEY`
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
 - Table: `users`
   - Columns: `id (uuid, default gen_random_uuid())`, `username (text, unique, lowercase)`, `password_hash (text)`, `role (text: 'Player'|'DM')`, `created_at (timestamptz default now())`
 - RLS policies:
@@ -171,8 +171,8 @@ Supabase Setup (where to configure)
   - Allow `select` on all rows (temporary for login) — tighten later to RPC-based login or policy-based lookup.
   - Allow `insert` on all rows (temporary for signup) — add captcha/rate-limits and ownership later.
 - In the frontend `.env`, add:
-  - `SUPABASE_URL=...`
-  - `SUPABASE_ANON_KEY=...`
+  - `VITE_SUPABASE_URL=...`
+  - `VITE_SUPABASE_ANON_KEY=...`
 - The app reads these via `src/utils/supabaseClient.js`.
 
 Profiles table (Auth-based)
