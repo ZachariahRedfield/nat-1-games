@@ -17,15 +17,15 @@ function App() {
     const s = getSession();
     if (s) {
       setSessionState(s);
-      // Auto-route according to role
-      if (s.role === 'DM') setScreen('mapBuilder');
-      else setScreen('player');
+      // Land on Main Menu for both roles after restoring a session
+      setScreen('menu');
     }
   }, []);
 
   const handleLoggedIn = (s) => {
     setSessionState(s);
-    setScreen(s.role === 'DM' ? 'mapBuilder' : 'player');
+    // After login, land on Main Menu regardless of role
+    setScreen('menu');
   };
 
   const logout = () => {
@@ -60,7 +60,7 @@ function App() {
       case "player":
         return <PlayerPlaceholder goBack={() => setScreen("menu")} session={session} onLogout={logout} />;
       default:
-        return <MainMenu setScreen={setScreen} />;
+        return <MainMenu setScreen={setScreen} session={session} onLogout={logout} />;
     }
   };
 
