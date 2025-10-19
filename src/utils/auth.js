@@ -29,8 +29,8 @@ export function isDM(session) {
 
 export async function login(username, password) {
   const u = String(username).trim().toLowerCase();
-  // Use Supabase Auth with pseudo-email derived from username
-  const email = `${u}@nat1.local`;
+  // Use Supabase Auth with pseudo-email derived from username (valid domain)
+  const email = `${u}@example.com`;
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message || 'Login failed');
   const user = data.user;
@@ -41,9 +41,8 @@ export async function login(username, password) {
     .select('username, role')
     .eq('id', user.id)
     .single();
-  if (pErr) {
-    // Fall back if profile missing
-    return { userId: user.id, username: u, role: 'Player' };
+  if (pErr || !profile) {
+    throw new Error('Profile not found. Please sign up first.');
   }
   return { userId: user.id, username: profile?.username || u, role: profile?.role || 'Player' };
 }
@@ -51,7 +50,7 @@ export async function login(username, password) {
 export async function signup(username, password, role) {
   const u = String(username).trim().toLowerCase();
   if (!u || !password || !role) throw new Error('Missing fields');
-  const email = `${u}@nat1.local`;
+  const email = `${u}@example.com`;
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw new Error(error.message || 'Signup failed');
   const user = data.user;

@@ -1,5 +1,6 @@
 import React from "react";
 import { getSession, setSession, login as apiLogin, signup as apiSignup } from "../../utils/auth";
+import { supabase } from "../../utils/supabaseClient";
 
 export default function Login({ onLoggedIn, goBack }) {
   const [username, setUsername] = React.useState("");
@@ -9,11 +10,11 @@ export default function Login({ onLoggedIn, goBack }) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
 
+  // Prefill role (and optionally username) from last session for convenience
   React.useEffect(() => {
     const s = getSession();
-    if (s && s.user?.username) {
-      onLoggedIn?.(s);
-    }
+    if (s?.role) setRole(s.role);
+    if (s?.username) setUsername(s.username);
   }, []);
 
   const submit = async (e) => {
@@ -34,6 +35,10 @@ export default function Login({ onLoggedIn, goBack }) {
       } else {
         data = await apiLogin(u, p);
       }
+      // Persist selected role to the profile row for this user
+      try {
+        if (data?.userId) await supabase.from('profiles').update({ role }).eq('id', data.userId);
+      } catch {}
       // On login, use the chosen role for routing; username from profile
       const session = { username: data.username, role, userId: data.userId };
       setSession(session);
@@ -49,7 +54,7 @@ export default function Login({ onLoggedIn, goBack }) {
     <div className="w-full h-full flex flex-col">
       <header className="p-4 bg-gray-800 flex justify-between items-center">
         <h2 className="text-xl font-bold">Login</h2>
-        <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded" onClick={goBack}>Back</button>
+        <span />
       </header>
       <main className="flex-1 flex items-center justify-center p-6 bg-gray-900">
         <form onSubmit={submit} className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded p-4 space-y-3 text-white">

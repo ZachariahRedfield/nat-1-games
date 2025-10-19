@@ -4,7 +4,7 @@ import MapBuilder from "./components/Menu/MapBuilder/MapBuilder";
 import StartSession from "./components/Menu/SessonManager/StartSession";
 import AssetCreation from "./components/Menu/AssetCreation/AssetCreation";
 import Login from "./components/Auth/Login";
-import PlayerPlaceholder from "./components/Player/PlayerPlaceholder";
+import UserBadge from "./components/Auth/UserBadge";
 import { getSession, isDM, clearSession } from "./utils/auth";
 import { supabase } from "./utils/supabaseClient";
 
@@ -17,22 +17,22 @@ function App() {
     const s = getSession();
     if (s) {
       setSessionState(s);
-      // Land on Main Menu for both roles after restoring a session
-      setScreen('menu');
+      // DM -> Main Menu, Player -> white screen
+      setScreen(s.role === 'DM' ? 'menu' : 'player');
     }
   }, []);
 
   const handleLoggedIn = (s) => {
     setSessionState(s);
-    // After login, land on Main Menu regardless of role
-    setScreen('menu');
+    // DM -> Main Menu, Player -> white screen
+    setScreen(s.role === 'DM' ? 'menu' : 'player');
   };
 
   const logout = () => {
     clearSession();
     try { supabase.auth.signOut(); } catch {}
     setSessionState(null);
-    setScreen('menu');
+    setScreen('login');
   };
 
   const renderScreen = () => {
@@ -58,7 +58,14 @@ function App() {
       case "login":
         return <Login onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />;
       case "player":
-        return <PlayerPlaceholder goBack={() => setScreen("menu")} session={session} onLogout={logout} />;
+        // White screen placeholder for Player with a logout/user badge in the corner
+        return (
+          <div className="w-screen h-screen bg-white relative">
+            <div className="absolute top-2 right-2">
+              <UserBadge session={session} onLogout={logout} />
+            </div>
+          </div>
+        );
       default:
         return <MainMenu setScreen={setScreen} session={session} onLogout={logout} />;
     }
