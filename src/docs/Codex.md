@@ -38,6 +38,170 @@ This codex tracks cross-project concepts, roadmap items, and running ideas that 
 - Add CI lint/format + unit tests (utils, selection, undo reducers).
 - Optional: plugin system for brushes/effects; export presets.
 
+## Priority Tasks
+
+- User Login (Phase 0)
+  - Goal: add a lightweight authentication flow so features like Save/Load, favorites, and sessions are tied to a user.
+  - MVP scope:
+    - UI: Login/Register modal (email + password), Logout action.
+    - Session: store auth token in memory + localStorage for persistence; auto‑restore on app start.
+    - Guards: gate Save/Load and session features behind an authenticated state; graceful prompts when unauthenticated.
+    - Stubbed auth service interface so we can plug in a real backend later; include mock adapter for local dev.
+  - Next steps:
+    - Roles: GM vs Player flags for Session Manager.
+    - Profile: display name/avatar; basic settings.
+    - Providers: optional OAuth (Google/GitHub) once backend exists.
+
+### 💬 Codex Instruction — User Login System Setup
+
+Implement a basic User Login System for the Nat‑1 Games app.
+
+Goal
+
+- Add username + password login with Player/DM role selection.
+
+Requirements
+
+- Login UI asks for:
+  - Username (string)
+  - Password (string)
+  - Role (dropdown/toggle: "Player" | "DM")
+- On submit:
+  - Verify credentials via `/api/login` (serverless function).
+  - If user is missing, allow signup via `/api/signup`.
+  - On success, store `{ username, role, token }` in `localStorage` (e.g., key `auth.session`).
+- Post‑login routing:
+  - If role === "DM", load Map Builder / DM Menu.
+  - If role === "Player", load a placeholder screen ("Player View Coming Soon").
+- Protect DM routes (Map Builder, DM Menu) so they require a valid login token.
+- On app load, auto‑restore session from `localStorage` and redirect appropriately.
+
+Backend Implementation (Supabase)
+
+- Use Supabase for storage and verification (no custom serverless needed for MVP).
+- Env vars (client via Vite):
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
+- Table: `users`
+  - Columns: `id (uuid, default gen_random_uuid())`, `username (text, unique, lowercase)`, `password_hash (text)`, `role (text: 'Player'|'DM')`, `created_at (timestamptz default now())`
+- RLS policies:
+  - Enable RLS.
+  - Allow `select` on `users` for row where `username = lower(current_setting('request.jwt.claims', true)::json->>'sub')` OR temporarily allow `select` by anyone for login purposes (MVP). Harden later.
+  - Allow `insert` for anyone (MVP). Harden later.
+- Client lib: `@supabase/supabase-js` (see `src/utils/supabaseClient.js`).
+
+KV Schema
+
+- Key: `user:{username}` → value:
+  - `{ username, role, passwordHash, createdAt, updatedAt }`
+- Uniqueness: `username` is unique (case‑insensitive; store a normalized copy as key)
+
+API Contracts
+
+- Not required for MVP (client talks directly to Supabase). Keep response handling uniform in UI code.
+
+JWT
+
+- Not used for MVP. Session data is `{ username, role }` stored in localStorage. Consider switching to Supabase Auth later.
+
+Client Behavior
+
+- On app init:
+  - The Login screen is the first view if no prior session exists (recently logged in behavior).
+  - Check `localStorage.getItem('auth.session')`; if present and token not expired, auto‑route to the role‑appropriate screen.
+- Login flow:
+  - POST `/api/login`
+  - On success, persist `{ username, role, token }` under `auth.session`
+  - Route: DM → Map Builder; Player → Player placeholder
+- Signup flow:
+  - POST `/api/signup`
+  - Does not auto‑login; returns the user to the Login screen with a notice to log in.
+  - At Login, the user selects desired role (Player/DM) for the session route.
+- Logout:
+  - Clear `auth.session`; return to Main Menu (unauth state)
+
+Route Protection (DM‑only)
+
+- Guard DM components/screens (Map Builder, future DM Menu):
+  - If no session or role !== "DM" → redirect to Login screen (or Main Menu with prompt)
+  - Optionally, validate token with a lightweight `/api/verify` later
+
+Security Notes
+
+- Never store plaintext passwords; always hash via bcrypt on the server.
+- Use HTTPS; protect JWT secret.
+- Rate‑limit login/signup (Vercel middleware or function‑local)
+- Consider CSRF/XSS mitigations; use `SameSite=Lax` if switching to cookies later.
+
+Client Stubs (implemented)
+
+- `auth.js` client module:
+  - `login(username, password)` → Supabase select + bcrypt compare
+  - `signup(username, password, role)` → Supabase insert with bcrypt hash
+  - `getSession()` / `setSession()` / `clearSession()`
+  - `isDM()` helper
+- New screens:
+  - `Login.jsx` with username, password, role input + submit; link to sign up
+  - `PlayerPlaceholder.jsx` ("Player View Coming Soon")
+
+Acceptance Criteria
+
+- Can sign up a new user and receive a token
+- Can log in with existing user; token stored in `localStorage`
+- DM is routed to Map Builder; Player to placeholder
+- DM routes are blocked when unauthenticated or role !== DM
+- Refresh persists session and routing
+
+Future Expansion
+
+- Password reset flow (email/OTP)
+- Profile management (display name, avatar)
+- Social login (Google/GitHub) via OAuth
+
+Supabase Setup (where to configure)
+
+- Create a Supabase project; note the Project URL and anon key.
+- Create `users` table with columns:
+  - `id uuid primary key default gen_random_uuid()` (or `uuid_generate_v4()`)
+  - `username text unique not null` (store lowercase)
+  - `password_hash text not null`
+  - `role text not null check (role in ('Player','DM'))`
+  - `created_at timestamptz default now()`
+- Enable RLS. For MVP, add permissive policies:
+  - Allow `select` on all rows (temporary for login) — tighten later to RPC-based login or policy-based lookup.
+  - Allow `insert` on all rows (temporary for signup) — add captcha/rate-limits and ownership later.
+- In the frontend `.env`, add:
+  - `SUPABASE_URL=...`
+  - `SUPABASE_ANON_KEY=...`
+- The app reads these via `src/utils/supabaseClient.js`.
+
+Profiles table (Auth-based)
+
+- Use Supabase Auth for password hashing and sessions; store display info in `profiles`:
+  - Table `profiles` columns:
+    - `id uuid primary key references auth.users(id) on delete cascade`
+    - `username text unique not null`
+    - `role text not null check (role in ('Player','DM'))`
+    - `created_at timestamptz default now()`
+- Enable RLS and add policies so users can access only their own row:
+
+```sql
+alter table profiles enable row level security;
+
+create policy "Profiles selectable by owner"
+  on profiles for select
+  using (auth.uid() = id);
+
+create policy "Profiles updatable by owner"
+  on profiles for update
+  using (auth.uid() = id);
+
+create policy "Profiles insert by owner"
+  on profiles for insert
+  with check (auth.uid() = id);
+```
+
+
 ## Updates (Current)
 
 * Token HUD initiative: Added a toggle to show initiative in the Token HUD; when enabled, tokens display "Init N" alongside HP.
@@ -50,15 +214,23 @@ This codex tracks cross-project concepts, roadmap items, and running ideas that 
 * Interaction layout (single group): Consolidated Draw, Grid/Canvas, Select, and Save into one horizontal group with a single background container. When Draw is active, Grid/Canvas appear between Draw and Select; when Select is active, Save appears to the right of Select.
 * Header polish: Moved the Toolbar toggle under the "Map Builder" title as a compact, low-emphasis button; removed it from the right-side header controls.
 * Layer icons: Replaced placeholder/emoji eyes with inline SVG icons for reliable rendering; added a Tokens layer visibility toggle using the same icons.
-* Select-mode crash fix: Resolved a white screen when pressing Select caused by an undefined `selectedTokensList` reference. Added missing state to MapBuilder and guarded usages.
+* Save Selection dialog: Added a right-side panel (reusing Asset Creation layout) that lets you choose Natural Group or Merged Image for images, or Token/Token Group for tokens. Replaces browser confirm/prompt flow.
+* Assets panel layout: In Images preview mode, add a divider between thumbnail and name and move Edit/Delete below the name. In Names mode, keep Delete at top-right and place Edit beside it.
+* Asset action buttons: Normalized Edit/Delete sizes and grouped them so they touch (no gap) in both modes for a consistent look.
+* Asset tile padding: In Images preview mode, increased bottom padding and used a vertical layout so the selection border encloses the Edit/Delete buttons cleanly.
+* App default route: Removed the development shortcut that booted directly into Map Builder; the app now opens to the Main Menu by default.
+* Asset editing: Added an Edit button next to Delete on selected assets. Clicking Edit re-opens the Asset Creation panel prefilled with the asset. Save overwrites; Save Copy creates a new asset.
+* Auth scaffolding: Added `Login.jsx`, `PlayerPlaceholder.jsx`, and `src/utils/auth.js`; guarded DM routes in `src/App.jsx`. Added serverless API stubs `api/login.js` and `api/signup.js` using bcrypt, JWT, and Vercel KV. Session stored in `localStorage` and auto-restored on load.
+* Auth UI polish: Added Logout button and current username/role to the top-right of headers (Map Builder, Start Session, Asset Creation, Player). Clicking Logout clears the session and returns to the Main Menu/Login.
 
 ### How To Test — Multi-Select & Save
 
 * Select mode: Click to select one. Shift/Ctrl-click toggles additional items.
 * Drag-box: In Select mode, click-and-drag on empty space to marquee-select.
-* Save (images): With multiple images selected, press Save → confirm dialog asks Natural Group (OK) or Merged Image (Cancel).
-* Save (tokens): With multiple tokens selected, press Save → creates a Token Group asset.
-* Mixed: When both types selected, choose which to save by reducing the selection to one type (current behavior).
+* Save (images): With multiple images selected, press Save and choose Natural Group or Merged Image in the dialog.
+* Save (tokens): With multiple tokens selected, press Save and confirm Token Group in the dialog.
+* Mixed: When both types selected, use the dialog’s Images/Tokens toggle to pick a path; the other type is ignored for this save.
+* Edit asset: Select an asset in the Assets panel, click Edit. Modify fields and press Save (overwrite) or Save Copy (duplicate). Text/label images open in the Text tab; Color opens in Materials; Natural shows the variants list.
 * Assets panel preview toggle: Renamed the toggle to "Preview Image" / "Preview Names". When "Preview Names" is active, the Assets box renders a compact vertical list of asset names instead of image thumbnails.
 * Assets panel preview mode: Replaced single toggle with a side-by-side segmented control in the Assets header: "Images" | "Names". Selecting "Names" renders a compact vertical list; selecting "Images" shows thumbnail grid.
 
@@ -108,6 +280,38 @@ Note: The following “Design Spec – Multi-Select & Group Save” applies to S
   * *Mixed images + tokens:*
 
     * Prompt to choose a path: “Images only” (ignores tokens) or “Tokens only” (ignores images). Inform that mixed save is not supported in one asset.
+
+#### Save Selection Dialog (Unified with Asset Creator)
+
+- Layout: Reuse the Asset Creation panel shell and controls. Open as a right-side panel (same width/spacing), prefilled from current selection. Disable or hide sections that do not apply to the selection.
+- Target kinds and availability depend on selection:
+  - Single Image/Natural instance: default target = Image; allow Merged Image (same result for single), and allow Natural (single-variant) if desired.
+  - Multiple Image/Natural instances: show a segmented toggle: Natural Group | Merged Image. Natural Group builds variants from each selected item; Merged Image rasterizes into one bitmap.
+  - Single Token: target = Token (locked). Prefill glow/name/size/opacity from instance; engine defaults to grid.
+  - Multiple Tokens: target = Token Group (locked). Show ordered member list; default order is left-to-right then top-to-bottom.
+  - Mixed Images + Tokens: show an inline warning with two action buttons: “Images only” or “Tokens only”. Clicking one filters the selection in-session and updates the dialog accordingly.
+- Common fields (top):
+  - Name input (prefilled with a sensible default).
+  - Preview (thumbnail or tight bounding box preview if Merged Image is selected).
+  - Save / Cancel actions; Enter submits, Esc cancels.
+- Image target options (when applicable):
+  - Bake transforms: rotation/flip/opacity baked into output (default on for selection saves).
+  - Size (tiles) default from selected instance footprint; editable before saving.
+  - Transparency background toggle (on for raster exports).
+- Natural Group options:
+  - Variants list (grid): show each contributing source; allow remove/reorder before save.
+  - Randomization defaults: randomRotation, randomVariant, randomFlipX/Y, randomSize[min,max], randomOpacity[min,max].
+- Merged Image options:
+  - Bounds: auto-tight (default) or fixed grid-aligned bounding box.
+  - Include layer order note: uses selection z-order as drawn (top-most last). Opacity/flip/rotation are baked.
+- Token target options:
+  - Name, HP, Initiative, Glow color, Size (tiles), Opacity; all prefilled from the selected token.
+- Token Group options:
+  - Member list with order and remove; spawn spacing (tiles, default 0); default engine grid, no drawing engines.
+- Validation & UX:
+  - Save disabled until a valid name and at least one variant/member (where applicable).
+  - Mixed-type selections show the filter choice UI; saving enforces a single-target type.
+  - On success, push a single undo ‘bundle’ capturing the new asset and any selection-side effects, then switch the selected asset to the new one.
 
 * **Placement semantics**
 
@@ -165,5 +369,3 @@ Note: The following “Design Spec – Multi-Select & Group Save” applies to S
 
 * No active issues; previous tokens/layers items fixed. See Updates (Current) for details.
 
-* **Select button broken** — current implementation not switching to/selecting items as expected.
-* **Layer icons** — eye icons showing as `??`; replace with proper icons (e.g., Unicode 👁/🚫 or an icon set) and ensure font support.

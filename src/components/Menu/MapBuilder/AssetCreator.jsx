@@ -1,7 +1,15 @@
 import React from "react";
 import NumericInput from "../../common/NumericInput";
 
-export default function AssetCreator({ kind = 'image', onClose, onCreate, selectedImageSrc }) {
+export default function AssetCreator({
+  kind = 'image',
+  onClose,
+  onCreate,
+  onUpdate,
+  initialAsset = null,
+  selectedImageSrc,
+  mode = 'create', // 'create' | 'edit'
+}) {
   const tab = kind; // locked to the button the user clicked
   // shared
   const [name, setName] = React.useState("");
@@ -37,6 +45,28 @@ export default function AssetCreator({ kind = 'image', onClose, onCreate, select
     });
   };
   const removeVariantAt = (i) => setVariants((v) => v.filter((_, idx) => idx !== i));
+
+  // Prefill when editing
+  React.useEffect(() => {
+    if (!initialAsset) return;
+    setName(initialAsset.name || "");
+    if (tab === 'token') {
+      setTokenGlow(initialAsset.glowDefault || '#7dd3fc');
+    }
+    if (tab === 'text') {
+      const lm = initialAsset.labelMeta || {};
+      setLabelText(lm.text || initialAsset.name || 'Label');
+      setLabelColor(lm.color || '#ffffff');
+      setLabelFont(lm.font || 'Arial');
+      setLabelSize(lm.size || 28);
+    }
+    if (tab === 'material') {
+      setColorHex(initialAsset.color || '#66ccff');
+    }
+    if (tab === 'natural') {
+      setVariants(Array.isArray(initialAsset.variants) ? initialAsset.variants.slice(0,16) : []);
+    }
+  }, [initialAsset, tab]);
 
   const save = async () => {
     const nm = (name || (tab === 'text' ? labelText : tab)).trim() || tab;
@@ -155,6 +185,84 @@ export default function AssetCreator({ kind = 'image', onClose, onCreate, select
     }
   };
 
+  const saveEdit = async () => {
+    if (!initialAsset) return;
+    const base = { ...initialAsset, name: (name || initialAsset.name || '').trim() };
+    if (tab === 'image') {
+      if (imageFile) {
+        const src = URL.createObjectURL(imageFile);
+        const img = new Image();
+        await new Promise((res)=>{ img.onload = res; img.src = src; });
+        const updated = {
+          ...base,
+          kind: 'image',
+          src,
+          img,
+          aspectRatio: img.width && img.height ? img.width / img.height : (initialAsset.aspectRatio || 1),
+        };
+        onUpdate?.(updated);
+      } else {
+        // Rename only
+        onUpdate?.(base);
+      }
+      return;
+    }
+    if (tab === 'token') {
+      let src = initialAsset.src;
+      let ar = initialAsset.aspectRatio || 1;
+      if (tokenFile) {
+        src = URL.createObjectURL(tokenFile);
+        const im = new Image();
+        await new Promise((res)=>{ im.onload = res; im.src = src; });
+        ar = im.width && im.height ? im.width / im.height : ar;
+      }
+      onUpdate?.({ ...base, kind: 'token', src, aspectRatio: ar, glowDefault: tokenGlow });
+      return;
+    }
+    if (tab === 'text') {
+      const size = Math.max(8, Math.min(128, parseInt(labelSize) || 28));
+      const padding = Math.round(size * 0.35);
+      const measureCanvas = document.createElement('canvas');
+      const mctx = measureCanvas.getContext('2d');
+      mctx.font = `${size}px ${labelFont}`;
+      const metrics = mctx.measureText(labelText);
+      const textW = Math.ceil(metrics.width);
+      const textH = Math.ceil(size * 1.2);
+      const w = Math.max(1, textW + padding * 2);
+      const h = Math.max(1, textH + padding * 2);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,w,h);
+      ctx.font = `${size}px ${labelFont}`;
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = labelColor;
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = Math.max(2, Math.round(size * 0.08));
+      ctx.fillText(labelText, padding, padding);
+      const src = canvas.toDataURL('image/png');
+      const img = new Image();
+      await new Promise((res)=>{ img.onload = res; img.src = src; });
+      onUpdate?.({
+        ...base,
+        kind: 'image',
+        src,
+        img,
+        aspectRatio: img.width && img.height ? img.width / img.height : (initialAsset.aspectRatio || 1),
+        labelMeta: { text: labelText, color: labelColor, font: labelFont, size: labelSize },
+      });
+      return;
+    }
+    if (tab === 'material') {
+      onUpdate?.({ ...base, kind: 'color', color: colorHex });
+      return;
+    }
+    if (tab === 'natural') {
+      onUpdate?.({ ...base, kind: 'natural', variants: variants.slice(0,16) });
+      return;
+    }
+  };
+
   // Render content for the selected creator tab. Note: use a plain
   // render function (not a nested component) to avoid remounting
   // the subtree on every keystroke, which can steal input focus.
@@ -244,7 +352,14 @@ export default function AssetCreator({ kind = 'image', onClose, onCreate, select
     <div className="mb-3 p-2 border border-gray-600 rounded space-y-3">
       {renderSection()}
       <div className="flex gap-2">
-        <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={save}>Save Asset</button>
+        {mode === 'edit' ? (
+          <>
+            <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={async ()=> { await saveEdit(); onClose?.(); }}>Save</button>
+            <button className="px-2 py-1 bg-amber-600 hover:bg-amber-500 rounded text-sm" title="Save as a new asset" onClick={async ()=> { await save(); onClose?.(); }}>Save Copy</button>
+          </>
+        ) : (
+          <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={async ()=> { await save(); onClose?.(); }}>Save Asset</button>
+        )}
         <button className="px-2 py-1 bg-gray-700 rounded text-sm" onClick={onClose}>Close</button>
       </div>
     </div>

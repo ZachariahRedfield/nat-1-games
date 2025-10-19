@@ -7,6 +7,8 @@ import CanvasBrushControls from "./CanvasBrushControls";
 import BrushSettings from "./BrushSettings";
 import AssetCreator from "./AssetCreator";
 import NumericInput from "../../common/NumericInput";
+import UserBadge from "../../Auth/UserBadge";
+import SaveSelectionDialog from "./SaveSelectionDialog";
 
 // Simple inline icons to avoid emoji rendering differences
 const EyeIcon = ({ className = "w-4 h-4" }) => (
@@ -37,7 +39,7 @@ const EyeOffIcon = ({ className = "w-4 h-4" }) => (
   </svg>
 );
 
-export default function MapBuilder({ goBack }) {
+export default function MapBuilder({ goBack, session, onLogout }) {
   // --- dimensions ---
   const [rowsInput, setRowsInput] = useState("20");
   const [colsInput, setColsInput] = useState("20");
@@ -76,6 +78,7 @@ export default function MapBuilder({ goBack }) {
   const [selectedTokensList, setSelectedTokensList] = useState([]);
   const [tokenHUDVisible, setTokenHUDVisible] = useState(true);
   const [tokenHUDShowInitiative, setTokenHUDShowInitiative] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   // --- canvas refs (per layer) ---
   const canvasRefs = {
@@ -185,6 +188,7 @@ export default function MapBuilder({ goBack }) {
   // Legacy add-* panels removed in favor of unified AssetCreator
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [creatorKind, setCreatorKind] = useState('image');
+  const [editingAsset, setEditingAsset] = useState(null);
   const openCreator = (k) => { setCreatorKind(k); setCreatorOpen(true); };
   const handleCreatorCreate = (asset, group) => {
     if (!asset) return;
@@ -202,6 +206,22 @@ export default function MapBuilder({ goBack }) {
     setSelectedAssetId(withId.id);
     setEngine('grid');
     setCreatorOpen(false);
+  };
+  const updateAssetById = (id, updated) => {
+    setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, ...updated } : a)));
+  };
+  const mapAssetToCreatorKind = (a) => {
+    if (!a) return 'image';
+    if (a.kind === 'color') return 'material';
+    if (a.kind === 'natural') return 'natural';
+    if (a.kind === 'token' || a.kind === 'tokenGroup') return 'token';
+    if (a.kind === 'image' && a.labelMeta) return 'text';
+    return 'image';
+  };
+  const openEditAsset = (a) => {
+    setEditingAsset(a);
+    setCreatorKind(mapAssetToCreatorKind(a));
+    setCreatorOpen(true);
   };
   const [addColorMode, setAddColorMode] = useState('palette');
   const [newColorName, setNewColorName] = useState("");
@@ -1204,6 +1224,7 @@ export default function MapBuilder({ goBack }) {
             <button onClick={loadProject} className="px-2.5 py-1 text-sm bg-blue-700 hover:bg-blue-600 border border-blue-500 rounded">Load</button>
             <button onClick={goBack} className="px-2.5 py-1 text-sm bg-red-700 hover:bg-red-600 border border-red-500 rounded">Back</button>
           </div>
+          <UserBadge session={session} onLogout={onLogout} />
         </div>
       </header>
 
@@ -1320,9 +1341,15 @@ export default function MapBuilder({ goBack }) {
                 {creatorOpen && (
                   <AssetCreator
                     kind={creatorKind}
-                    onClose={() => setCreatorOpen(false)}
+                    onClose={() => { setCreatorOpen(false); setEditingAsset(null); }}
                     onCreate={handleCreatorCreate}
+                    onUpdate={(updated)=> {
+                      if (!editingAsset) return;
+                      updateAssetById(editingAsset.id, updated);
+                    }}
+                    initialAsset={editingAsset}
                     selectedImageSrc={selectedAsset?.kind==='image' ? selectedAsset?.src : null}
+                    mode={editingAsset ? 'edit' : 'create'}
                   />
                 )}
                 <div className="mb-2 border border-gray-600 rounded overflow-hidden">
@@ -1363,7 +1390,7 @@ export default function MapBuilder({ goBack }) {
                         <div
                           key={a.id}
                           onClick={() => selectAsset(a.id)}
-                          className={`relative cursor-pointer ${showAssetPreviews ? 'border rounded p-1 text-xs' : 'px-2 py-1 text-xs hover:bg-gray-700'} ${
+                          className={`relative cursor-pointer ${showAssetPreviews ? 'border rounded p-1 pb-2 text-xs flex flex-col' : 'px-2 py-1 text-xs hover:bg-gray-700'} ${
                             selectedAssetId === a.id
                               ? (showAssetPreviews ? 'border-blue-400 bg-blue-600/20' : 'border border-blue-400 bg-blue-600/10')
                               : (showAssetPreviews ? 'border-gray-600 bg-gray-700/40' : 'border border-transparent')
@@ -1387,36 +1414,92 @@ export default function MapBuilder({ goBack }) {
                               ? <div className="w-full h-12 rounded" style={{ backgroundColor: a.color || '#cccccc' }} />
                               : <div className="text-xs font-medium whitespace-normal break-words leading-tight py-0.5">{a.name}</div>
                           )}
-                          {showAssetPreviews && <div className="mt-1 truncate">{a.name}</div>}
-                          {selectedAssetId === a.id && (a.kind === 'image' || a.kind === 'token' || a.kind === 'natural') && (
-                            <button
-                              className="absolute top-1 right-1 px-1.5 py-0.5 bg-red-700 hover:bg-red-600 rounded text-[10px]"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const useCountTokens = (tokens || []).filter((t) => t.assetId === a.id).length;
-                                const countInObjects = ['background', 'base', 'sky'].reduce(
-                                  (acc, l) => acc + (objects?.[l] || []).filter((o) => o.assetId === a.id).length,
-                                  0
-                                );
-                                if (a.kind === 'token' && useCountTokens > 0) {
-                                  alert(`Cannot delete token asset in use by ${useCountTokens} token(s). Delete tokens first.`);
-                                  return;
-                                }
-                                if ((a.kind === 'image' || a.kind === 'natural') && countInObjects > 0) {
-                                  alert(`Cannot delete image asset in use by ${countInObjects} object(s). Delete stamps first.`);
-                                  return;
-                                }
-                                if (confirm(`Delete asset "${a.name}"?`)) {
-                                  setAssets((prev) => prev.filter((x) => x.id !== a.id));
-                                  const next = assets.find(
-                                    (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? (x.kind === 'token' || x.kind === 'tokenGroup') : assetGroup === 'natural' ? x.kind === 'natural' : true)
-                                  );
-                                  if (next) setSelectedAssetId(next.id);
-                                }
-                              }}
-                            >
-                              Delete
-                            </button>
+                          {showAssetPreviews && (
+                            <>
+                              <div className="mt-1 h-px bg-gray-600" />
+                              <div className="pt-1 truncate">{a.name}</div>
+                            </>
+                          )}
+                          {(a.kind === 'image' || a.kind === 'token' || a.kind === 'natural' || a.kind === 'color') && (
+                            showAssetPreviews ? (
+                              selectedAssetId === a.id ? (
+                                <div className="mt-1 inline-flex overflow-hidden rounded">
+                                  <button
+                                    className="px-2 py-0.5 text-[11px] bg-blue-700 hover:bg-blue-600"
+                                    onClick={(e) => { e.stopPropagation(); openEditAsset(a); }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const useCountTokens = (tokens || []).filter((t) => t.assetId === a.id).length;
+                                      const countInObjects = ['background', 'base', 'sky'].reduce(
+                                        (acc, l) => acc + (objects?.[l] || []).filter((o) => o.assetId === a.id).length,
+                                        0
+                                      );
+                                      if (a.kind === 'token' && useCountTokens > 0) {
+                                        alert(`Cannot delete token asset in use by ${useCountTokens} token(s). Delete tokens first.`);
+                                        return;
+                                      }
+                                      if ((a.kind === 'image' || a.kind === 'natural') && countInObjects > 0) {
+                                        alert(`Cannot delete image asset in use by ${countInObjects} object(s). Delete stamps first.`);
+                                        return;
+                                      }
+                                      if (confirm(`Delete asset "${a.name}"?`)) {
+                                        setAssets((prev) => prev.filter((x) => x.id !== a.id));
+                                        const next = assets.find(
+                                          (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? (x.kind === 'token' || x.kind === 'tokenGroup') : assetGroup === 'natural' ? x.kind === 'natural' : true)
+                                        );
+                                        if (next) setSelectedAssetId(next.id);
+                                      }
+                                    }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              ) : null
+                            ) : (
+                              selectedAssetId === a.id ? (
+                                <div className="absolute top-1 right-1 inline-flex overflow-hidden rounded">
+                                  <button
+                                    className="px-2 py-0.5 text-[11px] bg-blue-700 hover:bg-blue-600"
+                                    onClick={(e) => { e.stopPropagation(); openEditAsset(a); }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const useCountTokens = (tokens || []).filter((t) => t.assetId === a.id).length;
+                                      const countInObjects = ['background', 'base', 'sky'].reduce(
+                                        (acc, l) => acc + (objects?.[l] || []).filter((o) => o.assetId === a.id).length,
+                                        0
+                                      );
+                                      if (a.kind === 'token' && useCountTokens > 0) {
+                                        alert(`Cannot delete token asset in use by ${useCountTokens} token(s). Delete tokens first.`);
+                                        return;
+                                      }
+                                      if ((a.kind === 'image' || a.kind === 'natural') && countInObjects > 0) {
+                                        alert(`Cannot delete image asset in use by ${countInObjects} object(s). Delete stamps first.`);
+                                        return;
+                                      }
+                                      if (confirm(`Delete asset \"${a.name}\"?`)) {
+                                        setAssets((prev) => prev.filter((x) => x.id !== a.id));
+                                        const next = assets.find(
+                                          (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? (x.kind === 'token' || x.kind === 'tokenGroup') : assetGroup === 'natural' ? x.kind === 'natural' : true)
+                                        );
+                                        if (next) setSelectedAssetId(next.id);
+                                      }
+                                    }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              ) : null
+                            )
                           )}
                         </div>
                       ))}
@@ -1465,7 +1548,7 @@ export default function MapBuilder({ goBack }) {
                     </>
                   ) : (
                     <button
-                      onClick={saveCurrentSelection}
+                      onClick={() => setSaveDialogOpen(true)}
                       disabled={((selectedObjsList?.length||0) === 0) && ((selectedTokensList?.length||0) === 0)}
                       className={`px-3 py-1 text-sm border rounded ${ (((selectedObjsList?.length||0) > 0) || ((selectedTokensList?.length||0) > 0)) ? 'bg-amber-600 border-amber-500 hover:bg-amber-500' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
                       title="Save selected as a new asset"
@@ -1749,9 +1832,22 @@ export default function MapBuilder({ goBack }) {
           </div>
         </div>
       </main>
+
+      <SaveSelectionDialog
+        open={saveDialogOpen}
+        onClose={() => setSaveDialogOpen(false)}
+        selectedObjsList={selectedObjsList}
+        selectedTokensList={selectedTokensList}
+        saveSelectionAsAsset={saveSelectionAsAsset}
+        saveMultipleObjectsAsNaturalGroup={saveMultipleObjectsAsNaturalGroup}
+        saveMultipleObjectsAsMergedImage={saveMultipleObjectsAsMergedImage}
+        saveSelectedTokenAsAsset={saveSelectedTokenAsAsset}
+        saveSelectedTokensAsGroup={saveSelectedTokensAsGroup}
+      />
     </div>
   );
 }
+
 
 
 
