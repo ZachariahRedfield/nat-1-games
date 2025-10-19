@@ -8,6 +8,35 @@ import BrushSettings from "./BrushSettings";
 import AssetCreator from "./AssetCreator";
 import NumericInput from "../../common/NumericInput";
 
+// Simple inline icons to avoid emoji rendering differences
+const EyeIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    fill="currentColor"
+    aria-hidden="true"
+    className={className}
+  >
+    <path d="M1 8c2.5-4 6-6 7-6s4.5 2 7 6c-2.5 4-6 6-7 6S3.5 12 1 8z" />
+    <circle cx="8" cy="8" r="2" />
+  </svg>
+);
+
+const EyeOffIcon = ({ className = "w-4 h-4" }) => (
+  <svg
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    aria-hidden="true"
+    className={className}
+  >
+    <path d="M1 8c2.5-4 6-6 7-6s4.5 2 7 6c-2.5 4-6 6-7 6S3.5 12 1 8z" fill="currentColor" opacity=".5" />
+    <circle cx="8" cy="8" r="2" fill="currentColor" opacity=".5" />
+    <line x1="2" y1="2" x2="14" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
 export default function MapBuilder({ goBack }) {
   // --- dimensions ---
   const [rowsInput, setRowsInput] = useState("20");
@@ -44,6 +73,7 @@ export default function MapBuilder({ goBack }) {
   const [tokens, setTokens] = useState([]);
   const [tokensVisible, setTokensVisible] = useState(true);
   const [selectedToken, setSelectedToken] = useState(null);
+  const [selectedTokensList, setSelectedTokensList] = useState([]);
   const [tokenHUDVisible, setTokenHUDVisible] = useState(true);
   const [tokenHUDShowInitiative, setTokenHUDShowInitiative] = useState(false);
 
@@ -1654,7 +1684,7 @@ export default function MapBuilder({ goBack }) {
                       className={`px-2 py-0.5 text-[12px] rounded ${layerVisibility[l] ? 'bg-gray-600' : 'bg-gray-700'}`}
                       title={layerVisibility[l] ? 'Visible' : 'Hidden'}
                     >
-                      {layerVisibility[l] ? '??' : '??'}
+                      {layerVisibility[l] ? <EyeIcon /> : <EyeOffIcon />}
                     </button>
                   </div>
                 ))}
@@ -1662,10 +1692,11 @@ export default function MapBuilder({ goBack }) {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setTokensVisible((v) => !v)}
-                    className={`px-2 py-0.5 text-[12px] rounded ${tokensVisible ? 'bg-gray-600' : 'bg-gray-700'}`}
+                    className={`px-2 py-0.5 text-[12px] rounded flex items-center gap-1 ${tokensVisible ? 'bg-gray-600' : 'bg-gray-700'}`}
                     title={tokensVisible ? 'Hide tokens layer' : 'Show tokens layer'}
                   >
-                    tokens {tokensVisible ? '??' : '??'}
+                    <span>tokens</span>
+                    {tokensVisible ? <EyeIcon /> : <EyeOffIcon />}
                   </button>
                 </div>
               </div>
