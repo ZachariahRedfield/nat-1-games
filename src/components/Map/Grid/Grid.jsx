@@ -35,6 +35,7 @@ export default function Grid({
   // ===== Props: view / layers (where and which)
   tileSize = 32,
   scrollRef,
+  contentRef,
   canvasRefs, // { background: ref, base: ref, sky: ref }
   currentLayer = "base",
   layerVisibility = { background: true, base: true, sky: true },
@@ -42,6 +43,10 @@ export default function Grid({
   tokenHUDVisible = true,
   tokenHUDShowInitiative = false,
   assetGroup = 'image',
+
+  // ===== Props: view zoom tool
+  zoomToolActive = false,
+  onZoomToolRect,
 
   // ===== Props: stroke lifecycle (callbacks)
   onBeginTileStroke, // (layer) => void
@@ -89,6 +94,9 @@ export default function Grid({
 
   // Grid-stamp de-dupe within a stroke
   const lastTileRef = useRef({ row: -1, col: -1 });
+
+  // Zoom tool gesture state
+  const zoomDragRef = useRef(null); // { kind:'pending'|'marquee'|'drag', startCss:{x,y}, curCss:{x,y}, lastCss:{x,y} }
 
   // ===== Helpers (instance-bound)
 
@@ -587,6 +595,25 @@ export default function Grid({
   const handlePointerDown = (e) => {
     mouseDownRef.current = true;
 
+    // Zoom Tool: intercept interactions
+    if (zoomToolActive) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const xCss = e.clientX - rect.left;
+      const yCss = e.clientY - rect.top;
+      setMousePos({ x: xCss, y: yCss });
+      const isLeft = e.button === 0 || (e.buttons & 1) === 1;
+      if (!isLeft) return; // Only LMB starts rectangle zoom
+      zoomDragRef.current = {
+        kind: 'marquee',
+        startCss: { x: xCss, y: yCss },
+        curCss: { x: xCss, y: yCss },
+        lastCss: { x: xCss, y: yCss },
+      };
+      e.preventDefault();
+      e.target.setPointerCapture?.(e.pointerId);
+      return;
+    }
+
     // Pan gesture: spacebar or middle mouse
     const isMMB = e.button === 1 || (e.buttons & 4) === 4;
     if (panHotkey || isMMB) {
@@ -730,6 +757,16 @@ export default function Grid({
     const yCss = e.clientY - rect.top;
     setMousePos({ x: xCss, y: yCss });
 
+    // Zoom Tool move
+    if (zoomToolActive) {
+      if (!mouseDownRef.current) return;
+      const z = zoomDragRef.current;
+      if (!z) return;
+      // Rectangle selection only
+      z.curCss = { x: xCss, y: yCss };
+      return;
+    }
+
     if (engine === "pan" && isPanning && lastPan && scrollRef?.current) {
       const dx = e.clientX - lastPan.x;
       const dy = e.clientY - lastPan.y;
@@ -865,6 +902,19 @@ export default function Grid({
 
   const handlePointerUp = (e) => {
     e.target.releasePointerCapture?.(e.pointerId);
+    // Zoom Tool finalize
+    if (zoomToolActive) {
+      const z = zoomDragRef.current;
+      if (z && z.kind === 'marquee') {
+        const left = Math.min(z.startCss.x, z.curCss.x);
+        const top = Math.min(z.startCss.y, z.curCss.y);
+        const width = Math.abs(z.curCss.x - z.startCss.x);
+        const height = Math.abs(z.curCss.y - z.startCss.y);
+        if (width > 8 && height > 8) onZoomToolRect?.({ left, top, width, height });
+      }
+      zoomDragRef.current = null;
+      return;
+    }
     if (engine === "canvas") {
       const end = emaCssRef.current || lastStampCssRef.current;
       if (end) paintTipAt(end);
@@ -927,6 +977,7 @@ export default function Grid({
   if (isPanning || panHotkey) cursorStyle = "grabbing";
   else if (!layerIsVisible) cursorStyle = "not-allowed";
   else if (interactionMode === "select") cursorStyle = "default";
+  else if (zoomToolActive) cursorStyle = 'zoom-in';
   else {
     if (engine === 'grid') cursorStyle = 'cell';
     else if (engine === 'canvas') cursorStyle = isErasing ? 'crosshair' : 'crosshair';
@@ -934,7 +985,7 @@ export default function Grid({
 
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>
-      <div style={{ position: "relative", width: cssWidth, height: cssHeight }}>
+      <div ref={contentRef} style={{ position: "relative", width: cssWidth, height: cssHeight }}>
         {/* 1) Per-layer TILE GRIDS */}
         <TilesLayer
           maps={maps}
@@ -1061,6 +1112,26 @@ export default function Grid({
               />
             );
           })()
+        )}
+
+        {/* 9) Zoom Tool overlays */}
+        {zoomToolActive && zoomDragRef.current && zoomDragRef.current.kind === 'marquee' && (() => {
+          const z = zoomDragRef.current;
+          const left = Math.min(z.startCss.x, z.curCss.x);
+          const top = Math.min(z.startCss.y, z.curCss.y);
+          const w = Math.abs(z.curCss.x - z.startCss.x);
+          const h = Math.abs(z.curCss.y - z.startCss.y);
+          return (
+            <div
+              className="absolute pointer-events-none border border-emerald-400/80 bg-emerald-400/10"
+              style={{ left, top, width: w, height: h, zIndex: 10000 }}
+            />
+          );
+        })()}
+        {zoomToolActive && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[10001] px-3 py-1 rounded bg-emerald-800/80 text-emerald-100 text-[11px] border border-emerald-600">
+            Zoom Tool: Drag a rectangle to zoom. Esc to exit.
+          </div>
         )}
 
 

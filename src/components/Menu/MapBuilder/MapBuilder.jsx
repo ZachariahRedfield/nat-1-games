@@ -1,41 +1,53 @@
-﻿import MapStatus from "./MapStatus";
-import React, { useRef, useState } from "react";
+import MapStatus from "./MapStatus";
+import React, { useRef, useState, useEffect } from "react";
 import Grid from "../../Map/Grid/Grid";
 
 import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
-import CanvasBrushControls from "./CanvasBrushControls";
 import BrushSettings from "./BrushSettings";
-import AssetCreator from "./AssetCreator";
 import NumericInput from "../../common/NumericInput";
-import UserBadge from "../../Auth/UserBadge";
 import SaveSelectionDialog from "./SaveSelectionDialog";
+import Header from "./Header";
+import LayerBar from "./LayerBar";
+import AssetPanel from "./AssetPanel";
 
-// Simple inline icons to avoid emoji rendering differences
-const EyeIcon = ({ className = "w-4 h-4" }) => (
-  <svg
-    viewBox="0 0 16 16"
-    width="16"
-    height="16"
-    fill="currentColor"
-    aria-hidden="true"
-    className={className}
-  >
-    <path d="M1 8c2.5-4 6-6 7-6s4.5 2 7 6c-2.5 4-6 6-7 6S3.5 12 1 8z" />
-    <circle cx="8" cy="8" r="2" />
+// Compact tool icons for Interaction area
+const BrushIcon = ({ className = "w-4 h-4" }) => (
+  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
+    <path d="M2 12c2 0 3-.8 3-2l5.2-5.2 2 2L7 12c-.8.8-2 .9-3 .9H2z" />
+    <path d="M10 2l4 4 1-1c.6-.6.6-1.4 0-2l-2-2c-.6-.6-1.4-.6-2 0l-1 1z" />
   </svg>
 );
-
-const EyeOffIcon = ({ className = "w-4 h-4" }) => (
-  <svg
-    viewBox="0 0 16 16"
-    width="16"
-    height="16"
-    aria-hidden="true"
-    className={className}
-  >
-    <path d="M1 8c2.5-4 6-6 7-6s4.5 2 7 6c-2.5 4-6 6-7 6S3.5 12 1 8z" fill="currentColor" opacity=".5" />
-    <circle cx="8" cy="8" r="2" fill="currentColor" opacity=".5" />
-    <line x1="2" y1="2" x2="14" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+const CursorIcon = ({ className = "w-4 h-4" }) => (
+  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
+    <path d="M3 2l8 6-4 1 1 4-2 1-1-4-4-1z" />
+  </svg>
+);
+const EraserIcon = ({ className = "w-4 h-4" }) => (
+  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
+    <path d="M3 10l5-5 4 4-5 5H3l-2-2 4-4z" />
+    <path d="M7 14h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+  </svg>
+);
+const GridIcon = ({ className = "w-4 h-4" }) => (
+  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
+    <path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" />
+  </svg>
+);
+const CanvasIcon = ({ className = "w-4 h-4" }) => (
+  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
+    <path d="M8 2c1.2 2 4 4 4 7a4 4 0 11-8 0c0-3 2.8-5 4-7z" />
+  </svg>
+);
+const SaveIcon = ({ className = "w-4 h-4" }) => (
+  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
+    <path d="M2 2h9l3 3v9H2z" />
+    <path d="M4 2h6v4H4zM4 11h8v2H4z" fill="currentColor" />
+  </svg>
+);
+const ZoomIcon = ({ className = "w-4 h-4" }) => (
+  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
+    <circle cx="7" cy="7" r="4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M10.5 10.5l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
 
@@ -91,6 +103,8 @@ export default function MapBuilder({ goBack, session, onLogout }) {
   const [tileSize, setTileSize] = useState(32);
   const [showToolbar, setShowToolbar] = useState(true);
   const scrollRef = useRef(null);
+  const gridContentRef = useRef(null);
+  const [zoomToolActive, setZoomToolActive] = useState(false);
 
   // --- draw mode + eraser ---
   // Unified flow: choose asset (what), then engine (how)
@@ -111,6 +125,68 @@ export default function MapBuilder({ goBack, session, onLogout }) {
   const [assetGroup, setAssetGroup] = useState("image"); // 'image' | 'token' | 'material' | 'natural'
   const [showAssetKindMenu, setShowAssetKindMenu] = useState(false);
 
+    // ====== Zoom Tool (rectangle zoom) ======
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const snap = (v, step = 4) => Math.round(v / step) * step;
+  const handleZoomToRect = ({ left, top, width, height }) => {
+    const container = scrollRef.current;
+    const content = gridContentRef.current;
+    if (!container || !content) return;
+    // Snapshot current view for undo
+    setUndoStack((prev) => [
+      ...prev,
+      { type: 'view', tileSize, scrollLeft: container.scrollLeft, scrollTop: container.scrollTop },
+    ]);
+    setRedoStack([]);
+
+    const prev = tileSize;
+    if (width < 8 || height < 8) return;
+
+    // Desired scale to fit rect into viewport
+    const scaleX = container.clientWidth / width;
+    const scaleY = container.clientHeight / height;
+    let next = clamp(snap(prev * Math.min(scaleX, scaleY), 4), 8, 128);
+    // Nudge at least one step in
+    if (next <= prev) next = clamp(prev + 8, 8, 128);
+
+    // Selection center as ratio within content
+    const contentWidthPrev = cols * prev;
+    const contentHeightPrev = rows * prev;
+    let rx = (left + width / 2) / (contentWidthPrev || 1);
+    let ry = (top + height / 2) / (contentHeightPrev || 1);
+    rx = clamp(rx, 0, 1);
+    ry = clamp(ry, 0, 1);
+
+    // Content offset inside scroll container (centering/padding)
+    const containerRect = container.getBoundingClientRect();
+    const contentRect = content.getBoundingClientRect();
+    const contentOffsetLeft = contentRect.left - containerRect.left + container.scrollLeft;
+    const contentOffsetTop = contentRect.top - containerRect.top + container.scrollTop;
+
+    setTileSize(next);
+    const centerAfterPaint = () => {
+      const contentWidthNext = cols * next;
+      const contentHeightNext = rows * next;
+      const desiredLeft = contentOffsetLeft + rx * contentWidthNext - container.clientWidth / 2;
+      const desiredTop = contentOffsetTop + ry * contentHeightNext - container.clientHeight / 2;
+      // Clamp within actual content bounds
+      const minLeft = Math.max(0, contentOffsetLeft);
+      const minTop = Math.max(0, contentOffsetTop);
+      const maxLeft = Math.max(minLeft, contentOffsetLeft + contentWidthNext - container.clientWidth);
+      const maxTop = Math.max(minTop, contentOffsetTop + contentHeightNext - container.clientHeight);
+      container.scrollTo({
+        left: clamp(desiredLeft, minLeft, maxLeft),
+        top: clamp(desiredTop, minTop, maxTop),
+      });
+    };
+    // Wait for layout to reflect new tile size
+    requestAnimationFrame(() => requestAnimationFrame(centerAfterPaint));
+  };
+  useEffect(() => {
+    const onKey = (e) => { if (e.code === 'Escape') setZoomToolActive(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   // ====== ENGINE (HOW) ======
   // "grid" (snap to tiles) or "canvas" (free brush)
   const getAsset = (id) => assets.find((a) => a.id === id) || null;
@@ -247,21 +323,6 @@ export default function MapBuilder({ goBack, session, onLogout }) {
   React.useEffect(() => {
     if (assetGroup !== 'token' && selectedToken) setSelectedToken(null);
   }, [assetGroup]);
-  // Keyboard: 'V' toggles interaction (Draw/Select)
-  React.useEffect(() => {
-    const onKey = (e) => {
-      // Ignore when typing in inputs/textareas/contentEditable
-      const t = e.target;
-      const tag = (t && t.tagName) ? t.tagName.toUpperCase() : '';
-      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable);
-      if (isTyping) return;
-      if (e.code === 'KeyV') {
-        setInteractionMode((m) => (m === 'select' ? 'draw' : 'select'));
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
   // Note: canvasSmoothing now exposed via CanvasBrushControls and used in Grid EMA.
 
   // --- undo/redo ---
@@ -423,9 +484,9 @@ export default function MapBuilder({ goBack, session, onLogout }) {
         const o = arr[i];
         const within =
           row >= o.row &&
-          row < o.row + o.wTiles &&
+          row < o.row + o.hTiles &&
           col >= o.col &&
-          col < o.col + o.hTiles;
+          col < o.col + o.wTiles;
         if (within) {
           arr.splice(i, 1);
           break;
@@ -508,6 +569,19 @@ export default function MapBuilder({ goBack, session, onLogout }) {
         setCanvasSmoothing(entry.settings.canvasSmoothing);
       if (entry.settings.naturalSettings)
         setNaturalSettings(entry.settings.naturalSettings);
+    
+} else if (entry.type === 'view') {
+      const c = scrollRef.current;
+      setUndoStack((u) => [
+        ...u,
+        { type: 'view', tileSize, scrollLeft: c ? c.scrollLeft : 0, scrollTop: c ? c.scrollTop : 0 },
+      ]);
+      setTileSize(entry.tileSize);
+      requestAnimationFrame(() => {
+        const cc = scrollRef.current;
+        if (!cc) return;
+        cc.scrollTo({ left: entry.scrollLeft || 0, top: entry.scrollTop || 0 });
+      });
     } else if (entry.type === 'bundle') {
       // undo combined assets + objects change
       setRedoStack((r) => [
@@ -596,6 +670,19 @@ export default function MapBuilder({ goBack, session, onLogout }) {
         setCanvasSmoothing(entry.settings.canvasSmoothing);
       if (entry.settings.naturalSettings)
         setNaturalSettings(entry.settings.naturalSettings);
+    
+} else if (entry.type === 'view') {
+      const c = scrollRef.current;
+      setUndoStack((u) => [
+        ...u,
+        { type: 'view', tileSize, scrollLeft: c ? c.scrollLeft : 0, scrollTop: c ? c.scrollTop : 0 },
+      ]);
+      setTileSize(entry.tileSize);
+      requestAnimationFrame(() => {
+        const cc = scrollRef.current;
+        if (!cc) return;
+        cc.scrollTo({ left: entry.scrollLeft || 0, top: entry.scrollTop || 0 });
+      });
     } else if (entry.type === 'bundle') {
       setUndoStack((u) => [
         ...u,
@@ -1204,29 +1291,17 @@ export default function MapBuilder({ goBack, session, onLogout }) {
   // ====== header button order ======
   return (
     <div className="w-full h-full flex flex-col">
-      <header className="p-4 bg-gray-800 flex justify-between text-white items-center">
-        <div className="flex flex-col items-start gap-1">
-          <h2 className="text-xl font-bold">Map Builder</h2>
-          <button
-            onClick={() => setShowToolbar((s) => !s)}
-            className="text-[11px] px-2 py-0.5 bg-gray-700/60 hover:bg-gray-600/70 border border-gray-600 rounded"
-          >
-            {showToolbar ? "Hide Toolbar" : "Show Toolbar"}
-          </button>
-        </div>
-        <div className="flex gap-2 flex-wrap items-center">
-          <div className="flex gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
-            <button onClick={undo} className="px-2.5 py-1 text-sm bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded">Undo</button>
-            <button onClick={redo} className="px-2.5 py-1 text-sm bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded">Redo</button>
-          </div>
-          <div className="flex gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
-            <button onClick={saveProject} className="px-2.5 py-1 text-sm bg-green-700 hover:bg-green-600 border border-green-500 rounded">Save</button>
-            <button onClick={loadProject} className="px-2.5 py-1 text-sm bg-blue-700 hover:bg-blue-600 border border-blue-500 rounded">Load</button>
-            <button onClick={goBack} className="px-2.5 py-1 text-sm bg-red-700 hover:bg-red-600 border border-red-500 rounded">Back</button>
-          </div>
-          <UserBadge session={session} onLogout={onLogout} />
-        </div>
-      </header>
+      <Header
+        showToolbar={showToolbar}
+        onToggleToolbar={() => setShowToolbar((s) => !s)}
+        onUndo={undo}
+        onRedo={redo}
+        onSave={saveProject}
+        onLoad={loadProject}
+        onBack={goBack}
+        session={session}
+        onLogout={onLogout}
+      />
 
       <main className="flex flex-1 overflow-hidden min-h-0">
         {/* TOOLBAR */}
@@ -1270,253 +1345,65 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                 </div>
               </div>
               {/* ASSETS (WHAT) */}
-              <div className="relative">
-                <button
-                  className="font-bold text-sm mb-2 px-2 py-1 bg-gray-700 rounded inline-flex items-center gap-2"
-                  onClick={() => setShowAssetKindMenu((s)=>!s)}
-                  onMouseEnter={() => setShowAssetKindMenu(true)}
-                >
-                  Assets
-                  <span className="text-xs opacity-80">
-                    {assetGroup === 'image' ? 'Image' : assetGroup === 'token' ? 'Token' : assetGroup === 'material' ? 'Materials' : 'Natural'}
-                  </span>
-                </button>
-                {/* Inline panel that expands and pushes content */}
-                <div
-                  className={`overflow-y-hidden overflow-x-visible transition-[max-height,opacity] duration-200 ${
-                    showAssetKindMenu ? 'max-h-[140px] opacity-100 pointer-events-auto mb-3' : 'max-h-0 opacity-0 pointer-events-none'
-                  }`}
-                >
-                  <div
-                    className="mt-1 p-2 bg-gray-800 border border-gray-700 rounded flex flex-wrap gap-0"
-                    onMouseEnter={() => setShowAssetKindMenu(true)}
-                    onMouseLeave={() => setShowAssetKindMenu(false)}
-                  >
-                    <button
-                      className={`px-2 py-1 text-xs rounded ${assetGroup==='image'?'bg-blue-600':'bg-gray-700'}`}
-                      onClick={() => { setAssetGroup('image'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
-                    >
-                      Image
-                    </button>
-                    <button
-                      className={`px-2 py-1 text-xs rounded ${assetGroup==='token'?'bg-blue-600':'bg-gray-700'}`}
-                      onClick={() => { setAssetGroup('token'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
-                    >
-                      Token
-                    </button>
-                    <button
-                      className={`px-2 py-1 text-xs rounded ${assetGroup==='material'?'bg-blue-600':'bg-gray-700'}`}
-                      onClick={() => { setAssetGroup('material'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
-                    >
-                      Materials
-                    </button>
-                    <button
-                      className={`px-2 py-1 text-xs rounded ${assetGroup==='natural'?'bg-blue-600':'bg-gray-700'}`}
-                      onClick={() => { setAssetGroup('natural'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
-                    >
-                      Natural
-                    </button>
-                  </div>
-                </div>
-
-                {/* Creation buttons row positioned just above the ASSETS list */}
-                <div className="mt-1 mb-3 flex flex-wrap items-center gap-2">
-                  {assetGroup === 'image' && (
-                    <>
-                      <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('image')}>Create Image</button>
-                      <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('text')}>Text/Label</button>
-                    </>
-                  )}
-                  {assetGroup === 'natural' && (
-                    <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('natural')}>Add Natural</button>
-                  )}
-                  {assetGroup === 'material' && (
-                    <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('material')}>Add Color</button>
-                  )}
-                  {assetGroup === 'token' && (
-                    <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('token')}>Add Token</button>
-                  )}
-                </div>
-                {/* Asset deletion is handled in-tile within the asset grid when selected */}
-                {creatorOpen && (
-                  <AssetCreator
-                    kind={creatorKind}
-                    onClose={() => { setCreatorOpen(false); setEditingAsset(null); }}
-                    onCreate={handleCreatorCreate}
-                    onUpdate={(updated)=> {
-                      if (!editingAsset) return;
-                      updateAssetById(editingAsset.id, updated);
-                    }}
-                    initialAsset={editingAsset}
-                    selectedImageSrc={selectedAsset?.kind==='image' ? selectedAsset?.src : null}
-                    mode={editingAsset ? 'edit' : 'create'}
-                  />
-                )}
-                <div className="mb-2 border border-gray-600 rounded overflow-hidden">
-                  <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
-                    <span className="text-xs uppercase tracking-wide">Assets</span>
-                    <div className="inline-flex items-center bg-gray-800 rounded overflow-hidden border border-gray-700">
-                      <button
-                        className={`text-xs px-2 py-0.5 ${showAssetPreviews ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-200'}`}
-                        onClick={() => setShowAssetPreviews(true)}
-                        title="Show image thumbnails"
-                      >
-                        Images
-                      </button>
-                      <button
-                        className={`text-xs px-2 py-0.5 ${!showAssetPreviews ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-200'}`}
-                        onClick={() => setShowAssetPreviews(false)}
-                        title="Show names list"
-                      >
-                        Names
-                      </button>
-                    </div>
-                  </div>
-                  <div className={`p-2 ${showAssetPreviews ? 'grid grid-cols-3 gap-2' : 'flex flex-col gap-1'}`}>
-                    {assets
-                      .filter((a) => !a.hiddenFromUI)
-                      .filter((a) => (
-                        assetGroup === 'image'
-                          ? a.kind === 'image'
-                          : assetGroup === 'token'
-                          ? (a.kind === 'token' || a.kind === 'tokenGroup')
-                          : assetGroup === 'material'
-                          ? a.kind === 'color'
-                          : assetGroup === 'natural'
-                          ? a.kind === 'natural'
-                          : true
-                      ))
-                      .map((a) => (
-                        <div
-                          key={a.id}
-                          onClick={() => selectAsset(a.id)}
-                          className={`relative cursor-pointer ${showAssetPreviews ? 'border rounded p-1 pb-2 text-xs flex flex-col' : 'px-2 py-1 text-xs hover:bg-gray-700'} ${
-                            selectedAssetId === a.id
-                              ? (showAssetPreviews ? 'border-blue-400 bg-blue-600/20' : 'border border-blue-400 bg-blue-600/10')
-                              : (showAssetPreviews ? 'border-gray-600 bg-gray-700/40' : 'border border-transparent')
-                          }`}
-                          title={a.name}
-                        >
-                          {(a.kind === 'image' || a.kind === 'token' || a.kind === 'natural' || a.kind === 'tokenGroup') ? (
-                            showAssetPreviews ? (
-                              a.kind === 'natural'
-                                ? (a.variants?.length
-                                    ? <img src={a.variants[0]?.src} alt={a.name} className="w-full h-12 object-contain" />
-                                    : <div className="w-full h-12 flex items-center justify-center text-[10px] opacity-80">0 variants</div>)
-                                : a.kind === 'tokenGroup'
-                                ? (<div className="w-full h-12 flex items-center justify-center text-[10px] opacity-80">{(a.members?.length||0)} tokens</div>)
-                                : (<img src={a.src} alt={a.name} className="w-full h-12 object-contain" />)
-                            ) : (
-                              <div className="text-xs font-medium whitespace-normal break-words leading-tight py-0.5">{a.name}</div>
-                            )
-                          ) : (
-                            showAssetPreviews
-                              ? <div className="w-full h-12 rounded" style={{ backgroundColor: a.color || '#cccccc' }} />
-                              : <div className="text-xs font-medium whitespace-normal break-words leading-tight py-0.5">{a.name}</div>
-                          )}
-                          {showAssetPreviews && (
-                            <>
-                              <div className="mt-1 h-px bg-gray-600" />
-                              <div className="pt-1 truncate">{a.name}</div>
-                            </>
-                          )}
-                          {(a.kind === 'image' || a.kind === 'token' || a.kind === 'natural' || a.kind === 'color') && (
-                            showAssetPreviews ? (
-                              selectedAssetId === a.id ? (
-                                <div className="mt-1 inline-flex overflow-hidden rounded">
-                                  <button
-                                    className="px-2 py-0.5 text-[11px] bg-blue-700 hover:bg-blue-600"
-                                    onClick={(e) => { e.stopPropagation(); openEditAsset(a); }}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    className="px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const useCountTokens = (tokens || []).filter((t) => t.assetId === a.id).length;
-                                      const countInObjects = ['background', 'base', 'sky'].reduce(
-                                        (acc, l) => acc + (objects?.[l] || []).filter((o) => o.assetId === a.id).length,
-                                        0
-                                      );
-                                      if (a.kind === 'token' && useCountTokens > 0) {
-                                        alert(`Cannot delete token asset in use by ${useCountTokens} token(s). Delete tokens first.`);
-                                        return;
-                                      }
-                                      if ((a.kind === 'image' || a.kind === 'natural') && countInObjects > 0) {
-                                        alert(`Cannot delete image asset in use by ${countInObjects} object(s). Delete stamps first.`);
-                                        return;
-                                      }
-                                      if (confirm(`Delete asset "${a.name}"?`)) {
-                                        setAssets((prev) => prev.filter((x) => x.id !== a.id));
-                                        const next = assets.find(
-                                          (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? (x.kind === 'token' || x.kind === 'tokenGroup') : assetGroup === 'natural' ? x.kind === 'natural' : true)
-                                        );
-                                        if (next) setSelectedAssetId(next.id);
-                                      }
-                                    }}
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              ) : null
-                            ) : (
-                              selectedAssetId === a.id ? (
-                                <div className="absolute top-1 right-1 inline-flex overflow-hidden rounded">
-                                  <button
-                                    className="px-2 py-0.5 text-[11px] bg-blue-700 hover:bg-blue-600"
-                                    onClick={(e) => { e.stopPropagation(); openEditAsset(a); }}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    className="px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const useCountTokens = (tokens || []).filter((t) => t.assetId === a.id).length;
-                                      const countInObjects = ['background', 'base', 'sky'].reduce(
-                                        (acc, l) => acc + (objects?.[l] || []).filter((o) => o.assetId === a.id).length,
-                                        0
-                                      );
-                                      if (a.kind === 'token' && useCountTokens > 0) {
-                                        alert(`Cannot delete token asset in use by ${useCountTokens} token(s). Delete tokens first.`);
-                                        return;
-                                      }
-                                      if ((a.kind === 'image' || a.kind === 'natural') && countInObjects > 0) {
-                                        alert(`Cannot delete image asset in use by ${countInObjects} object(s). Delete stamps first.`);
-                                        return;
-                                      }
-                                      if (confirm(`Delete asset \"${a.name}\"?`)) {
-                                        setAssets((prev) => prev.filter((x) => x.id !== a.id));
-                                        const next = assets.find(
-                                          (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? (x.kind === 'token' || x.kind === 'tokenGroup') : assetGroup === 'natural' ? x.kind === 'natural' : true)
-                                        );
-                                        if (next) setSelectedAssetId(next.id);
-                                      }
-                                    }}
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              ) : null
-                            )
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              </div>
+              <AssetPanel
+                assetGroup={assetGroup}
+                setAssetGroup={setAssetGroup}
+                showAssetKindMenu={showAssetKindMenu}
+                setShowAssetKindMenu={setShowAssetKindMenu}
+                showAssetPreviews={showAssetPreviews}
+                setShowAssetPreviews={setShowAssetPreviews}
+                assets={assets}
+                selectedAssetId={selectedAssetId}
+                selectedAsset={selectedAsset}
+                selectAsset={selectAsset}
+                tokens={tokens}
+                objects={objects}
+                creatorOpen={creatorOpen}
+                creatorKind={creatorKind}
+                editingAsset={editingAsset}
+                openCreator={openCreator}
+                setCreatorOpen={setCreatorOpen}
+                setEditingAsset={setEditingAsset}
+                handleCreatorCreate={handleCreatorCreate}
+                updateAssetById={updateAssetById}
+                setAssets={setAssets}
+                setSelectedAssetId={setSelectedAssetId}
+              />
 
               {/* INTERACTION MODE (two-row contextual) */}
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-bold text-sm">Interaction</h3>
-                  <span className="text-[10px] bg-gray-700 rounded px-1 py-0.5">Press V to toggle</span>
                 </div>
-                {/* Row 1: Mode segmented */}
+                {/* Row 1: Mode segmented (+ Zoom Tool) */}
                 <div className="inline-flex items-center gap-0 bg-gray-700/40 border border-gray-600 rounded overflow-hidden">
-                  <button onClick={() => setInteractionMode("draw")} className={`px-3 py-1 text-sm ${interactionMode === "draw" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}>Draw</button>
-                  <button onClick={() => setInteractionMode("select")} className={`px-3 py-1 text-sm ${interactionMode === "select" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}>Select</button>
+                  <button
+                    onClick={() => { setZoomToolActive(false); setInteractionMode("draw"); }}
+                    title="Draw"
+                    aria-label="Draw"
+                    className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && interactionMode === "draw") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                  >
+                    <BrushIcon className="w-4 h-4" />
+                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Draw</div>
+                  </button>
+                  <button
+                    onClick={() => { setZoomToolActive(false); setInteractionMode("select"); }}
+                    title="Select"
+                    aria-label="Select"
+                    className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && interactionMode === "select") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                  >
+                    <CursorIcon className="w-4 h-4" />
+                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Select</div>
+                  </button>
+                  <button
+                    onClick={() => setZoomToolActive((v)=> !v)}
+                    title="Zoom Tool: drag a rectangle to zoom"
+                    aria-label="Zoom Tool"
+                    className={`px-3 py-1 text-sm relative group ${zoomToolActive ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                  >
+                    <ZoomIcon className="w-4 h-4" />
+                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Zoom</div>
+                  </button>
                 </div>
                 {/* Row 2: Context */}
                 <div className="mt-2 flex items-center gap-2">
@@ -1526,34 +1413,47 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                         <div className="inline-flex items-center gap-0 bg-gray-700/40 border border-gray-600 rounded overflow-hidden">
                           <button
                             onClick={() => setEngine("grid")}
-                            className={`px-3 py-1 text-sm ${engine === "grid" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                            title="Grid"
+                            aria-label="Grid"
+                            className={`px-3 py-1 text-sm relative group ${engine === "grid" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
                           >
-                            Grid
+                            <GridIcon className="w-4 h-4" />
+                            <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Grid</div>
                           </button>
                           <button
                             onClick={() => setEngine("canvas")}
-                            className={`px-3 py-1 text-sm ${engine === "canvas" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                            title="Canvas"
+                            aria-label="Canvas"
+                            className={`px-3 py-1 text-sm relative group ${engine === "canvas" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
                           >
-                            Canvas
+                            <CanvasIcon className="w-4 h-4" />
+                            <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Canvas</div>
                           </button>
                         </div>
                       )}
                       <button
                         onClick={() => setIsErasing((s) => !s)}
-                        className={`px-3 py-1 text-sm border rounded ${isErasing ? 'bg-red-700 border-red-600' : 'bg-gray-700/40 border-gray-600'}`}
-                        title="Erase tiles/objects (grid) or paint erase (canvas)"
+                        className={`px-3 py-1 text-sm border rounded relative group ${isErasing ? 'bg-red-700 border-red-600' : 'bg-gray-700/40 border-gray-600'}`}
+                        title={`Eraser: ${isErasing ? 'On' : 'Off'}`}
+                        aria-label={`Eraser: ${isErasing ? 'On' : 'Off'}`}
                       >
-                        {isErasing ? 'Erasing' : 'Draw'}
+                        <EraserIcon className="w-4 h-4" />
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Eraser: {isErasing ? 'On' : 'Off'}</div>
                       </button>
                     </>
                   ) : (
                     <button
                       onClick={() => setSaveDialogOpen(true)}
                       disabled={((selectedObjsList?.length||0) === 0) && ((selectedTokensList?.length||0) === 0)}
-                      className={`px-3 py-1 text-sm border rounded ${ (((selectedObjsList?.length||0) > 0) || ((selectedTokensList?.length||0) > 0)) ? 'bg-amber-600 border-amber-500 hover:bg-amber-500' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
+                      className={`px-3 py-1 text-sm border rounded relative group ${ (((selectedObjsList?.length||0) > 0) || ((selectedTokensList?.length||0) > 0)) ? 'bg-amber-600 border-amber-500 hover:bg-amber-500' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
                       title="Save selected as a new asset"
+                      aria-label="Save"
                     >
-                      Save
+                      <span className="inline-flex items-center gap-2">
+                        <SaveIcon className="w-4 h-4" />
+                        <span className="text-xs">Save</span>
+                      </span>
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Save</div>
                     </button>
                   )}
                 </div>
@@ -1747,43 +1647,16 @@ export default function MapBuilder({ goBack, session, onLogout }) {
             }}
           >
             {/* Top layer bar (slim, horizontal) */}
-            <div className="sticky top-0 left-0 right-0 z-40 bg-gray-800/80 text-white backdrop-blur px-2 py-1 border-b border-gray-700">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] uppercase opacity-80 mr-1">Layers</span>
-                <button className="px-2 py-0.5 text-[12px] bg-gray-700 rounded" onClick={showAllLayers}>Show All</button>
-                <button className="px-2 py-0.5 text-[12px] bg-gray-700 rounded" onClick={hideAllLayers}>Hide All</button>
-                <div className="h-4 w-px bg-gray-600 mx-1" />
-                {LAYERS.map((l) => (
-                  <div key={`layerbar-${l}`} className="flex items-center gap-1">
-                    <button
-                      onClick={() => setCurrentLayer(l)}
-                      className={`px-2 py-0.5 text-[12px] rounded ${currentLayer === l ? 'bg-blue-600' : 'bg-gray-700'}`}
-                      title={`Edit ${l}`}
-                    >
-                      {l}
-                    </button>
-                    <button
-                      onClick={() => toggleLayerVisibility(l)}
-                      className={`px-2 py-0.5 text-[12px] rounded ${layerVisibility[l] ? 'bg-gray-600' : 'bg-gray-700'}`}
-                      title={layerVisibility[l] ? 'Visible' : 'Hidden'}
-                    >
-                      {layerVisibility[l] ? <EyeIcon /> : <EyeOffIcon />}
-                    </button>
-                  </div>
-                ))}
-                <div className="h-4 w-px bg-gray-600 mx-1" />
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setTokensVisible((v) => !v)}
-                    className={`px-2 py-0.5 text-[12px] rounded flex items-center gap-1 ${tokensVisible ? 'bg-gray-600' : 'bg-gray-700'}`}
-                    title={tokensVisible ? 'Hide tokens layer' : 'Show tokens layer'}
-                  >
-                    <span>tokens</span>
-                    {tokensVisible ? <EyeIcon /> : <EyeOffIcon />}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <LayerBar
+              currentLayer={currentLayer}
+              setCurrentLayer={setCurrentLayer}
+              layerVisibility={layerVisibility}
+              toggleLayerVisibility={toggleLayerVisibility}
+              showAllLayers={showAllLayers}
+              hideAllLayers={hideAllLayers}
+              tokensVisible={tokensVisible}
+              setTokensVisible={setTokensVisible}
+            />
             <div className="min-w-full min-h-full flex justify-center items-start md:items-center p-6">
               <Grid
                 maps={maps}
@@ -1804,6 +1677,9 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                 interactionMode={interactionMode}
                 tileSize={tileSize}
                 scrollRef={scrollRef}
+                contentRef={gridContentRef}
+                zoomToolActive={zoomToolActive}
+                onZoomToolRect={handleZoomToRect}
                 canvasRefs={canvasRefs}
                 currentLayer={currentLayer}
                 layerVisibility={layerVisibility}
@@ -1847,6 +1723,15 @@ export default function MapBuilder({ goBack, session, onLogout }) {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
 
 
 

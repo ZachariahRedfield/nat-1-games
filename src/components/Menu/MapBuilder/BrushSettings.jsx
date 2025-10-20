@@ -29,7 +29,7 @@ export default function BrushSettings({
   if (kind === 'canvas') {
     return (
       <div>
-        <h3 className="font-bold text-sm mb-2">{titleOverride || 'Canvas Settings'}</h3>
+        <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
         <CanvasBrushControls
           brushSize={brushSize}
           setBrushSize={setBrushSize}
@@ -51,7 +51,7 @@ export default function BrushSettings({
   if (kind === 'natural') {
     return (
       <div>
-        <h3 className="font-bold text-sm mb-2">{titleOverride || 'Natural Brush Settings'}</h3>
+        <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
         <div className="grid gap-2">
           <label className="block text-xs">Size (tiles)</label>
           <input
@@ -192,7 +192,7 @@ export default function BrushSettings({
   // default: grid
   return (
     <div>
-      <h3 className="font-bold text-sm mb-2">{titleOverride || 'Grid Brush Settings'}</h3>
+      <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
       <div className="grid gap-2">
         <label className="block text-xs">Size (tiles)</label>
         <input
