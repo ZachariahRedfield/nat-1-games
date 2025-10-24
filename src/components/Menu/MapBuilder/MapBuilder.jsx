@@ -105,6 +105,79 @@ export default function MapBuilder({ goBack, session, onLogout }) {
   const scrollRef = useRef(null);
   const gridContentRef = useRef(null);
   const [zoomToolActive, setZoomToolActive] = useState(false);
+  // Zoom scrubber (stationary slider)
+  const zoomScrubRef = useRef(null);
+  const zoomScrubStartX = useRef(0);
+  const zoomScrubLastX = useRef(0);
+  const zoomScrubTimerRef = useRef(null);
+  const zoomScrubPosRef = useRef(0);
+  const [zoomScrubPos, setZoomScrubPos] = useState(0); // -1..1 for visual offset
+  React.useEffect(() => { zoomScrubPosRef.current = zoomScrubPos; }, [zoomScrubPos]);
+  const handleZoomScrubStart = (e) => {
+    e.preventDefault();
+    const clientY = e.clientY ?? (e.touches && e.touches[0]?.clientY) ?? 0;
+    zoomScrubStartX.current = clientY;
+    zoomScrubLastX.current = clientY;
+
+    const updateVisualPos = (cy) => {
+      const rect = zoomScrubRef.current?.getBoundingClientRect();
+      if (!rect) return 0;
+      const centerY = rect.top + rect.height / 2;
+      const half = Math.max(1, rect.height / 2);
+      const n = (cy - centerY) / half;
+      const clamped = Math.max(-1, Math.min(1, n));
+      setZoomScrubPos(clamped);
+      zoomScrubPosRef.current = clamped;
+      return clamped;
+    };
+
+    updateVisualPos(clientY);
+    // Start continuous zoom interval (constant rate) while displaced
+    const startInterval = () => {
+      if (zoomScrubTimerRef.current) return;
+      zoomScrubTimerRef.current = window.setInterval(() => {
+        const pos = zoomScrubPosRef.current || 0;
+        if (pos > 0) {
+          // Zoom in at constant step
+          setTileSize((s) => {
+            let next = s + 2; // smaller increment
+            next = Math.max(8, Math.min(128, next));
+            return Math.round(next / 2) * 2;
+          });
+        } else if (pos < 0) {
+          // Zoom out at constant step
+          setTileSize((s) => {
+            let next = s - 2; // smaller increment
+            next = Math.max(8, Math.min(128, next));
+            return Math.round(next / 2) * 2;
+          });
+        }
+      }, 300);
+    };
+    const stopInterval = () => {
+      if (zoomScrubTimerRef.current) {
+        clearInterval(zoomScrubTimerRef.current);
+        zoomScrubTimerRef.current = null;
+      }
+    };
+
+    startInterval();
+
+    const onMove = (ev) => {
+      const cy = ev.clientY ?? (ev.touches && ev.touches[0]?.clientY) ?? zoomScrubLastX.current;
+      zoomScrubLastX.current = cy;
+      updateVisualPos(cy);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+       stopInterval();
+      setZoomScrubPos(0);
+      zoomScrubPosRef.current = 0;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   // --- draw mode + eraser ---
   // Unified flow: choose asset (what), then engine (how)
@@ -1311,36 +1384,59 @@ export default function MapBuilder({ goBack, session, onLogout }) {
               {/* GRID / ZOOM */}
               <div className="mb-2">
                 <h3 className="font-bold text-sm mb-2">Grid</h3>
-                <div className="grid grid-cols-3 gap-2 items-end">
-                  <label className="text-xs">Rows
+                <div className="flex items-start justify-between gap-4">
+                  {/* Row/Col + Apply group (left) */}
+                  <div className="inline-grid grid-cols-[auto_auto] gap-x-1 gap-y-1 items-center">
+                    <div className="text-xs text-gray-300">Row</div>
                     <NumericInput
                       value={parseInt(rowsInput) || 0}
                       min={1}
                       max={200}
                       step={1}
                       onCommit={(n)=> setRowsInput(String(n))}
-                      className="w-full p-1 text-black rounded"
+                      className="box-border w-16 px-1 py-0.5 text-xs text-black rounded"
                     />
-                  </label>
-                  <label className="text-xs">Cols
+                    <div className="text-xs text-gray-300">Col</div>
                     <NumericInput
                       value={parseInt(colsInput) || 0}
                       min={1}
                       max={200}
                       step={1}
                       onCommit={(n)=> setColsInput(String(n))}
-                      className="w-full p-1 text-black rounded"
+                      className="box-border w-16 px-1 py-0.5 text-xs text-black rounded"
                     />
-                  </label>
-                  <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={updateGridSizes}>Apply</button>
-                </div>
-                <div className="mt-3">
-                  <label className="block text-xs mb-1">Zoom</label>
-                  <div className="flex items-center gap-2">
-                    <button className="px-2 py-1 bg-gray-700 rounded" onClick={()=> setTileSize((s)=> Math.max(8, s-4))}>-</button>
-                    <input type="range" min="8" max="128" step="4" value={tileSize} onChange={(e)=> setTileSize(parseInt(e.target.value)||32)} className="flex-1" />
-                    <button className="px-2 py-1 bg-gray-700 rounded" onClick={()=> setTileSize((s)=> Math.min(128, s+4))}>+</button>
-                    <div className="text-xs w-12 text-right">{Math.round((tileSize/32)*100)}%</div>
+                    <div></div>
+                    <button className="box-border w-16 px-1 py-0.5 bg-blue-600 hover:bg-blue-500 rounded text-xs" onClick={updateGridSizes}>Apply</button>
+                  </div>
+
+                  {/* Zoom group (right) */}
+                  <div className="flex items-start gap-2 ml-auto -mt-3">
+                    {/* Label above percentage (left of bar) */}
+                    <div className="flex flex-col items-end">
+                      <div className="text-xs mb-0.5">Zoom</div>
+                      <div className="text-xs w-12 text-right">{Math.round((tileSize/32)*100)}%</div>
+                    </div>
+                    {/* Scrubber and +/- vertically (rightmost, closer to edge) */}
+                    <div className="flex flex-col items-end gap-1">
+                      <button className="px-1.5 py-0.5 text-xs bg-gray-700 rounded" onClick={()=> setTileSize((s)=> Math.max(8, Math.round((s-2)/2)*2))}>-</button>
+                      <div
+                        ref={zoomScrubRef}
+                        onMouseDown={handleZoomScrubStart}
+                        className="relative w-3 h-12 bg-gray-700 rounded cursor-ns-resize select-none"
+                        title="Drag up/down to adjust zoom"
+                      >
+                        {/* center mark */}
+                        <div className="absolute inset-x-0 top-1/2 h-px bg-gray-500/70" />
+                        {/* handle */}
+                        <div
+                          className="absolute left-0 right-0 top-1/2"
+                          style={{ transform: `translateY(${(zoomScrubPos||0)*22}px) translateY(-50%)` }}
+                        >
+                          <div className="w-3 h-2 bg-gray-300 rounded-sm shadow-inner ml-auto" />
+                        </div>
+                      </div>
+                      <button className="px-1.5 py-0.5 text-xs bg-gray-700 rounded" onClick={()=> setTileSize((s)=> Math.min(128, Math.round((s+2)/2)*2))}>+</button>
+                    </div>
                   </div>
                 </div>
               </div>
