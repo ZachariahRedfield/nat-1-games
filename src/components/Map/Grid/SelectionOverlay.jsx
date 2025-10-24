@@ -48,6 +48,35 @@ export default function SelectionOverlay({
                 />
               );
             })}
+            {/* corner handles (visual only; input handled in Grid) */}
+            {arr.map((sel) => {
+              const left = sel.col * tileSize;
+              const top = sel.row * tileSize;
+              const w = sel.wTiles * tileSize;
+              const h = sel.hTiles * tileSize;
+              const sz = 8; // px handle square
+              const half = Math.floor(sz / 2);
+              const corners = [
+                { key: 'nw', x: left, y: top },
+                { key: 'ne', x: left + w, y: top },
+                { key: 'sw', x: left, y: top + h },
+                { key: 'se', x: left + w, y: top + h },
+              ];
+              return corners.map((c) => (
+                <div
+                  key={`hdl-${sel.id}-${c.key}`}
+                  className="absolute bg-emerald-400 shadow pointer-events-none"
+                  style={{
+                    left: c.x - half,
+                    top: c.y - half,
+                    width: sz,
+                    height: sz,
+                    zIndex: 12 + i * 20,
+                    borderRadius: 2,
+                  }}
+                />
+              ));
+            })}
           </React.Fragment>
         );
       })}

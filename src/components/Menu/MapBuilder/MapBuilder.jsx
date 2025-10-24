@@ -190,6 +190,8 @@ export default function MapBuilder({ goBack, session, onLogout }) {
     base: true,
     sky: false, // start with sky layer hidden
   });
+  // Visual grid line toggle
+  const [showGridLines, setShowGridLines] = useState(true);
 
   // ====== ASSETS (WHAT) ======
   // Asset: { id, name, kind: 'image'|'color', src?, aspectRatio?, defaultEngine, allowedEngines, defaults:{...}, img? }
@@ -322,7 +324,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
     flipY: false,
     opacity: 1,
     snapToGrid: true, // engine toggle essentially
-    snapStep: 0.25,
+    snapStep: 1,
     smartAdjacency: true, // neighbor-aware alignment for grid stamps
   });
 
@@ -1410,7 +1412,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                   </div>
 
                   {/* Zoom group (right) */}
-                  <div className="flex items-start gap-2 ml-auto -mt-3">
+                  <div className="flex items-start gap-2 ml-auto -mt-4">
                     {/* Label above percentage (left of bar) */}
                     <div className="flex flex-col items-end">
                       <div className="text-xs mb-0.5">Zoom</div>
@@ -1752,6 +1754,8 @@ export default function MapBuilder({ goBack, session, onLogout }) {
               hideAllLayers={hideAllLayers}
               tokensVisible={tokensVisible}
               setTokensVisible={setTokensVisible}
+              showGridLines={showGridLines}
+              setShowGridLines={setShowGridLines}
             />
             <div className="min-w-full min-h-full flex justify-center items-start md:items-center p-6">
               <Grid
@@ -1799,6 +1803,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                 removeTokenById={removeTokenById}
                 updateTokenById={updateTokenById}
                 onTokenSelectionChange={handleTokenSelectionChange}
+                showGridLines={showGridLines}
               />
             </div>
           </div>

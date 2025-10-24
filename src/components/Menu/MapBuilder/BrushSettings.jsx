@@ -65,6 +65,38 @@ export default function BrushSettings({
             }}
           />
 
+          {/* Snap to grid toggle for natural placement */}
+          <label className="text-xs inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!!gridSettings.snapToGrid}
+              onChange={(e) => {
+                snapshotSettings?.();
+                setGridSettings((s) => ({ ...s, snapToGrid: e.target.checked }));
+              }}
+            />
+            Snap to Grid
+          </label>
+          {/* Step size for free placement (when Snap to Grid is off) */}
+          {!gridSettings.snapToGrid && (
+            <div className="grid grid-cols-2 gap-2 items-center">
+              <label className="text-xs">Grid Step (tiles)</label>
+              <NumericInput
+                value={gridSettings.snapStep ?? 1}
+                min={0.05}
+                max={1}
+                step={0.05}
+                className="w-full p-1 text-black rounded"
+                onCommit={(v) => {
+                  const n = Math.max(0.05, Math.min(1, parseFloat(v)));
+                  snapshotSettings?.();
+                  setGridSettings((s) => ({ ...s, snapStep: n }));
+                }}
+                title="Used when Snap to Grid is off"
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2 mt-2">
             <label className="text-xs inline-flex items-center gap-2">
               <input
@@ -210,7 +242,7 @@ export default function BrushSettings({
           <div className="grid grid-cols-2 gap-2 items-center">
             <label className="text-xs">Grid Step (tiles)</label>
             <NumericInput
-              value={gridSettings.snapStep ?? 0.25}
+              value={gridSettings.snapStep ?? 1}
               min={0.05}
               max={1}
               step={0.05}

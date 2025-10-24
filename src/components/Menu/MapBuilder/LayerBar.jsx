@@ -11,6 +11,8 @@ export default function LayerBar({
   hideAllLayers,
   tokensVisible,
   setTokensVisible,
+  showGridLines,
+  setShowGridLines,
 }) {
   return (
     <div className="sticky top-0 left-0 right-0 z-40 bg-gray-800/80 text-white backdrop-blur px-2 py-1 border-b border-gray-700">
@@ -48,8 +50,18 @@ export default function LayerBar({
             {tokensVisible ? <EyeIcon /> : <EyeOffIcon />}
           </button>
         </div>
+        <div className="h-4 w-px bg-gray-600 mx-1" />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowGridLines((v) => !v)}
+            className={`px-2 py-0.5 text-[12px] rounded flex items-center gap-1 ${showGridLines ? 'bg-gray-600' : 'bg-gray-700'}`}
+            title={showGridLines ? 'Hide grid lines' : 'Show grid lines'}
+          >
+            <span>grid</span>
+            {showGridLines ? <EyeIcon /> : <EyeOffIcon />}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
-

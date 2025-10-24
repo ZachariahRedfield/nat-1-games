@@ -43,6 +43,7 @@ export default function Grid({
   tokenHUDVisible = true,
   tokenHUDShowInitiative = false,
   assetGroup = 'image',
+  showGridLines = true,
 
   // ===== Props: view zoom tool
   zoomToolActive = false,
@@ -205,6 +206,34 @@ export default function Grid({
     return null;
   };
   const getTokenById = (id) => tokens.find((t) => t.id === id);
+
+  // ===== Resize handle hit-test (single-object only)
+  const getSelectedObject = () => {
+    if (selectedObjId) return getObjectById(currentLayer, selectedObjId);
+    if (selectedObjIds && selectedObjIds.length === 1) return getObjectById(currentLayer, selectedObjIds[0]);
+    return null;
+  };
+
+  const hitResizeHandle = (xCss, yCss) => {
+    const sel = getSelectedObject();
+    if (!sel) return null;
+    const left = sel.col * tileSize;
+    const top = sel.row * tileSize;
+    const w = sel.wTiles * tileSize;
+    const h = sel.hTiles * tileSize;
+    const sz = 10; // hit box size (px) around corners
+    const within = (cx, cy) => Math.abs(xCss - cx) <= sz && Math.abs(yCss - cy) <= sz;
+    const corners = [
+      { corner: 'nw', x: left, y: top },
+      { corner: 'ne', x: left + w, y: top },
+      { corner: 'sw', x: left, y: top + h },
+      { corner: 'se', x: left + w, y: top + h },
+    ];
+    for (const c of corners) {
+      if (within(c.x, c.y)) return { sel, corner: c.corner };
+    }
+    return null;
+  };
 
   // ===== CANVAS BRUSH (free brush; image tip or color disc)
   const paintTipAt = (cssPt) => {
@@ -628,6 +657,28 @@ export default function Grid({
     const yCss = e.clientY - rect.top;
     setMousePos({ x: xCss, y: yCss });
 
+    // Corner resize handles should work regardless of interaction mode
+    const cornerHit = hitResizeHandle(xCss, yCss);
+    if (cornerHit) {
+      onBeginObjectStroke?.(currentLayer);
+      const o = cornerHit.sel;
+      const anchor = (() => {
+        if (cornerHit.corner === 'nw') return { row: o.row + o.hTiles, col: o.col + o.wTiles };
+        if (cornerHit.corner === 'ne') return { row: o.row + o.hTiles, col: o.col };
+        if (cornerHit.corner === 'sw') return { row: o.row, col: o.col + o.wTiles };
+        return { row: o.row, col: o.col }; // 'se'
+      })();
+      dragRef.current = {
+        kind: 'resize-obj',
+        id: o.id,
+        anchorRow: anchor.row,
+        anchorCol: anchor.col,
+        corner: cornerHit.corner,
+      };
+      e.target.setPointerCapture?.(e.pointerId);
+      return;
+    }
+
     let rowRaw = (yCss / cssHeight) * rows;
     let colRaw = (xCss / cssWidth) * cols;
     if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
@@ -649,6 +700,29 @@ export default function Grid({
 
     // ===== SELECT MODE =====
     if (interactionMode === "select") {
+      // Check for resize handle hit when a single object is selected
+      const hit = hitResizeHandle(xCss, yCss);
+      if (hit) {
+        onBeginObjectStroke?.(currentLayer);
+        // Anchor is opposite corner
+        const o = hit.sel;
+        const anchor = (() => {
+          if (hit.corner === 'nw') return { row: o.row + o.hTiles, col: o.col + o.wTiles };
+          if (hit.corner === 'ne') return { row: o.row + o.hTiles, col: o.col };
+          if (hit.corner === 'sw') return { row: o.row, col: o.col + o.wTiles };
+          return { row: o.row, col: o.col }; // 'se'
+        })();
+        dragRef.current = {
+          kind: 'resize-obj',
+          id: o.id,
+          anchorRow: anchor.row,
+          anchorCol: anchor.col,
+          corner: hit.corner,
+        };
+        // ensure pointer capture for smooth resize
+        e.target.setPointerCapture?.(e.pointerId);
+        return;
+      }
       const multi = e.shiftKey || e.ctrlKey || e.metaKey;
       if (assetGroup === 'token') {
         const hitTok = getTopMostTokenAt(Math.floor(row), Math.floor(col));
@@ -778,6 +852,40 @@ export default function Grid({
     if (!mouseDownRef.current) return;
     if (!layerIsVisible) return;
 
+    // Resize drag (runs before select-mode branch)
+    if (dragRef.current && dragRef.current.kind === 'resize-obj') {
+      const d = dragRef.current;
+      let rowRaw = (yCss / cssHeight) * rows;
+      let colRaw = (xCss / cssWidth) * cols;
+      if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
+        rowRaw = quantize(rowRaw, gridSettings.snapStep);
+        colRaw = quantize(colRaw, gridSettings.snapStep);
+      }
+      const pr = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
+      const pc = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
+
+      let topRow = Math.min(d.anchorRow, pr);
+      let leftCol = Math.min(d.anchorCol, pc);
+      let bottomRow = Math.max(d.anchorRow, pr);
+      let rightCol = Math.max(d.anchorCol, pc);
+      let newH = Math.max(1, Math.round(bottomRow - topRow));
+      let newW = Math.max(1, Math.round(rightCol - leftCol));
+
+      topRow = clamp(topRow, 0, Math.max(0, rows - newH));
+      leftCol = clamp(leftCol, 0, Math.max(0, cols - newW));
+
+      const o = getObjectById(currentLayer, d.id);
+      if (o) {
+        updateObjectById(currentLayer, o.id, {
+          row: topRow,
+          col: leftCol,
+          wTiles: newW,
+          hTiles: newH,
+        });
+      }
+      return;
+    }
+
     // SELECT MODE drag
     if (interactionMode === "select") {
       let rowRaw = (yCss / cssHeight) * rows;
@@ -820,6 +928,8 @@ export default function Grid({
       }
       return; // no stamping while selecting
     }
+
+    
 
     if (engine === "grid") {
     let rowRaw = (yCss / cssHeight) * rows;
@@ -976,11 +1086,23 @@ export default function Grid({
   let cursorStyle = "default";
   if (isPanning || panHotkey) cursorStyle = "grabbing";
   else if (!layerIsVisible) cursorStyle = "not-allowed";
-  else if (interactionMode === "select") cursorStyle = "default";
-  else if (zoomToolActive) cursorStyle = 'zoom-in';
-  else {
-    if (engine === 'grid') cursorStyle = 'cell';
-    else if (engine === 'canvas') cursorStyle = isErasing ? 'crosshair' : 'crosshair';
+  else if (mousePos) {
+    const hit = hitResizeHandle(mousePos.x, mousePos.y);
+    if (hit) {
+      cursorStyle = (hit.corner === 'nw' || hit.corner === 'se') ? 'nwse-resize' : 'nesw-resize';
+    } else if (zoomToolActive) cursorStyle = 'zoom-in';
+    else {
+      if (engine === 'grid') cursorStyle = 'cell';
+      else if (engine === 'canvas') cursorStyle = isErasing ? 'crosshair' : 'crosshair';
+      else cursorStyle = 'default';
+    }
+  } else {
+    if (zoomToolActive) cursorStyle = 'zoom-in';
+    else {
+      if (engine === 'grid') cursorStyle = 'cell';
+      else if (engine === 'canvas') cursorStyle = isErasing ? 'crosshair' : 'crosshair';
+      else cursorStyle = 'default';
+    }
   }
 
   return (
@@ -995,6 +1117,7 @@ export default function Grid({
           cssWidth={cssWidth}
           cssHeight={cssHeight}
           layerVisibility={layerVisibility}
+          showGridLines={showGridLines}
           cellBg={cellBg}
         />
 

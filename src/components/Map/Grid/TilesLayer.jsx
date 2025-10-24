@@ -9,6 +9,7 @@ export default function TilesLayer({
   cssWidth,
   cssHeight,
   layerVisibility,
+  showGridLines = true,
   cellBg,
 }) {
   return (
@@ -37,7 +38,7 @@ export default function TilesLayer({
               rowArr.map((val, ci) => (
                 <div
                   key={`${layer}-${ri}-${ci}`}
-                  className="border border-gray-600"
+                  className={showGridLines ? "border border-gray-600" : ""}
                   style={{
                     width: tileSize,
                     height: tileSize,
@@ -52,4 +53,3 @@ export default function TilesLayer({
     </>
   );
 }
-
