@@ -235,6 +235,26 @@ export default function Grid({
     return null;
   };
 
+  // ===== Rotation ring hit-test (single-object only)
+  const hitRotateRing = (xCss, yCss) => {
+    const sel = getSelectedObject();
+    if (!sel) return null;
+    const cx = (sel.col + sel.wTiles / 2) * tileSize;
+    const cy = (sel.row + sel.hTiles / 2) * tileSize;
+    const rx = (sel.wTiles * tileSize) / 2;
+    const ry = (sel.hTiles * tileSize) / 2;
+    const r = Math.sqrt(rx * rx + ry * ry) + 8;
+    const dx = xCss - cx;
+    const dy = yCss - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const tol = 8; // ring thickness for hit
+    if (dist >= r - tol && dist <= r + tol) {
+      const angle = Math.atan2(dy, dx); // radians
+      return { sel, cx, cy, startAngle: angle };
+    }
+    return null;
+  };
+
   // ===== CANVAS BRUSH (free brush; image tip or color disc)
   const paintTipAt = (cssPt) => {
     const ctx = getActiveCtx();
@@ -679,6 +699,23 @@ export default function Grid({
       return;
     }
 
+    // Rotation ring hit
+    const rotHit = hitRotateRing(xCss, yCss);
+    if (rotHit) {
+      onBeginObjectStroke?.(currentLayer);
+      const o = rotHit.sel;
+      dragRef.current = {
+        kind: 'rotate-obj',
+        id: o.id,
+        cx: rotHit.cx,
+        cy: rotHit.cy,
+        startAngle: rotHit.startAngle,
+        startRot: o.rotation || 0,
+      };
+      e.target.setPointerCapture?.(e.pointerId);
+      return;
+    }
+
     let rowRaw = (yCss / cssHeight) * rows;
     let colRaw = (xCss / cssWidth) * cols;
     if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
@@ -886,6 +923,21 @@ export default function Grid({
       return;
     }
 
+    // Rotate drag (runs before select-mode branch)
+    if (dragRef.current && dragRef.current.kind === 'rotate-obj') {
+      const d = dragRef.current;
+      const angle = Math.atan2(yCss - d.cy, xCss - d.cx);
+      const deltaRad = angle - d.startAngle;
+      const deltaDeg = (deltaRad * 180) / Math.PI;
+      const o = getObjectById(currentLayer, d.id);
+      if (o) {
+        let next = (d.startRot + deltaDeg) % 360;
+        if (next < 0) next += 360;
+        updateObjectById(currentLayer, o.id, { rotation: Math.round(next) });
+      }
+      return;
+    }
+
     // SELECT MODE drag
     if (interactionMode === "select") {
       let rowRaw = (yCss / cssHeight) * rows;
@@ -1084,17 +1136,21 @@ export default function Grid({
   const getAssetById = (id) => assets.find((a) => a.id === id);
   // Decide cursor based on pan/select/visibility
   let cursorStyle = "default";
-  if (isPanning || panHotkey) cursorStyle = "grabbing";
+  if (isPanning || panHotkey || (dragRef.current && dragRef.current.kind === 'rotate-obj')) cursorStyle = "grabbing";
   else if (!layerIsVisible) cursorStyle = "not-allowed";
   else if (mousePos) {
     const hit = hitResizeHandle(mousePos.x, mousePos.y);
     if (hit) {
       cursorStyle = (hit.corner === 'nw' || hit.corner === 'se') ? 'nwse-resize' : 'nesw-resize';
-    } else if (zoomToolActive) cursorStyle = 'zoom-in';
-    else {
-      if (engine === 'grid') cursorStyle = 'cell';
-      else if (engine === 'canvas') cursorStyle = isErasing ? 'crosshair' : 'crosshair';
-      else cursorStyle = 'default';
+    } else {
+      const ring = hitRotateRing(mousePos.x, mousePos.y);
+      if (ring) cursorStyle = 'grab';
+      else if (zoomToolActive) cursorStyle = 'zoom-in';
+      else {
+        if (engine === 'grid') cursorStyle = 'cell';
+        else if (engine === 'canvas') cursorStyle = isErasing ? 'crosshair' : 'crosshair';
+        else cursorStyle = 'default';
+      }
     }
   } else {
     if (zoomToolActive) cursorStyle = 'zoom-in';

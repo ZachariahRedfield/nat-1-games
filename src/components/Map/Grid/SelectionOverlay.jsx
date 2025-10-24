@@ -77,6 +77,31 @@ export default function SelectionOverlay({
                 />
               ));
             })}
+
+            {/* rotation ring (single selection only) */}
+            {arr.length === 1 && arr.map((sel) => {
+              const cx = (sel.col + sel.wTiles / 2) * tileSize;
+              const cy = (sel.row + sel.hTiles / 2) * tileSize;
+              const rx = (sel.wTiles * tileSize) / 2;
+              const ry = (sel.hTiles * tileSize) / 2;
+              const r = Math.sqrt(rx * rx + ry * ry) + 8; // a bit outside corners
+              const d = r * 2;
+              return (
+                <div
+                  key={`rot-ring-${sel.id}`}
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: cx - r,
+                    top: cy - r,
+                    width: d,
+                    height: d,
+                    zIndex: 12 + i * 20,
+                    borderRadius: '50%',
+                    boxShadow: '0 0 0 2px rgba(59,130,246,0.55) inset', // blue-ish ring
+                  }}
+                />
+              );
+            })}
           </React.Fragment>
         );
       })}
