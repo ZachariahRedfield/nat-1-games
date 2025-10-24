@@ -206,6 +206,11 @@ export default function Grid({
     return null;
   };
   const getTokenById = (id) => tokens.find((t) => t.id === id);
+  const getSelectedToken = () => {
+    if (selectedTokenId) return getTokenById(selectedTokenId);
+    if (selectedTokenIds && selectedTokenIds.length === 1) return getTokenById(selectedTokenIds[0]);
+    return null;
+  };
 
   // ===== Resize handle hit-test (single-object only)
   const getSelectedObject = () => {
@@ -250,6 +255,47 @@ export default function Grid({
     const tol = 8; // ring thickness for hit
     if (dist >= r - tol && dist <= r + tol) {
       const angle = Math.atan2(dy, dx); // radians
+      return { sel, cx, cy, startAngle: angle };
+    }
+    return null;
+  };
+
+  // ===== Token handle/ring hit-tests (single-token only)
+  const hitTokenResizeHandle = (xCss, yCss) => {
+    const sel = getSelectedToken();
+    if (!sel) return null;
+    const left = sel.col * tileSize;
+    const top = sel.row * tileSize;
+    const w = (sel.wTiles || 1) * tileSize;
+    const h = (sel.hTiles || 1) * tileSize;
+    const sz = 10; // px
+    const within = (cx, cy) => Math.abs(xCss - cx) <= sz && Math.abs(yCss - cy) <= sz;
+    const corners = [
+      { corner: 'nw', x: left, y: top },
+      { corner: 'ne', x: left + w, y: top },
+      { corner: 'sw', x: left, y: top + h },
+      { corner: 'se', x: left + w, y: top + h },
+    ];
+    for (const c of corners) {
+      if (within(c.x, c.y)) return { sel, corner: c.corner };
+    }
+    return null;
+  };
+
+  const hitTokenRotateRing = (xCss, yCss) => {
+    const sel = getSelectedToken();
+    if (!sel) return null;
+    const cx = (sel.col + (sel.wTiles || 1) / 2) * tileSize;
+    const cy = (sel.row + (sel.hTiles || 1) / 2) * tileSize;
+    const rx = ((sel.wTiles || 1) * tileSize) / 2;
+    const ry = ((sel.hTiles || 1) * tileSize) / 2;
+    const r = Math.sqrt(rx * rx + ry * ry) + 8;
+    const dx = xCss - cx;
+    const dy = yCss - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const tol = 8;
+    if (dist >= r - tol && dist <= r + tol) {
+      const angle = Math.atan2(dy, dx);
       return { sel, cx, cy, startAngle: angle };
     }
     return null;
@@ -699,6 +745,22 @@ export default function Grid({
       return;
     }
 
+    // Token corner resize
+    const tokenCorner = hitTokenResizeHandle(xCss, yCss);
+    if (tokenCorner) {
+      onBeginTokenStroke?.();
+      const t = tokenCorner.sel;
+      const anchorT = (() => {
+        if (tokenCorner.corner === 'nw') return { row: t.row + (t.hTiles || 1), col: t.col + (t.wTiles || 1) };
+        if (tokenCorner.corner === 'ne') return { row: t.row + (t.hTiles || 1), col: t.col };
+        if (tokenCorner.corner === 'sw') return { row: t.row, col: t.col + (t.wTiles || 1) };
+        return { row: t.row, col: t.col };
+      })();
+      dragRef.current = { kind: 'resize-token', id: t.id, anchorRow: anchorT.row, anchorCol: anchorT.col, corner: tokenCorner.corner };
+      e.target.setPointerCapture?.(e.pointerId);
+      return;
+    }
+
     // Rotation ring hit
     const rotHit = hitRotateRing(xCss, yCss);
     if (rotHit) {
@@ -712,6 +774,16 @@ export default function Grid({
         startAngle: rotHit.startAngle,
         startRot: o.rotation || 0,
       };
+      e.target.setPointerCapture?.(e.pointerId);
+      return;
+    }
+
+    // Token rotation ring hit
+    const tokRot = hitTokenRotateRing(xCss, yCss);
+    if (tokRot) {
+      onBeginTokenStroke?.();
+      const t = tokRot.sel;
+      dragRef.current = { kind: 'rotate-token', id: t.id, cx: tokRot.cx, cy: tokRot.cy, startAngle: tokRot.startAngle, startRot: t.rotation || 0 };
       e.target.setPointerCapture?.(e.pointerId);
       return;
     }
@@ -923,6 +995,35 @@ export default function Grid({
       return;
     }
 
+    // Resize token drag
+    if (dragRef.current && dragRef.current.kind === 'resize-token') {
+      const d = dragRef.current;
+      let rowRaw = (yCss / cssHeight) * rows;
+      let colRaw = (xCss / cssWidth) * cols;
+      if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
+        rowRaw = quantize(rowRaw, gridSettings.snapStep);
+        colRaw = quantize(colRaw, gridSettings.snapStep);
+      }
+      const pr = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
+      const pc = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
+
+      let topRow = Math.min(d.anchorRow, pr);
+      let leftCol = Math.min(d.anchorCol, pc);
+      let bottomRow = Math.max(d.anchorRow, pr);
+      let rightCol = Math.max(d.anchorCol, pc);
+      let newH = Math.max(1, Math.round(bottomRow - topRow));
+      let newW = Math.max(1, Math.round(rightCol - leftCol));
+
+      topRow = clamp(topRow, 0, Math.max(0, rows - newH));
+      leftCol = clamp(leftCol, 0, Math.max(0, cols - newW));
+
+      const t = getTokenById(d.id);
+      if (t) {
+        updateTokenById?.(d.id, { row: topRow, col: leftCol, wTiles: newW, hTiles: newH });
+      }
+      return;
+    }
+
     // Rotate drag (runs before select-mode branch)
     if (dragRef.current && dragRef.current.kind === 'rotate-obj') {
       const d = dragRef.current;
@@ -934,6 +1035,21 @@ export default function Grid({
         let next = (d.startRot + deltaDeg) % 360;
         if (next < 0) next += 360;
         updateObjectById(currentLayer, o.id, { rotation: Math.round(next) });
+      }
+      return;
+    }
+
+    // Rotate token drag
+    if (dragRef.current && dragRef.current.kind === 'rotate-token') {
+      const d = dragRef.current;
+      const angle = Math.atan2(yCss - d.cy, xCss - d.cx);
+      const deltaRad = angle - d.startAngle;
+      const deltaDeg = (deltaRad * 180) / Math.PI;
+      const t = getTokenById(d.id);
+      if (t) {
+        let next = (d.startRot + deltaDeg) % 360;
+        if (next < 0) next += 360;
+        updateTokenById?.(d.id, { rotation: Math.round(next) });
       }
       return;
     }
@@ -1136,14 +1252,14 @@ export default function Grid({
   const getAssetById = (id) => assets.find((a) => a.id === id);
   // Decide cursor based on pan/select/visibility
   let cursorStyle = "default";
-  if (isPanning || panHotkey || (dragRef.current && dragRef.current.kind === 'rotate-obj')) cursorStyle = "grabbing";
+  if (isPanning || panHotkey || (dragRef.current && (dragRef.current.kind === 'rotate-obj' || dragRef.current.kind === 'rotate-token'))) cursorStyle = "grabbing";
   else if (!layerIsVisible) cursorStyle = "not-allowed";
   else if (mousePos) {
-    const hit = hitResizeHandle(mousePos.x, mousePos.y);
+    const hit = hitResizeHandle(mousePos.x, mousePos.y) || hitTokenResizeHandle(mousePos.x, mousePos.y);
     if (hit) {
       cursorStyle = (hit.corner === 'nw' || hit.corner === 'se') ? 'nwse-resize' : 'nesw-resize';
     } else {
-      const ring = hitRotateRing(mousePos.x, mousePos.y);
+      const ring = hitRotateRing(mousePos.x, mousePos.y) || hitTokenRotateRing(mousePos.x, mousePos.y);
       if (ring) cursorStyle = 'grab';
       else if (zoomToolActive) cursorStyle = 'zoom-in';
       else {
@@ -1240,6 +1356,33 @@ export default function Grid({
                     />
                   );
                 })}
+                {/* token corner handles */}
+                {ids.map((id) => {
+                  const t = getTokenById(id);
+                  if (!t) return null;
+                  const left = t.col * tileSize;
+                  const top = t.row * tileSize;
+                  const w = (t.wTiles || 1) * tileSize;
+                  const h = (t.hTiles || 1) * tileSize;
+                  const sz = 8; const half = Math.floor(sz/2);
+                  const corners = [
+                    { k:'nw', x:left, y:top },
+                    { k:'ne', x:left+w, y:top },
+                    { k:'sw', x:left, y:top+h },
+                    { k:'se', x:left+w, y:top+h },
+                  ];
+                  return corners.map((c)=> (
+                    <div
+                      key={`thdl-${id}-${c.k}`}
+                      className="absolute bg-cyan-300 shadow pointer-events-none"
+                      style={{ left: c.x - half, top: c.y - half, width: sz, height: sz, zIndex: 9999, borderRadius: 2 }}
+                    />
+                  ));
+                })}
+                {/* token rotation ring (single selection) */}
+                {(() => { if (ids.length !== 1) return null; const t = getTokenById(ids[0]); if (!t) return null; const cx=(t.col + (t.wTiles||1)/2)*tileSize; const cy=(t.row + (t.hTiles||1)/2)*tileSize; const rx=((t.wTiles||1)*tileSize)/2; const ry=((t.hTiles||1)*tileSize)/2; const r=Math.sqrt(rx*rx+ry*ry)+8; const d=r*2; return (
+                  <div key={`trot-${ids[0]}`} className="absolute pointer-events-none" style={{ left: cx - r, top: cy - r, width: d, height: d, zIndex: 10000, borderRadius: '50%', boxShadow: '0 0 0 2px rgba(34,211,238,0.55) inset' }} />
+                ); })()}
               </>
             );
           })()
