@@ -54,6 +54,21 @@ export default function BrushSettings({
         <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
         <div className="grid gap-2">
           <label className="block text-xs">Size (tiles)</label>
+          <div className="flex items-center gap-2 mb-1">
+            <NumericInput
+              value={gridSettings.sizeTiles}
+              min={1}
+              max={20}
+              step={1}
+              className="w-12 px-1 py-0.5 text-xs text-black rounded"
+              onCommit={(v) => {
+                const n = Math.max(1, Math.min(20, Math.round(v)));
+                snapshotSettings?.();
+                setGridSettings((s) => ({ ...s, sizeTiles: n }));
+              }}
+              title="Size in tiles"
+            />
+          </div>
           <input
             type="range"
             min="1"
@@ -84,11 +99,10 @@ export default function BrushSettings({
               <NumericInput
                 value={gridSettings.snapStep ?? 1}
                 min={0.05}
-                max={1}
                 step={0.05}
-                className="w-full p-1 text-black rounded"
+                className="w-16 px-1 py-0.5 text-xs text-black rounded"
                 onCommit={(v) => {
-                  const n = Math.max(0.05, Math.min(1, parseFloat(v)));
+                  const n = Math.max(0.05, parseFloat(v));
                   snapshotSettings?.();
                   setGridSettings((s) => ({ ...s, snapStep: n }));
                 }}
@@ -227,6 +241,16 @@ export default function BrushSettings({
       <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
       <div className="grid gap-2">
         <label className="block text-xs">Size (tiles)</label>
+        <div className="flex items-center gap-2 mb-1">
+          <NumericInput
+            value={gridSettings.sizeTiles}
+            min={1}
+            max={20}
+            step={1}
+            className="w-12 px-1 py-0.5 text-xs text-black rounded"
+            onCommit={(v) => { const n = Math.max(1, Math.min(20, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeTiles: n })); }}
+          />
+        </div>
         <input
           type="range"
           min="1"
@@ -244,14 +268,23 @@ export default function BrushSettings({
             <NumericInput
               value={gridSettings.snapStep ?? 1}
               min={0.05}
-              max={1}
               step={0.05}
-              className="w-full p-1 text-black rounded"
-              onCommit={(v)=> { const n = Math.max(0.05, Math.min(1, parseFloat(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapStep: n })); }}
+              className="w-16 px-1 py-0.5 text-xs text-black rounded"
+              onCommit={(v)=> { const n = Math.max(0.05, parseFloat(v)); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapStep: n })); }}
             />
           </div>
         )}
         <label className="block text-xs">Rotation</label>
+        <div className="flex items-center gap-2 mb-1">
+          <NumericInput
+            value={gridSettings.rotation}
+            min={0}
+            max={359}
+            step={1}
+            className="w-12 px-1 py-0.5 text-xs text-black rounded"
+            onCommit={(v)=> { const n = Math.max(0, Math.min(359, Math.round(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, rotation: n })); }}
+          />
+        </div>
         <input
           type="range"
           min="0"
@@ -287,6 +320,16 @@ export default function BrushSettings({
           </label>
         </div>
         <label className="block text-xs">Opacity</label>
+        <div className="flex items-center gap-2 mb-1">
+          <NumericInput
+            value={gridSettings.opacity}
+            min={0.05}
+            max={1}
+            step={0.05}
+            className="w-12 px-1 py-0.5 text-xs text-black rounded"
+            onCommit={(v)=> { const n = Math.max(0.05, Math.min(1, parseFloat(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, opacity: n })); }}
+          />
+        </div>
         <input
           className="w-full"
           type="range"

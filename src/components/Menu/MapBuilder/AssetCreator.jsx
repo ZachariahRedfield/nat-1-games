@@ -1,5 +1,6 @@
 import React from "react";
 import NumericInput from "../../common/NumericInput";
+import TextCommitInput from "../../common/TextCommitInput";
 
 export default function AssetCreator({
   kind = 'image',
@@ -293,33 +294,33 @@ export default function AssetCreator({
     );
     if (tab === 'text') return (
       <div className="grid gap-2">
-        <label className="text-xs">Text
-          <input className="w-full p-1 text-black rounded" value={labelText} onChange={(e)=>setLabelText(e.target.value)} />
-        </label>
+                <label className="text-xs">Text
+                  <TextCommitInput className="w-full p-1 text-black rounded" value={labelText} onCommit={(v)=> setLabelText(v)} />
+                </label>
         <div className="grid grid-cols-2 gap-2">
           <label className="text-xs">Color
             <input type="color" value={labelColor} onChange={(e)=> setLabelColor(e.target.value)} className="w-full h-8 p-0 border border-gray-500 rounded" />
           </label>
-          <label className="text-xs">Font Size
-            <NumericInput
-              value={labelSize}
-              min={8}
-              max={128}
-              step={1}
-              onCommit={(n)=> setLabelSize(Math.round(n))}
-              className="w-full p-1 text-black rounded"
-            />
-          </label>
-          <label className="text-xs col-span-2">Font Family
-            <input className="w-full p-1 text-black rounded" value={labelFont} onChange={(e)=> setLabelFont(e.target.value)} />
-          </label>
+                <label className="text-xs">Font Size
+                  <NumericInput
+                    value={labelSize}
+                    min={8}
+                    max={128}
+                    step={1}
+                    onCommit={(n)=> setLabelSize(Math.round(n))}
+                    className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                  />
+                </label>
+                <label className="text-xs col-span-2">Font Family
+                  <TextCommitInput className="w-full p-1 text-black rounded" value={labelFont} onCommit={(v)=> setLabelFont(v)} />
+                </label>
         </div>
       </div>
     );
     if (tab === 'material') return (
       <div className="grid gap-2">
         <label className="text-xs">Name
-          <input className="w-full p-1 text-black rounded" value={name} onChange={(e)=>setName(e.target.value)} />
+          <TextCommitInput className="w-full p-1 text-black rounded" value={name} onCommit={(v)=> setName(v)} />
         </label>
         <label className="text-xs">Color
           <input type="color" value={colorHex} onChange={(e)=> setColorHex(e.target.value)} className="w-full h-8 p-0 border border-gray-500 rounded" />
@@ -329,7 +330,7 @@ export default function AssetCreator({
     if (tab === 'natural') return (
       <div className="grid gap-2">
         <label className="text-xs">Name
-          <input className="w-full p-1 text-black rounded" value={name} onChange={(e)=>setName(e.target.value)} />
+          <TextCommitInput className="w-full p-1 text-black rounded" value={name} onCommit={(v)=> setName(v)} />
         </label>
         <div className="text-xs flex items-center gap-2">
           <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={()=> naturalFileRef.current?.click()}>Add Image</button>

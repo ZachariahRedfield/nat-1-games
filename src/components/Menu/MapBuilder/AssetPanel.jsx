@@ -26,6 +26,8 @@ export default function AssetPanel({
   // asset updates
   setAssets,
   setSelectedAssetId,
+  alertFn,
+  confirmFn,
 }) {
   const openEditAsset = (a) => {
     if (!a) return;
@@ -40,7 +42,6 @@ export default function AssetPanel({
       <button
         className="font-bold text-sm mb-2 px-2 py-1 bg-gray-700 rounded inline-flex items-center gap-2"
         onClick={() => setShowAssetKindMenu((s)=>!s)}
-        onMouseEnter={() => setShowAssetKindMenu(true)}
       >
         Assets
         <span className="text-xs opacity-80">
@@ -55,74 +56,62 @@ export default function AssetPanel({
       >
         <div
           className="mt-1 p-2 bg-gray-800 border border-gray-700 rounded flex flex-wrap gap-0"
-          onMouseEnter={() => setShowAssetKindMenu(true)}
-          onMouseLeave={() => setShowAssetKindMenu(false)}
         >
           <button
             className={`px-2 py-1 text-xs rounded ${assetGroup==='image'?'bg-blue-600':'bg-gray-700'}`}
-            onClick={() => { setAssetGroup('image'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
+            onClick={() => { setAssetGroup('image'); /* keep menu open */ setCreatorOpen(false); }}
           >
             Image
           </button>
           <button
             className={`px-2 py-1 text-xs rounded ${assetGroup==='token'?'bg-blue-600':'bg-gray-700'}`}
-            onClick={() => { setAssetGroup('token'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
+            onClick={() => { setAssetGroup('token'); /* keep menu open */ setCreatorOpen(false); }}
           >
             Token
           </button>
           <button
             className={`px-2 py-1 text-xs rounded ${assetGroup==='material'?'bg-blue-600':'bg-gray-700'}`}
-            onClick={() => { setAssetGroup('material'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
+            onClick={() => { setAssetGroup('material'); /* keep menu open */ setCreatorOpen(false); }}
           >
             Materials
           </button>
           <button
             className={`px-2 py-1 text-xs rounded ${assetGroup==='natural'?'bg-blue-600':'bg-gray-700'}`}
-            onClick={() => { setAssetGroup('natural'); setShowAssetKindMenu(false); setCreatorOpen(false); }}
+            onClick={() => { setAssetGroup('natural'); /* keep menu open */ setCreatorOpen(false); }}
           >
             Natural
           </button>
         </div>
       </div>
 
-      {/* Creation buttons */}
-      <div className="mt-1 mb-3 flex flex-wrap items-center gap-2">
-        {assetGroup === 'image' && (
-          <>
-            <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('image')}>Create Image</button>
-            <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('text')}>Text/Label</button>
-          </>
-        )}
-        {assetGroup === 'natural' && (
-          <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('natural')}>Add Natural</button>
-        )}
-        {assetGroup === 'material' && (
-          <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('material')}>Add Color</button>
-        )}
-        {assetGroup === 'token' && (
-          <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('token')}>Add Token</button>
-        )}
-      </div>
-
-      {creatorOpen && (
-        <AssetCreator
-          kind={creatorKind}
-          onClose={() => { setCreatorOpen(false); setEditingAsset(null); }}
-          onCreate={handleCreatorCreate}
-          onUpdate={(updated)=> {
-            if (!editingAsset) return;
-            updateAssetById(editingAsset.id, updated);
-          }}
-          initialAsset={editingAsset}
-          selectedImageSrc={selectedAsset?.kind==='image' ? selectedAsset?.src : null}
-          mode={editingAsset ? 'edit' : 'create'}
-        />
+      {/* Creation buttons (only when menu open) */}
+      {showAssetKindMenu && (
+        <div className="mt-1 mb-3 flex flex-wrap items-center gap-2">
+          {assetGroup === 'image' && (
+            <>
+              <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('image')}>Create Image</button>
+              <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('text')}>Text/Label</button>
+            </>
+          )}
+          {assetGroup === 'natural' && (
+            <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('natural')}>Add Natural</button>
+          )}
+          {assetGroup === 'material' && (
+            <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('material')}>Add Color</button>
+          )}
+          {assetGroup === 'token' && (
+            <button className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm" onClick={() => openCreator('token')}>Add Token</button>
+          )}
+        </div>
       )}
 
-      <div className="mb-2 border border-gray-600 rounded overflow-hidden">
-        <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
-          <span className="text-xs uppercase tracking-wide">Assets</span>
-          <div className="inline-flex items-center bg-gray-800 rounded overflow-hidden border border-gray-700">
+      {/* Asset Creator modal moved to MapBuilder to show in a popup */}
+
+      {showAssetKindMenu && (
+        <div className="mb-2 border border-gray-600 rounded overflow-hidden">
+          <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
+            <span className="text-xs uppercase tracking-wide">Assets</span>
+            <div className="inline-flex items-center bg-gray-800 rounded overflow-hidden border border-gray-700">
             <button
               className={`text-xs px-2 py-0.5 ${showAssetPreviews ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-200'}`}
               onClick={() => setShowAssetPreviews(true)}
@@ -137,9 +126,9 @@ export default function AssetPanel({
             >
               Names
             </button>
+            </div>
           </div>
-        </div>
-        <div className={`p-2 ${showAssetPreviews ? 'grid grid-cols-3 gap-2' : 'flex flex-col gap-1'}`}>
+          <div className={`p-2 ${showAssetPreviews ? 'grid grid-cols-3 gap-2' : 'flex flex-col gap-1'}`}>
           {assets
             .filter((a) => !a.hiddenFromUI)
             .filter((a) => (
@@ -192,29 +181,16 @@ export default function AssetPanel({
                     selectedAssetId === a.id ? (
                       <div className="mt-1 inline-flex overflow-hidden rounded">
                         <button
-                          className="px-2 py-0.5 text-[11px] bg-blue-700 hover:bg-blue-600"
+                          className="px-2 py-0.5 text-[11px] bg-gray-700 hover:bg-gray-600"
                           onClick={(e) => { e.stopPropagation(); openEditAsset(a); }}
+                          title="Edit asset"
                         >
                           Edit
                         </button>
                         <button
                           className="px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const useCountTokens = (tokens || []).filter((t) => t.assetId === a.id).length;
-                            const countInObjects = ['background', 'base', 'sky'].reduce(
-                              (acc, l) => acc + (objects?.[l] || []).filter((o) => o.assetId === a.id).length,
-                              0
-                            );
-                            if (a.kind === 'token' && useCountTokens > 0) {
-                              alert(`Cannot delete token asset in use by ${useCountTokens} token(s). Delete tokens first.`);
-                              return;
-                            }
-                            if ((a.kind === 'image' || a.kind === 'natural') && countInObjects > 0) {
-                              alert(`Cannot delete image asset in use by ${countInObjects} object(s). Delete stamps first.`);
-                              return;
-                            }
-                            if (confirm(`Delete asset "${a.name}"?`)) {
+                          onClick={async (e) => { e.stopPropagation(); ok = (confirmFn ? await confirmFn() : confirm());
+                            if (ok) {
                               setAssets((prev) => prev.filter((x) => x.id !== a.id));
                               const next = assets.find(
                                 (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? (x.kind === 'token' || x.kind === 'tokenGroup') : assetGroup === 'natural' ? x.kind === 'natural' : true)
@@ -222,6 +198,7 @@ export default function AssetPanel({
                               if (next) setSelectedAssetId(next.id);
                             }
                           }}
+                          title="Delete asset"
                         >
                           Delete
                         </button>
@@ -231,29 +208,16 @@ export default function AssetPanel({
                     selectedAssetId === a.id ? (
                       <div className="absolute top-1 right-1 inline-flex overflow-hidden rounded">
                         <button
-                          className="px-2 py-0.5 text-[11px] bg-blue-700 hover:bg-blue-600"
+                          className="px-2 py-0.5 text-[11px] bg-gray-700 hover:bg-gray-600"
                           onClick={(e) => { e.stopPropagation(); openEditAsset(a); }}
+                          title="Edit asset"
                         >
                           Edit
                         </button>
                         <button
                           className="px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const useCountTokens = (tokens || []).filter((t) => t.assetId === a.id).length;
-                            const countInObjects = ['background', 'base', 'sky'].reduce(
-                              (acc, l) => acc + (objects?.[l] || []).filter((o) => o.assetId === a.id).length,
-                              0
-                            );
-                            if (a.kind === 'token' && useCountTokens > 0) {
-                              alert(`Cannot delete token asset in use by ${useCountTokens} token(s). Delete tokens first.`);
-                              return;
-                            }
-                            if ((a.kind === 'image' || a.kind === 'natural') && countInObjects > 0) {
-                              alert(`Cannot delete image asset in use by ${countInObjects} object(s). Delete stamps first.`);
-                              return;
-                            }
-                            if (confirm(`Delete asset \"${a.name}\"?`)) {
+                          onClick={async (e) => { e.stopPropagation(); ok = (confirmFn ? await confirmFn() : confirm());
+                            if (ok) {
                               setAssets((prev) => prev.filter((x) => x.id !== a.id));
                               const next = assets.find(
                                 (x) => x.id !== a.id && (assetGroup === 'image' ? x.kind === 'image' : assetGroup === 'token' ? (x.kind === 'token' || x.kind === 'tokenGroup') : assetGroup === 'natural' ? x.kind === 'natural' : true)
@@ -261,6 +225,7 @@ export default function AssetPanel({
                               if (next) setSelectedAssetId(next.id);
                             }
                           }}
+                          title="Delete asset"
                         >
                           Delete
                         </button>
@@ -270,8 +235,9 @@ export default function AssetPanel({
                 )}
               </div>
             ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,17 +1,15 @@
 import MapStatus from "./MapStatus";
 import React, { useRef, useState, useEffect } from "react";
 import Grid from "../../Map/Grid/Grid";
-import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
+import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
 
 import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
 import BrushSettings from "./BrushSettings";
 import NumericInput from "../../common/NumericInput";
-import TextCommitInput from "../../common/TextCommitInput";
 import SaveSelectionDialog from "./SaveSelectionDialog";
 import Header from "./Header";
 import LayerBar from "./LayerBar";
 import AssetPanel from "./AssetPanel";
-import AssetCreator from "./AssetCreator";
 
 // Compact tool icons for Interaction area
 const BrushIcon = ({ className = "w-4 h-4" }) => (
@@ -516,17 +514,6 @@ export default function MapBuilder({ goBack, session, onLogout }) {
     }, 0);
     setLoadModalOpen(false);
     showToast('Project loaded.', 'success');
-  };
-
-  const handleDeleteMapFromList = async (entry) => {
-    if (!entry?.folderName) return;
-    const ok = await confirmUser(`Delete map "${entry.name || entry.folderName}"?\nThis cannot be undone.`, { title: 'Delete Map', okText: 'Delete', cancelText: 'Cancel' });
-    if (!ok) return;
-    const res = await deleteMap(entry.folderName);
-    if (!res?.ok) { showToast(res?.message || 'Failed to delete map.', 'error'); return; }
-    showToast('Map deleted.', 'success');
-    const items = await listMaps();
-    setMapsList(items || []);
   };
   useEffect(() => {
     if (!assets) return;
@@ -1701,32 +1688,6 @@ export default function MapBuilder({ goBack, session, onLogout }) {
           </div>
         )}
 
-        {/* ASSET CREATOR MODAL */}
-        {creatorOpen && (
-          <div className="fixed inset-0 z-[10057] flex items-center justify-center bg-black/60">
-            <div className="w-[96%] max-w-2xl max-h-[86vh] overflow-auto bg-gray-900 border border-gray-700 rounded text-gray-100">
-              <div className="p-3 border-b border-gray-700 flex items-center justify-between">
-                <div className="font-semibold">{editingAsset ? 'Edit Asset' : 'Create Asset'}</div>
-                <button className="px-2 py-1 text-xs bg-gray-700 rounded" onClick={()=> { setCreatorOpen(false); setEditingAsset(null); }}>Close</button>
-              </div>
-              <div className="p-3">
-                <AssetCreator
-                  kind={creatorKind}
-                  onClose={() => { setCreatorOpen(false); setEditingAsset(null); }}
-                  onCreate={handleCreatorCreate}
-                  onUpdate={(updated)=> {
-                    if (!editingAsset) return;
-                    updateAssetById(editingAsset.id, updated);
-                  }}
-                  initialAsset={editingAsset}
-                  selectedImageSrc={selectedAsset?.kind==='image' ? selectedAsset?.src : null}
-                  mode={editingAsset ? 'edit' : 'create'}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* LOAD MAPS MODAL */}
         {loadModalOpen && (
           <div className="fixed inset-0 z-[10055] flex items-center justify-center bg-black/60">
@@ -1741,15 +1702,11 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {mapsList.map((m, idx) => (
-                      <div key={idx} className="text-left px-3 py-2 border border-gray-700 rounded bg-gray-800">
+                      <button key={idx} className="text-left px-3 py-2 border border-gray-700 rounded bg-gray-800 hover:bg-gray-700" onClick={()=> handleLoadMapFromList(m)}>
                         <div className="font-medium truncate">{m.name || m.folderName}</div>
                         <div className="text-xs text-gray-300 truncate">Folder: {m.folderName}</div>
                         {m.mtime ? (<div className="text-[10px] text-gray-400">Updated: {new Date(m.mtime).toLocaleString()}</div>) : null}
-                        <div className="mt-2 flex gap-2">
-                          <button className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded" onClick={()=> handleLoadMapFromList(m)}>Open</button>
-                          <button className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 rounded" onClick={()=> handleDeleteMapFromList(m)}>Delete</button>
-                        </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1761,9 +1718,9 @@ export default function MapBuilder({ goBack, session, onLogout }) {
         {showToolbar && (
           <div className="w-72 bg-gray-800 text-white border-r-2 border-gray-600 flex flex-col min-h-0">
             <div className="p-4 space-y-5 overflow-y-auto">
-              {/* MAP SIZE / ZOOM */}
+              {/* GRID / ZOOM */}
               <div className="mb-2">
-                <h3 className="font-bold text-sm mb-2">Map Size</h3>
+                <h3 className="font-bold text-sm mb-2">Grid</h3>
                 <div className="flex items-start justify-between gap-4">
                   {/* Row/Col + Apply group (left) */}
                   <div className="inline-grid grid-cols-[auto_auto] gap-x-1 gap-y-1 items-center">
@@ -1774,7 +1731,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                       max={200}
                       step={1}
                       onCommit={(n)=> setRowsInput(String(n))}
-                      className="box-border w-12 px-1 py-0.5 text-xs text-black rounded"
+                      className="box-border w-16 px-1 py-0.5 text-xs text-black rounded"
                     />
                     <div className="text-xs text-gray-300">Col</div>
                     <NumericInput
@@ -1783,7 +1740,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                       max={200}
                       step={1}
                       onCommit={(n)=> setColsInput(String(n))}
-                      className="box-border w-12 px-1 py-0.5 text-xs text-black rounded"
+                      className="box-border w-16 px-1 py-0.5 text-xs text-black rounded"
                     />
                     <div></div>
                     <button className="box-border w-16 px-1 py-0.5 bg-blue-600 hover:bg-blue-500 rounded text-xs" onClick={updateGridSizes}>Apply</button>
@@ -1979,7 +1936,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                           {(() => { const a = assets.find((x)=> x.id === selectedObj.assetId) || {}; const lm = a.labelMeta || {}; return (
                             <div className="grid gap-2">
                               <label className="text-xs">Text
-                                <TextCommitInput className="w-full p-1 text-black rounded" value={lm.text || ''} onCommit={(v)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, text: v }); }} />
+                                <input type="text" className="w-full p-1 text-black rounded" value={lm.text || ''} onChange={(e)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, text: e.target.value }); }} />
                               </label>
                               <div className="grid grid-cols-2 gap-2">
                                 <label className="text-xs">Color
@@ -1992,11 +1949,11 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                                     max={128}
                                     step={1}
                                     onCommit={(v)=> { snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, size: v }); }}
-                                    className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                                    className="w-full p-1 text-black rounded"
                                   />
                                 </label>
                                 <label className="text-xs col-span-2">Font Family
-                                  <TextCommitInput className="w-full p-1 text-black rounded" value={lm.font || 'Arial'} onCommit={(v)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, font: v }); }} />
+                                  <input type="text" className="w-full p-1 text-black rounded" value={lm.font || 'Arial'} onChange={(e)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, font: e.target.value }); }} />
                                 </label>
                               </div>
                             </div>
@@ -2026,7 +1983,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                         <input className="w-full" type="range" min="0.05" max="1" step="0.05" value={gridSettings.opacity} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) })); }} />
                       <div className="grid grid-cols-2 gap-2 mt-2">
                         <label className="text-xs">Name
-                          <TextCommitInput className="w-full p-1 text-black rounded" value={selectedToken?.meta?.name || ''} onCommit={(v) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, name: v } })} />
+                          <input type="text" className="w-full p-1 text-black rounded" value={selectedToken?.meta?.name || ''} onChange={(e) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, name: e.target.value } })} />
                         </label>
                         <label className="text-xs">HP
                           <NumericInput
@@ -2035,7 +1992,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                             max={999999}
                             step={1}
                             onCommit={(v) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, hp: Math.round(v) } })}
-                            className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                            className="w-full p-1 text-black rounded"
                           />
                         </label>
                         <label className="text-xs">Initiative
@@ -2045,7 +2002,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                             max={999}
                             step={1}
                             onCommit={(v) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, initiative: Math.round(v) } })}
-                            className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                            className="w-full p-1 text-black rounded"
                           />
                         </label>
                         <label className="text-xs inline-flex items-center gap-2">
@@ -2204,11 +2161,6 @@ export default function MapBuilder({ goBack, session, onLogout }) {
     </div>
   );
 }
-
-
-
-
-
 
 
 

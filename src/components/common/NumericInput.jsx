@@ -14,6 +14,8 @@ export default function NumericInput({
     value === null || value === undefined || Number.isNaN(value) ? "" : String(value)
   );
   const [focused, setFocused] = React.useState(false);
+  const prevValueRef = React.useRef(null);
+  const committedRef = React.useRef(false);
 
   // Sync external value when not focused
   React.useEffect(() => {
@@ -48,6 +50,7 @@ export default function NumericInput({
     n = clamp(n);
     onCommit?.(n);
     setText(String(n));
+    committedRef.current = true;
   };
 
   const handleKeyDown = (e) => {
@@ -59,8 +62,11 @@ export default function NumericInput({
     }
     if (e.key === "Escape") {
       e.preventDefault();
-      setText(value === null || value === undefined ? "" : String(value));
+      // revert to value prior to focus
+      const prev = prevValueRef.current;
+      setText(prev === null || prev === undefined ? "" : String(prev));
       e.currentTarget.blur();
+      committedRef.current = false;
       return;
     }
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -71,6 +77,7 @@ export default function NumericInput({
       const next = clamp(base + delta);
       setText(String(next));
       onCommit?.(next);
+      committedRef.current = true;
       return;
     }
   };
@@ -82,10 +89,19 @@ export default function NumericInput({
       className={className}
       value={text}
       placeholder={placeholder}
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        setFocused(true);
+        committedRef.current = false;
+        prevValueRef.current = value;
+        setText("");
+      }}
       onBlur={() => {
         setFocused(false);
-        commit();
+        // if no explicit commit, restore previous value
+        if (!committedRef.current) {
+          const prev = prevValueRef.current;
+          setText(prev === null || prev === undefined || Number.isNaN(prev) ? "" : String(prev));
+        }
       }}
       onChange={(e) => setText(e.target.value)}
       onKeyDown={handleKeyDown}
@@ -93,4 +109,3 @@ export default function NumericInput({
     />
   );
 }
-

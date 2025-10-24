@@ -69,13 +69,13 @@ export default function SaveSelectionDialog({
   const disabled = (!hasImgs && target === 'images') || (!hasToks && target === 'tokens');
 
   return (
-    <div className="fixed inset-0 z-[200] flex">
-      <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-[380px] max-w-[90vw] h-full bg-gray-900 text-white border-l border-gray-700 p-4 overflow-y-auto">
-        <div className="flex items-center justify-between mb-3">
+    <div className="fixed inset-0 z-[10058] flex items-center justify-center bg-black/60">
+      <div className="w-[96%] max-w-xl max-h-[80vh] overflow-auto bg-gray-900 text-white border border-gray-700 rounded">
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           <h3 className="text-lg font-bold">Save Selection</h3>
-          <button className="px-2 py-1 bg-gray-700 rounded" onClick={onClose}>Close</button>
+          <button className="px-2 py-1 text-xs bg-gray-700 rounded" onClick={onClose}>Close</button>
         </div>
+        <div className="p-4">
 
         {mixed && (
           <div className="mb-3 p-2 bg-amber-900/20 border border-amber-700 rounded text-xs">
@@ -144,8 +144,8 @@ export default function SaveSelectionDialog({
           >Save</button>
           <button className="px-3 py-1 rounded bg-gray-700" onClick={onClose}>Cancel</button>
         </div>
+        </div>
       </div>
     </div>
   );
 }
-

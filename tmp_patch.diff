@@ -1,0 +1,22 @@
+*** Begin Patch
+*** Update File: src/components/Menu/MapBuilder/MapBuilder.jsx
+@@
+-import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
++import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
+@@
+   const handleLoadMapFromList = async (entry) => {
+@@
+     showToast('Project loaded.', 'success');
+   };
++
++  const handleDeleteMapFromList = async (entry) => {
++    if (!entry?.folderName) return;
++    const ok = await confirmUser(`Delete map "${entry.name || entry.folderName}"?\nThis cannot be undone.`, { title: 'Delete Map', okText: 'Delete', cancelText: 'Cancel' });
++    if (!ok) return;
++    const res = await deleteMap(entry.folderName);
++    if (!res?.ok) { showToast(res?.message || 'Failed to delete map.', 'error'); return; }
++    showToast('Map deleted.', 'success');
++    const items = await listMaps();
++    setMapsList(items || []);
++  };
+*** End Patch

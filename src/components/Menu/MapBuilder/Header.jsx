@@ -7,6 +7,7 @@ export default function Header({
   onUndo,
   onRedo,
   onSave,
+  onSaveAs,
   onLoad,
   onBack,
   session,
@@ -30,6 +31,7 @@ export default function Header({
         </div>
         <div className="flex gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
           <button onClick={onSave} className="px-2.5 py-1 text-sm bg-green-700 hover:bg-green-600 border border-green-500 rounded">Save</button>
+          <button onClick={onSaveAs} className="px-2.5 py-1 text-sm bg-emerald-700 hover:bg-emerald-600 border border-emerald-500 rounded">Save As</button>
           <button onClick={onLoad} className="px-2.5 py-1 text-sm bg-blue-700 hover:bg-blue-600 border border-blue-500 rounded">Load</button>
           <button onClick={onBack} className="px-2.5 py-1 text-sm bg-red-700 hover:bg-red-600 border border-red-500 rounded">Back</button>
         </div>
@@ -38,4 +40,3 @@ export default function Header({
     </header>
   );
 }
-
