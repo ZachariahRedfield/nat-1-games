@@ -38,11 +38,11 @@ export default function TilesLayer({
               rowArr.map((val, ci) => (
                 <div
                   key={`${layer}-${ri}-${ci}`}
-                  className={showGridLines ? "border border-gray-600" : ""}
                   style={{
                     width: tileSize,
                     height: tileSize,
                     backgroundColor: cellBg(val),
+                    border: showGridLines ? '0.5px solid rgba(75,85,99,0.65)' : 'none',
                   }}
                 />
               ))

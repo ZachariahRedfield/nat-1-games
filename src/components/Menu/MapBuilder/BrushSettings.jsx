@@ -28,6 +28,25 @@ export default function BrushSettings({
   // shared
   snapshotSettings,
 }) {
+  // Link X/Y sizes (stored in gridSettings.linkXY, defaults to false)
+  const linkXY = !!(gridSettings?.linkXY);
+  const toggleLinkXY = () => {
+    snapshotSettings?.();
+    setGridSettings((s) => ({ ...s, linkXY: !s?.linkXY }));
+  };
+
+  const LinkIcon = ({ className = "w-4 h-4" }) => (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+      <path d="M6.5 4.5h3a3 3 0 0 1 0 6h-3" strokeLinecap="round" />
+      <path d="M9.5 11.5h-3a3 3 0 0 1 0-6h3" strokeLinecap="round" />
+    </svg>
+  );
+  const LinkBrokenIcon = ({ className = "w-4 h-4" }) => (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+      <path d="M6.5 4.5h3a3 3 0 0 1 0 6h-3" strokeLinecap="round" />
+      <path d="M9 6L10.5 4.5M7 6L5.5 4.5M9 10l1.5 1.5M7 10L5.5 11.5" strokeLinecap="round" />
+    </svg>
+  );
   if (kind === 'canvas') {
     return (
       <div>
@@ -68,13 +87,22 @@ export default function BrushSettings({
                   onCommit={(v) => {
                     const n = Math.max(1, Math.min(100, Math.round(v)));
                     snapshotSettings?.();
-                    setGridSettings((s) => ({ ...s, sizeCols: n }));
+                    setGridSettings((s) => linkXY ? ({ ...s, sizeCols: n, sizeRows: n }) : ({ ...s, sizeCols: n }));
                   }}
                   title="Width in tiles (columns)"
                 />
                 <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={toggleLinkXY}
+              title={linkXY ? 'Linked: change one to set both' : 'Unlinked: set X and Y independently'}
+              className={`mx-1 p-1 rounded border ${linkXY ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:text-white'}`}
+              aria-pressed={linkXY}
+            >
+              {linkXY ? <LinkIcon /> : <LinkBrokenIcon />}
+            </button>
             <div className="inline-flex items-center">
               <div className="relative">
                 <NumericInput
@@ -86,7 +114,7 @@ export default function BrushSettings({
                   onCommit={(v) => {
                     const n = Math.max(1, Math.min(100, Math.round(v)));
                     snapshotSettings?.();
-                    setGridSettings((s) => ({ ...s, sizeRows: n }));
+                    setGridSettings((s) => linkXY ? ({ ...s, sizeRows: n, sizeCols: n }) : ({ ...s, sizeRows: n }));
                   }}
                   title="Height in tiles (rows)"
                 />
@@ -267,11 +295,20 @@ export default function BrushSettings({
                 max={100}
                 step={1}
                 className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
-                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeCols: n })); }}
+                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => linkXY ? ({ ...s, sizeCols: n, sizeRows: n }) : ({ ...s, sizeCols: n })); }}
               />
               <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={toggleLinkXY}
+            title={linkXY ? 'Linked: change one to set both' : 'Unlinked: set X and Y independently'}
+            className={`mx-1 p-1 rounded border ${linkXY ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:text-white'}`}
+            aria-pressed={linkXY}
+          >
+            {linkXY ? <LinkIcon /> : <LinkBrokenIcon />}
+          </button>
           <div className="inline-flex items-center">
             <div className="relative">
               <NumericInput
@@ -280,7 +317,7 @@ export default function BrushSettings({
                 max={100}
                 step={1}
                 className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
-                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeRows: n })); }}
+                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => linkXY ? ({ ...s, sizeRows: n, sizeCols: n }) : ({ ...s, sizeRows: n })); }}
               />
               <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
             </div>

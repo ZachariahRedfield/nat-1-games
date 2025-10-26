@@ -23,6 +23,7 @@ export default function Grid({
   engine, // 'grid' | 'canvas'
   selectedAsset, // Asset or null
   gridSettings, // { sizeTiles, rotation, flipX, flipY, opacity }
+  setGridSettings,
   brushSize = 2, // canvas brush size in tiles
   canvasOpacity = 0.35,
   canvasColor = "#cccccc",
@@ -48,6 +49,7 @@ export default function Grid({
 
   // ===== Props: view zoom tool
   zoomToolActive = false,
+  panToolActive = false,
   onZoomToolRect,
 
   // ===== Props: stroke lifecycle (callbacks)
@@ -730,6 +732,8 @@ export default function Grid({
     };
   }, []);
 
+  // Previous behavior: interactions occur over the grid overlay only
+
   // ===== pointer overlay
   const handlePointerDown = (e) => {
     mouseDownRef.current = true;
@@ -753,9 +757,9 @@ export default function Grid({
       return;
     }
 
-    // Pan gesture: spacebar or middle mouse
+    // Pan gesture: pan tool, spacebar, or middle mouse
     const isMMB = e.button === 1 || (e.buttons & 4) === 4;
-    if (panHotkey || isMMB) {
+    if (panToolActive || panHotkey || isMMB) {
       setIsPanning(true);
       setLastPan({ x: e.clientX, y: e.clientY });
       e.target.setPointerCapture?.(e.pointerId);
@@ -994,7 +998,8 @@ export default function Grid({
       return;
     }
 
-    if (engine === "pan" && isPanning && lastPan && scrollRef?.current) {
+    // Pan drag: when pan tool, spacebar, or MMB initiated a pan
+    if (isPanning && lastPan && scrollRef?.current) {
       const dx = e.clientX - lastPan.x;
       const dy = e.clientY - lastPan.y;
       scrollRef.current.scrollBy({ left: -dx, top: -dy });
@@ -1035,6 +1040,7 @@ export default function Grid({
           wTiles: newW,
           hTiles: newH,
         });
+        setGridSettings?.((s) => ({ ...s, sizeCols: newW, sizeRows: newH }));
       }
       return;
     }
@@ -1078,7 +1084,9 @@ export default function Grid({
       if (o) {
         let next = (d.startRot + deltaDeg) % 360;
         if (next < 0) next += 360;
-        updateObjectById(currentLayer, o.id, { rotation: Math.round(next) });
+        const rot = Math.round(next);
+        updateObjectById(currentLayer, o.id, { rotation: rot });
+        setGridSettings?.((s) => ({ ...s, rotation: rot }));
       }
       return;
     }
@@ -1301,6 +1309,7 @@ export default function Grid({
   // Decide cursor based on pan/select/visibility
   let cursorStyle = "default";
   if (isPanning || panHotkey || (dragRef.current && (dragRef.current.kind === 'rotate-obj' || dragRef.current.kind === 'rotate-token'))) cursorStyle = "grabbing";
+  else if (panToolActive) cursorStyle = 'grab';
   else if (!layerIsVisible) cursorStyle = "not-allowed";
   else if (mousePos) {
     const hit = hitResizeHandle(mousePos.x, mousePos.y) || hitTokenResizeHandle(mousePos.x, mousePos.y);
@@ -1486,16 +1495,28 @@ export default function Grid({
                 newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
                 newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
                 updateObjectById(currentLayer, obj.id, { wTiles, hTiles, row: newRow, col: newCol });
+                setGridSettings?.((s) => ({ ...s, sizeCols: wTiles, sizeRows: hTiles }));
               }}
               onRotate={(delta) => {
                 const r0 = obj.rotation || 0;
                 let next = (r0 + delta) % 360;
                 if (next < 0) next += 360;
-                updateObjectById(currentLayer, obj.id, { rotation: Math.round(next) });
+                const rot = Math.round(next);
+                updateObjectById(currentLayer, obj.id, { rotation: rot });
+                setGridSettings?.((s) => ({ ...s, rotation: rot }));
               }}
-              onFlipX={() => updateObjectById(currentLayer, obj.id, { flipX: !obj.flipX })}
-              onFlipY={() => updateObjectById(currentLayer, obj.id, { flipY: !obj.flipY })}
-              onDelete={() => removeObjectById(currentLayer, obj.id)}
+              onFlipX={() => { updateObjectById(currentLayer, obj.id, { flipX: !obj.flipX }); setGridSettings?.((s)=> ({ ...s, flipX: !obj.flipX })); }}
+              onFlipY={() => { updateObjectById(currentLayer, obj.id, { flipY: !obj.flipY }); setGridSettings?.((s)=> ({ ...s, flipY: !obj.flipY })); }}
+              opacity={Math.max(0.05, Math.min(1, obj.opacity ?? (gridSettings.opacity ?? 1)))}
+              onChangeOpacity={(val) => {
+                const v = Math.max(0.05, Math.min(1, val || 0));
+                updateObjectById(currentLayer, obj.id, { opacity: v });
+                setGridSettings?.((s) => ({ ...s, opacity: v }));
+              }}
+              snapToGrid={!!gridSettings.snapToGrid}
+              onToggleSnap={() => {
+                setGridSettings?.((s) => ({ ...s, snapToGrid: !s?.snapToGrid }));
+              }}
             />
           );
         })()}

@@ -56,12 +56,19 @@ const ZoomIcon = ({ className = "w-4 h-4" }) => (
   </svg>
 );
 
+// Simple hand/grab icon for Pan tool
+const PanIcon = ({ className = "w-4 h-4" }) => (
+  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
+    <path d="M6 2c.6 0 1 .4 1 1v3h1V2c0-.6.4-1 1-1s1 .4 1 1v4h1V3c0-.6.4-1 1-1s1 .4 1 1v5h1V5c0-.6.4-1 1-1s1 .4 1 1v6c0 2.2-1.8 4-4 4H7c-2.8 0-5-2.2-5-5V9c0-1.1.9-2 2-2h1V3c0-.6.4-1 1-1z" />
+  </svg>
+);
+
 export default function MapBuilder({ goBack, session, onLogout, onNavigate, currentScreen }) {
   // --- dimensions ---
-  const [rowsInput, setRowsInput] = useState("20");
-  const [colsInput, setColsInput] = useState("20");
-  const rows = Math.max(1, Math.min(200, parseInt(rowsInput) || 20));
-  const cols = Math.max(1, Math.min(200, parseInt(colsInput) || 20));
+  const [rowsInput, setRowsInput] = useState("50");
+  const [colsInput, setColsInput] = useState("50");
+  const rows = Math.max(1, Math.min(200, parseInt(rowsInput) || 50));
+  const cols = Math.max(1, Math.min(200, parseInt(colsInput) || 50));
 
   // --- per-layer tile grids (for color / legacy tiles) ---
   const [maps, setMaps] = useState({
@@ -125,11 +132,13 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   };
 
   // --- view / scroll ---
-  const [tileSize, setTileSize] = useState(32);
+  // Default zoom ~45% (32 is 100%)
+  const [tileSize, setTileSize] = useState(14.4);
   const [showToolbar, setShowToolbar] = useState(false);
   const scrollRef = useRef(null);
   const gridContentRef = useRef(null);
   const [zoomToolActive, setZoomToolActive] = useState(false);
+  const [panToolActive, setPanToolActive] = useState(false);
   // Zoom scrubber (stationary slider)
   const zoomScrubRef = useRef(null);
   const zoomScrubStartX = useRef(0);
@@ -346,6 +355,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     sizeTiles: 1,
     sizeCols: 1,
     sizeRows: 1,
+    linkXY: false,
     rotation: 0,
     flipX: false,
     flipY: false,
@@ -552,8 +562,8 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     );
 
   const updateGridSizes = () => {
-    const r = Math.max(1, Math.min(200, parseInt(rowsInput) || 20));
-    const c = Math.max(1, Math.min(200, parseInt(colsInput) || 20));
+    const r = Math.max(1, Math.min(200, parseInt(rowsInput) || 50));
+    const c = Math.max(1, Math.min(200, parseInt(colsInput) || 50));
     setMaps((prev) => ({
       background: resizeLayer(prev.background, r, c),
       base: resizeLayer(prev.base, r, c),
@@ -1821,11 +1831,11 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                 confirmFn={(msg) => confirmUser(msg)}
               />
 
-              {/* MAP SIZE / ZOOM */}
+              {/* MAP SIZE */}
               <div className="mb-2">
                 <h3 className="font-bold text-sm mb-2">Map Size</h3>
-                <div className="flex items-start justify-between gap-4">
-                  {/* Row/Col + Apply group (left) */}
+                <div className="flex items-start gap-4">
+                  {/* Row/Col + Apply group */}
                   <div className="inline-grid grid-cols-[auto_auto] gap-x-1 gap-y-1 items-center">
                     <div className="text-xs text-gray-300">Row</div>
                     <NumericInput
@@ -1849,35 +1859,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                     <button className="box-border w-16 px-1 py-0.5 bg-blue-600 hover:bg-blue-500 rounded text-xs" onClick={updateGridSizes}>Apply</button>
                   </div>
 
-                  {/* Zoom group (right) */}
-                  <div className="flex items-start gap-2 ml-auto -mt-4">
-                    {/* Label above percentage (left of bar) */}
-                    <div className="flex flex-col items-end">
-                      <div className="text-xs mb-0.5">Zoom</div>
-                      <div className="text-xs w-12 text-right">{Math.round((tileSize/32)*100)}%</div>
-                    </div>
-                    {/* Scrubber and +/- vertically (rightmost, closer to edge) */}
-                    <div className="flex flex-col items-end gap-1">
-                      <button className="px-1.5 py-0.5 text-xs bg-gray-700 rounded" onClick={()=> setTileSize((s)=> Math.max(8, Math.round((s-2)/2)*2))}>-</button>
-                      <div
-                        ref={zoomScrubRef}
-                        onMouseDown={handleZoomScrubStart}
-                        className="relative w-3 h-12 bg-gray-700 rounded cursor-ns-resize select-none"
-                        title="Drag up/down to adjust zoom"
-                      >
-                        {/* center mark */}
-                        <div className="absolute inset-x-0 top-1/2 h-px bg-gray-500/70" />
-                        {/* handle */}
-                        <div
-                          className="absolute left-0 right-0 top-1/2"
-                          style={{ transform: `translateY(${(zoomScrubPos||0)*22}px) translateY(-50%)` }}
-                        >
-                          <div className="w-3 h-2 bg-gray-300 rounded-sm shadow-inner ml-auto" />
-                        </div>
-                      </div>
-                      <button className="px-1.5 py-0.5 text-xs bg-gray-700 rounded" onClick={()=> setTileSize((s)=> Math.min(128, Math.round((s+2)/2)*2))}>+</button>
-                    </div>
-                  </div>
+                  {/* zoom controls removed */}
                 </div>
               </div>
               {/* INTERACTION MODE (two-row contextual) */}
@@ -1888,25 +1870,34 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                 {/* Row 1: Mode segmented (+ Zoom Tool) */}
                 <div className="inline-flex items-center gap-0 bg-gray-700/40 border border-gray-600 rounded overflow-hidden">
                   <button
-                    onClick={() => { setZoomToolActive(false); setInteractionMode("draw"); }}
+                    onClick={() => { setZoomToolActive(false); setPanToolActive(false); setInteractionMode("draw"); }}
                     title="Draw"
                     aria-label="Draw"
-                    className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && interactionMode === "draw") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                    className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && !panToolActive && interactionMode === "draw") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
                   >
                     <BrushIcon className="w-4 h-4" />
                     <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Draw</div>
                   </button>
                   <button
-                    onClick={() => { setZoomToolActive(false); setInteractionMode("select"); }}
+                    onClick={() => { setZoomToolActive(false); setPanToolActive(false); setInteractionMode("select"); }}
                     title="Select"
                     aria-label="Select"
-                    className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && interactionMode === "select") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                    className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && !panToolActive && interactionMode === "select") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
                   >
                     <CursorIcon className="w-4 h-4" />
                     <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Select</div>
                   </button>
                   <button
-                    onClick={() => setZoomToolActive((v)=> !v)}
+                    onClick={() => { setPanToolActive(true); setZoomToolActive(false); }}
+                    title="Pan Tool: drag to move the map (Space/MMB)"
+                    aria-label="Pan Tool"
+                    className={`px-3 py-1 text-sm relative group ${panToolActive ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                  >
+                    <PanIcon className="w-4 h-4" />
+                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Pan</div>
+                  </button>
+                  <button
+                    onClick={() => { setZoomToolActive(true); setPanToolActive(false); }}
                     title="Zoom Tool: drag a rectangle to zoom"
                     aria-label="Zoom Tool"
                     className={`px-3 py-1 text-sm relative group ${zoomToolActive ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
@@ -1916,6 +1907,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                   </button>
                 </div>
                 {/* Row 2: Context */}
+                {!panToolActive && !zoomToolActive && (
                 <div className="mt-2 flex items-center gap-2">
                   {interactionMode === 'draw' ? (
                     <>
@@ -1981,10 +1973,11 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                     </>
                   )}
                 </div>
+                )}
               </div>
 
               {/* SETTINGS (Brush) or Token */}
-              {(engine === "grid" || interactionMode === "select") && (
+              {!panToolActive && !zoomToolActive && (engine === "grid" || interactionMode === "select") && (
                 <div>
                   {!selectedToken ? (
                     <>
@@ -2188,7 +2181,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
               )}
 
               {/* CANVAS BRUSH SETTINGS */}
-              {assetGroup !== 'token' && engine === "canvas" && interactionMode !== 'select' && (
+              {!panToolActive && !zoomToolActive && assetGroup !== 'token' && engine === "canvas" && interactionMode !== 'select' && (
                 <BrushSettings
                   kind="canvas"
                   gridSettings={gridSettings}
@@ -2250,6 +2243,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                 engine={engine}
                 selectedAsset={selectedAsset}
                 gridSettings={gridSettings}
+                setGridSettings={setGridSettings}
                 brushSize={brushSize}
                 canvasOpacity={canvasOpacity}
                 canvasColor={canvasColor}
@@ -2263,6 +2257,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                 scrollRef={scrollRef}
                 contentRef={gridContentRef}
                 zoomToolActive={zoomToolActive}
+                panToolActive={panToolActive}
                 onZoomToolRect={handleZoomToRect}
                 canvasRefs={canvasRefs}
                 currentLayer={currentLayer}

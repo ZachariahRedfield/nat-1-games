@@ -40,7 +40,7 @@ export default function LayerBar({
   setTileSize,
 }) {
   return (
-    <div className="sticky top-0 left-0 right-0 z-40 bg-gray-800/80 text-white backdrop-blur px-2 py-1 border-b border-gray-700">
+    <div className="sticky top-0 left-0 right-0 z-[10020] bg-gray-800 text-white px-2 py-1 border-b border-gray-700 shadow">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 mr-2">
           <span className="text-[11px] uppercase opacity-80">Layers</span>
@@ -49,32 +49,32 @@ export default function LayerBar({
           </div>
         </div>
         {LAYERS.map((l) => (
-          <div key={`layerbar-${l}`} className="flex items-center gap-1">
-            <button
-              onClick={() => setCurrentLayer(l)}
-              className={`px-2 py-0.5 text-[12px] rounded ${currentLayer === l ? 'bg-blue-600' : 'bg-gray-700'}`}
-              title={`Edit ${l}`}
-            >
-              {l}
-            </button>
-            <button
-              onClick={() => toggleLayerVisibility(l)}
-              className={`px-2 py-0.5 text-[12px] rounded ${layerVisibility[l] ? 'bg-gray-600' : 'bg-gray-700'}`}
-              title={layerVisibility[l] ? 'Hide' : 'Show'}
-            >
-              {layerVisibility[l] ? 'Hide' : 'Show'}
-            </button>
-          </div>
+          <button
+            key={`layerbar-${l}`}
+            onClick={() => setCurrentLayer(l)}
+            className={`text-sm ${currentLayer === l ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-200'}`}
+            title={`Edit ${l}`}
+          >
+            {l}
+          </button>
         ))}
+        {(() => { const vis = layerVisibility?.[currentLayer] !== false; const cap = currentLayer.charAt(0).toUpperCase() + currentLayer.slice(1); const label = `${vis ? 'Hide' : 'Show'} ${cap}`; return (<button className="px-2 py-0.5 text-[12px] rounded bg-gray-700" onClick={() => toggleLayerVisibility(currentLayer)} title={label}>{label}</button>); })()}
         <div className="h-4 w-px bg-gray-600 mx-1" />
-        <label className="flex items-center gap-2 text-[12px] bg-gray-700 px-2 py-0.5 rounded cursor-pointer">
-          <input type="checkbox" checked={!tokensVisible} onChange={() => setTokensVisible((v) => !v)} />
-          <span>{tokensVisible ? 'Hide Tokens' : 'Show Tokens'}</span>
-        </label>
-        <label className="flex items-center gap-2 text-[12px] bg-gray-700 px-2 py-0.5 rounded cursor-pointer">
-          <input type="checkbox" checked={!showGridLines} onChange={() => setShowGridLines((v) => !v)} />
-          <span>{showGridLines ? 'Hide Grid' : 'Show Grid'}</span>
-        </label>
+        <button
+          className="px-2 py-0.5 text-[12px] rounded bg-gray-700"
+          onClick={() => setTokensVisible((v) => !v)}
+          title={tokensVisible ? 'Hide Tokens' : 'Show Tokens'}
+        >
+          {tokensVisible ? 'Hide Tokens' : 'Show Tokens'}
+        </button>
+        <button
+          className="px-2 py-0.5 text-[12px] rounded bg-gray-700"
+          onClick={() => setShowGridLines((v) => !v)}
+          title={showGridLines ? 'Hide Grid' : 'Show Grid'}
+        >
+          {showGridLines ? 'Hide Grid' : 'Show Grid'}
+        </button>
+        {/* Zoom slider on far right */}
         <div className="ml-auto flex items-center gap-2">
           <span className="text-[11px] opacity-80">Zoom</span>
           <input

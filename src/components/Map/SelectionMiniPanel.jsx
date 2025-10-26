@@ -1,5 +1,7 @@
 import React from "react";
 import NumericInput from "../common/NumericInput";
+import RotationWheel from "../common/RotationWheel";
+import AlphaSlider from "../common/AlphaSlider";
 
 export default function SelectionMiniPanel({
   obj,
@@ -9,16 +11,20 @@ export default function SelectionMiniPanel({
   onRotate, // (deltaDeg) => void
   onFlipX, // () => void
   onFlipY, // () => void
-  onDelete, // () => void
+  // onDelete removed from UI by request
+  opacity = 1,
+  onChangeOpacity, // (value 0..1)
+  snapToGrid = true,
+  onToggleSnap, // () => void
 }) {
   if (!obj) return null;
 
   const panelW = 220;
-  const panelH = 110;
+  const panelH = 120;
   const left = obj.col * tileSize;
   const top = obj.row * tileSize;
-  const w = obj.wTiles * tileSize;
-  const h = obj.hTiles * tileSize;
+  const w = (obj.wTiles || 1) * tileSize;
+  const h = (obj.hTiles || 1) * tileSize;
 
   // Try to place panel left of the object; fallback to right; clamp vertically
   let defX = left - panelW - 8;
@@ -69,7 +75,7 @@ export default function SelectionMiniPanel({
 
   return (
     <div
-      className="absolute bg-gray-900/95 text-white border border-gray-700 rounded shadow-lg p-2"
+      className="absolute bg-gray-900/95 text-white border border-gray-700 rounded shadow-lg p-2 relative"
       style={{ left: pos.x, top: pos.y, width: panelW, height: panelH, zIndex: 10060 }}
     >
       <div
@@ -81,12 +87,14 @@ export default function SelectionMiniPanel({
       </div>
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
-          <button className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded" onClick={() => onRotate?.(-15)} title="Rotate -15">⟲</button>
-          <button className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded" onClick={() => onRotate?.(15)} title="Rotate +15">⟳</button>
           <button className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded" onClick={onFlipX} title="Flip X">FX</button>
           <button className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded" onClick={onFlipY} title="Flip Y">FY</button>
+          <label className="text-[11px] inline-flex items-center gap-1 ml-1" title="Grid Snap">
+            <input type="checkbox" checked={!!snapToGrid} onChange={onToggleSnap} />
+            <span>Snap</span>
+          </label>
         </div>
-        <button className="px-2 py-0.5 text-xs bg-red-700 hover:bg-red-600 rounded" onClick={onDelete} title="Delete">Del</button>
+        {/* Delete button removed per request */}
       </div>
       <div className="flex items-end gap-3">
         <div className="inline-flex items-center">
@@ -115,6 +123,43 @@ export default function SelectionMiniPanel({
               title="Rows (tiles)"
             />
             <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Rotation wheel bottom-right */}
+      <div className="absolute" style={{ right: 6, bottom: 28 }}>
+        <div className="relative">
+          <RotationWheel
+            value={Math.round(obj.rotation || 0)}
+            size={64}
+            onChange={(ang) => {
+              const r0 = Math.round(obj.rotation || 0);
+              let delta = Math.round(ang) - r0;
+              if (delta > 180) delta -= 360;
+              if (delta < -180) delta += 360;
+              onRotate?.(delta);
+            }}
+          />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[9px] text-gray-300">
+            Rotation
+          </div>
+        </div>
+      </div>
+
+      {/* Opacity slider bottom-left, tucked in with label */}
+      <div className="absolute" style={{ left: 6, bottom: 2, width: 160 }}>
+        <div className="relative">
+          <AlphaSlider
+            value={Math.max(0.05, Math.min(1, opacity))}
+            min={0.05}
+            max={1}
+            step={0.05}
+            onChange={(e) => onChangeOpacity?.(parseFloat(e.target.value))}
+            ariaLabel="Opacity"
+          />
+          <div className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">
+            Opacity
           </div>
         </div>
       </div>
