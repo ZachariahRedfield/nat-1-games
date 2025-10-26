@@ -1,5 +1,5 @@
 import React from "react";
-import UserBadge from "../../Auth/UserBadge";
+// User badge removed; shown in global SiteHeader
 
 export default function Header({
   showToolbar,
@@ -16,7 +16,6 @@ export default function Header({
   return (
     <header className="p-4 bg-gray-800 flex justify-between text-white items-center">
       <div className="flex flex-col items-start gap-1">
-        <h2 className="text-xl font-bold">Map Builder</h2>
         <button
           onClick={onToggleToolbar}
           className="text-[11px] px-2 py-0.5 bg-gray-700/60 hover:bg-gray-600/70 border border-gray-600 rounded"
@@ -33,9 +32,7 @@ export default function Header({
           <button onClick={onSave} className="px-2.5 py-1 text-sm bg-green-700 hover:bg-green-600 border border-green-500 rounded">Save</button>
           <button onClick={onSaveAs} className="px-2.5 py-1 text-sm bg-emerald-700 hover:bg-emerald-600 border border-emerald-500 rounded">Save As</button>
           <button onClick={onLoad} className="px-2.5 py-1 text-sm bg-blue-700 hover:bg-blue-600 border border-blue-500 rounded">Load</button>
-          <button onClick={onBack} className="px-2.5 py-1 text-sm bg-red-700 hover:bg-red-600 border border-red-500 rounded">Back</button>
         </div>
-        <UserBadge session={session} onLogout={onLogout} />
       </div>
     </header>
   );

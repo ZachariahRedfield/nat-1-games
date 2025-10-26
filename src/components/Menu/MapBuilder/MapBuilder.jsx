@@ -126,7 +126,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
 
   // --- view / scroll ---
   const [tileSize, setTileSize] = useState(32);
-  const [showToolbar, setShowToolbar] = useState(true);
+  const [showToolbar, setShowToolbar] = useState(false);
   const scrollRef = useRef(null);
   const gridContentRef = useRef(null);
   const [zoomToolActive, setZoomToolActive] = useState(false);
@@ -213,7 +213,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const [layerVisibility, setLayerVisibility] = useState({
     background: true,
     base: true,
-    sky: false, // start with sky layer hidden
+    sky: true, // sky visible by default
   });
   // Visual grid line toggle
   const [showGridLines, setShowGridLines] = useState(true);
@@ -2234,12 +2234,12 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
               setCurrentLayer={setCurrentLayer}
               layerVisibility={layerVisibility}
               toggleLayerVisibility={toggleLayerVisibility}
-              showAllLayers={showAllLayers}
-              hideAllLayers={hideAllLayers}
               tokensVisible={tokensVisible}
               setTokensVisible={setTokensVisible}
               showGridLines={showGridLines}
               setShowGridLines={setShowGridLines}
+              tileSize={tileSize}
+              setTileSize={setTileSize}
             />
             <div className="min-w-full min-h-full flex justify-center items-start md:items-center p-6">
               <Grid
