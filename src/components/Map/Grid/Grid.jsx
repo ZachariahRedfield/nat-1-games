@@ -10,6 +10,7 @@ import SelectionOverlay from "./SelectionOverlay";
 import TokenLayer from "./TokenLayer";
 import CanvasLayers from "./CanvasLayers";
 import BrushPreview from "./BrushPreview";
+import SelectionMiniPanel from "../SelectionMiniPanel";
 import PointerOverlay from "./PointerOverlay";
 
 export default function Grid({
@@ -639,22 +640,31 @@ export default function Grid({
     // Compute new size from Size (tiles wide) while preserving aspect
     const a = getAssetById(obj.assetId);
     const aspect = a?.aspectRatio || 1;
-    const wTiles = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
-    const hTiles = Math.max(1, Math.round(wTiles / aspect));
+    let nextW = obj.wTiles;
+    let nextH = obj.hTiles;
+    const sc = gridSettings.sizeCols;
+    const sr = gridSettings.sizeRows;
+    const st = gridSettings.sizeTiles;
+    if (typeof sc === 'number' && sc >= 1) nextW = Math.max(1, Math.round(sc));
+    if (typeof sr === 'number' && sr >= 1) nextH = Math.max(1, Math.round(sr));
+    if ((typeof sc !== 'number' || sc < 1) && (typeof sr !== 'number' || sr < 1) && typeof st === 'number' && st >= 1) {
+      nextW = Math.max(1, Math.round(st));
+      nextH = Math.max(1, Math.round(nextW / aspect));
+    }
 
     // Keep the object's center stable as you resize
     const centerRow = obj.row + obj.hTiles / 2;
     const centerCol = obj.col + obj.wTiles / 2;
     const step = gridSettings?.snapStep ?? 1;
     const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-    let newRow = snapLike ? Math.round(centerRow - hTiles / 2) : (centerRow - hTiles / 2);
-    let newCol = snapLike ? Math.round(centerCol - wTiles / 2) : (centerCol - wTiles / 2);
-    newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
-    newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
+    let newRow = snapLike ? Math.round(centerRow - nextH / 2) : (centerRow - nextH / 2);
+    let newCol = snapLike ? Math.round(centerCol - nextW / 2) : (centerCol - nextW / 2);
+    newRow = clamp(newRow, 0, Math.max(0, rows - nextH));
+    newCol = clamp(newCol, 0, Math.max(0, cols - nextW));
 
     updateObjectById(currentLayer, obj.id, {
-      wTiles,
-      hTiles,
+      wTiles: nextW,
+      hTiles: nextH,
       row: newRow,
       col: newCol,
       rotation: gridSettings.rotation || 0,
@@ -669,8 +679,17 @@ export default function Grid({
     if (!selectedTokenId) return;
     const tok = getTokenById(selectedTokenId);
     if (!tok) return;
-    const wTiles = Math.max(1, Math.round(gridSettings.sizeTiles || tok.wTiles || 1));
-    const hTiles = Math.max(1, Math.round(wTiles / 1));
+    let wTiles = tok.wTiles || 1;
+    let hTiles = tok.hTiles || 1;
+    const sc2 = gridSettings.sizeCols;
+    const sr2 = gridSettings.sizeRows;
+    const st2 = gridSettings.sizeTiles;
+    if (typeof sc2 === 'number' && sc2 >= 1) wTiles = Math.max(1, Math.round(sc2));
+    if (typeof sr2 === 'number' && sr2 >= 1) hTiles = Math.max(1, Math.round(sr2));
+    if ((typeof sc2 !== 'number' || sc2 < 1) && (typeof sr2 !== 'number' || sr2 < 1) && typeof st2 === 'number' && st2 >= 1) {
+      wTiles = Math.max(1, Math.round(st2));
+      hTiles = Math.max(1, Math.round(wTiles));
+    }
     const centerRow = tok.row + (tok.hTiles || 1) / 2;
     const centerCol = tok.col + (tok.wTiles || 1) / 2;
     const step = gridSettings?.snapStep ?? 1;
@@ -1447,6 +1466,39 @@ export default function Grid({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
         />
+
+        {(() => {
+          const obj = getSelectedObject();
+          if (!obj) return null;
+          return (
+            <SelectionMiniPanel
+              key={obj.id}
+              obj={obj}
+              tileSize={tileSize}
+              containerSize={{ w: cssWidth, h: cssHeight }}
+              onChangeSize={(newW, newH) => {
+                const centerRow = obj.row + obj.hTiles / 2;
+                const centerCol = obj.col + obj.wTiles / 2;
+                const wTiles = Math.max(1, Math.round(newW));
+                const hTiles = Math.max(1, Math.round(newH));
+                let newRow = Math.round(centerRow - hTiles / 2);
+                let newCol = Math.round(centerCol - wTiles / 2);
+                newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
+                newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
+                updateObjectById(currentLayer, obj.id, { wTiles, hTiles, row: newRow, col: newCol });
+              }}
+              onRotate={(delta) => {
+                const r0 = obj.rotation || 0;
+                let next = (r0 + delta) % 360;
+                if (next < 0) next += 360;
+                updateObjectById(currentLayer, obj.id, { rotation: Math.round(next) });
+              }}
+              onFlipX={() => updateObjectById(currentLayer, obj.id, { flipX: !obj.flipX })}
+              onFlipY={() => updateObjectById(currentLayer, obj.id, { flipY: !obj.flipY })}
+              onDelete={() => removeObjectById(currentLayer, obj.id)}
+            />
+          );
+        })()}
 
         {/* 8) Marquee overlay */}
         {dragRef.current && (dragRef.current.kind === 'marquee-obj' || dragRef.current.kind === 'marquee-token') && (

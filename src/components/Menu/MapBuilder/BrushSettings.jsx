@@ -1,5 +1,7 @@
 import React from "react";
 import NumericInput from "../../common/NumericInput";
+import RotationWheel from "../../common/RotationWheel";
+import AlphaSlider from "../../common/AlphaSlider";
 import CanvasBrushControls from "./CanvasBrushControls";
 
 export default function BrushSettings({
@@ -53,39 +55,43 @@ export default function BrushSettings({
       <div>
         <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
         <div className="grid gap-2">
-          <label className="block text-xs">Size (tiles)</label>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="inline-flex items-center gap-1">
-              <span className="text-xs">Cols (X)</span>
-              <NumericInput
-                value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
-                min={1}
-                max={100}
-                step={1}
-                className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                onCommit={(v) => {
-                  const n = Math.max(1, Math.min(100, Math.round(v)));
-                  snapshotSettings?.();
-                  setGridSettings((s) => ({ ...s, sizeCols: n }));
-                }}
-                title="Width in tiles (columns)"
-              />
+          <div className="flex items-end gap-3 mb-1">
+            <span className="text-xs">Size</span>
+            <div className="inline-flex items-center">
+              <div className="relative">
+                <NumericInput
+                  value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
+                  min={1}
+                  max={100}
+                  step={1}
+                  className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                  onCommit={(v) => {
+                    const n = Math.max(1, Math.min(100, Math.round(v)));
+                    snapshotSettings?.();
+                    setGridSettings((s) => ({ ...s, sizeCols: n }));
+                  }}
+                  title="Width in tiles (columns)"
+                />
+                <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
+              </div>
             </div>
-            <div className="inline-flex items-center gap-1">
-              <span className="text-xs">Rows (Y)</span>
-              <NumericInput
-                value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
-                min={1}
-                max={100}
-                step={1}
-                className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                onCommit={(v) => {
-                  const n = Math.max(1, Math.min(100, Math.round(v)));
-                  snapshotSettings?.();
-                  setGridSettings((s) => ({ ...s, sizeRows: n }));
-                }}
-                title="Height in tiles (rows)"
-              />
+            <div className="inline-flex items-center">
+              <div className="relative">
+                <NumericInput
+                  value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
+                  min={1}
+                  max={100}
+                  step={1}
+                  className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                  onCommit={(v) => {
+                    const n = Math.max(1, Math.min(100, Math.round(v)));
+                    snapshotSettings?.();
+                    setGridSettings((s) => ({ ...s, sizeRows: n }));
+                  }}
+                  title="Height in tiles (rows)"
+                />
+                <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
+              </div>
             </div>
           </div>
           {/* size slider removed */}
@@ -251,29 +257,33 @@ export default function BrushSettings({
     <div>
       <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
       <div className="grid gap-2">
-        <label className="block text-xs">Size (tiles)</label>
-        <div className="flex items-center gap-3 mb-1">
-          <div className="inline-flex items-center gap-1">
-            <span className="text-xs">Cols (X)</span>
-            <NumericInput
-              value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
-              min={1}
-              max={100}
-              step={1}
-              className="w-12 px-1 py-0.5 text-xs text-black rounded"
-              onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeCols: n })); }}
-            />
+        <div className="flex items-end gap-3 mb-1">
+          <span className="text-xs">Size</span>
+          <div className="inline-flex items-center">
+            <div className="relative">
+              <NumericInput
+                value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
+                min={1}
+                max={100}
+                step={1}
+                className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeCols: n })); }}
+              />
+              <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
+            </div>
           </div>
-          <div className="inline-flex items-center gap-1">
-            <span className="text-xs">Rows (Y)</span>
-            <NumericInput
-              value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
-              min={1}
-              max={100}
-              step={1}
-              className="w-12 px-1 py-0.5 text-xs text-black rounded"
-              onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeRows: n })); }}
-            />
+          <div className="inline-flex items-center">
+            <div className="relative">
+              <NumericInput
+                value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
+                min={1}
+                max={100}
+                step={1}
+                className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeRows: n })); }}
+              />
+              <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
+            </div>
           </div>
         </div>
         {/* size slider removed */}
@@ -297,7 +307,7 @@ export default function BrushSettings({
           )}
         </div>
         <label className="block text-xs">Rotation</label>
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-3 mb-2">
           <NumericInput
             value={gridSettings.rotation}
             min={0}
@@ -306,17 +316,12 @@ export default function BrushSettings({
             className="w-12 px-1 py-0.5 text-xs text-black rounded"
             onCommit={(v)=> { const n = Math.max(0, Math.min(359, Math.round(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, rotation: n })); }}
           />
+          <RotationWheel
+            value={gridSettings.rotation}
+            onChange={(n)=> { const d = Math.max(0, Math.min(359, Math.round(n))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, rotation: d })); }}
+            size={72}
+          />
         </div>
-        <input
-          type="range"
-          min="0"
-          max="359"
-          value={gridSettings.rotation}
-          onChange={(e) => {
-            snapshotSettings?.();
-            setGridSettings((s) => ({ ...s, rotation: parseInt(e.target.value) }));
-          }}
-        />
         <div className="flex gap-2">
           <label className="text-xs">
             <input
@@ -352,13 +357,11 @@ export default function BrushSettings({
             onCommit={(v)=> { const n = Math.max(0.05, Math.min(1, parseFloat(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, opacity: n })); }}
           />
         </div>
-        <input
-          className="w-full"
-          type="range"
-          min="0.05"
-          max="1"
-          step="0.05"
+        <AlphaSlider
           value={gridSettings.opacity}
+          min={0.05}
+          max={1}
+          step={0.05}
           onChange={(e) => {
             snapshotSettings?.();
             setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) }));

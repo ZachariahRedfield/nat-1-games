@@ -6,9 +6,11 @@ import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManage
 import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
 import BrushSettings from "./BrushSettings";
 import NumericInput from "../../common/NumericInput";
+import RotationWheel from "../../common/RotationWheel";
 import TextCommitInput from "../../common/TextCommitInput";
 import SaveSelectionDialog from "./SaveSelectionDialog";
 import Header from "./Header";
+import SiteHeader from "../../common/SiteHeader";
 import LayerBar from "./LayerBar";
 import AssetPanel from "./AssetPanel";
 import AssetCreator from "./AssetCreator";
@@ -54,7 +56,7 @@ const ZoomIcon = ({ className = "w-4 h-4" }) => (
   </svg>
 );
 
-export default function MapBuilder({ goBack, session, onLogout }) {
+export default function MapBuilder({ goBack, session, onLogout, onNavigate, currentScreen }) {
   // --- dimensions ---
   const [rowsInput, setRowsInput] = useState("20");
   const [colsInput, setColsInput] = useState("20");
@@ -601,6 +603,28 @@ export default function MapBuilder({ goBack, session, onLogout }) {
       { type: "tokens", tokens: deepCopyObjects(tokens) },
     ]);
     setRedoStack([]);
+  };
+
+  // Delete current selection (objects or tokens)
+  const deleteCurrentSelection = () => {
+    const hasObjs = (selectedObjsList?.length || 0) > 0;
+    const hasToks = (selectedTokensList?.length || 0) > 0;
+    if (!hasObjs && !hasToks) return;
+    if (hasToks) {
+      onBeginTokenStroke?.();
+      for (const t of selectedTokensList) removeTokenById?.(t.id);
+      setSelectedToken(null);
+      setSelectedTokensList([]);
+      showToast('Deleted selected token(s).', 'success');
+      return;
+    }
+    if (hasObjs) {
+      onBeginObjectStroke?.(currentLayer);
+      for (const o of selectedObjsList) removeObjectById(currentLayer, o.id);
+      setSelectedObj(null);
+      setSelectedObjsList([]);
+      showToast('Deleted selected object(s).', 'success');
+    }
   };
 
   // ====== apply tile updates (grid color) ======
@@ -1636,6 +1660,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
   const onBackClick = () => { try { clearCurrentProjectDir(); } catch {} ; goBack?.(); };
   return (
     <div className="w-full h-full flex flex-col">
+      <SiteHeader session={session} onLogout={onLogout} onNavigate={onNavigate} currentScreen={currentScreen || 'mapBuilder'} />
       <Header
         showToolbar={showToolbar}
         onToggleToolbar={() => setShowToolbar((s) => !s)}
@@ -1768,6 +1793,34 @@ export default function MapBuilder({ goBack, session, onLogout }) {
         {showToolbar && (
           <div className="w-72 bg-gray-800 text-white border-r-2 border-gray-600 flex flex-col min-h-0">
             <div className="p-4 space-y-5 overflow-y-auto">
+              {/* ASSETS (WHAT) at top */}
+              <AssetPanel
+                assetGroup={assetGroup}
+                setAssetGroup={setAssetGroup}
+                showAssetKindMenu={showAssetKindMenu}
+                setShowAssetKindMenu={setShowAssetKindMenu}
+                showAssetPreviews={showAssetPreviews}
+                setShowAssetPreviews={setShowAssetPreviews}
+                assets={assets}
+                selectedAssetId={selectedAssetId}
+                selectedAsset={selectedAsset}
+                selectAsset={selectAsset}
+                tokens={tokens}
+                objects={objects}
+                creatorOpen={creatorOpen}
+                creatorKind={creatorKind}
+                editingAsset={editingAsset}
+                openCreator={openCreator}
+                setCreatorOpen={setCreatorOpen}
+                setEditingAsset={setEditingAsset}
+                handleCreatorCreate={handleCreatorCreate}
+                updateAssetById={updateAssetById}
+                setAssets={setAssets}
+                setSelectedAssetId={setSelectedAssetId}
+                alertFn={(msg) => showToast(msg, 'warning', 3500)}
+                confirmFn={(msg) => confirmUser(msg)}
+              />
+
               {/* MAP SIZE / ZOOM */}
               <div className="mb-2">
                 <h3 className="font-bold text-sm mb-2">Map Size</h3>
@@ -1827,34 +1880,6 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                   </div>
                 </div>
               </div>
-              {/* ASSETS (WHAT) */}
-              <AssetPanel
-                assetGroup={assetGroup}
-                setAssetGroup={setAssetGroup}
-                showAssetKindMenu={showAssetKindMenu}
-                setShowAssetKindMenu={setShowAssetKindMenu}
-                showAssetPreviews={showAssetPreviews}
-                setShowAssetPreviews={setShowAssetPreviews}
-                assets={assets}
-                selectedAssetId={selectedAssetId}
-                selectedAsset={selectedAsset}
-                selectAsset={selectAsset}
-                tokens={tokens}
-                objects={objects}
-                creatorOpen={creatorOpen}
-                creatorKind={creatorKind}
-                editingAsset={editingAsset}
-                openCreator={openCreator}
-                setCreatorOpen={setCreatorOpen}
-                setEditingAsset={setEditingAsset}
-                handleCreatorCreate={handleCreatorCreate}
-                updateAssetById={updateAssetById}
-                setAssets={setAssets}
-                setSelectedAssetId={setSelectedAssetId}
-                alertFn={(msg) => showToast(msg, 'warning', 3500)}
-                confirmFn={(msg) => confirmUser(msg)}
-              />
-
               {/* INTERACTION MODE (two-row contextual) */}
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
@@ -1927,19 +1952,33 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                       </button>
                     </>
                   ) : (
-                    <button
-                      onClick={() => setSaveDialogOpen(true)}
-                      disabled={((selectedObjsList?.length||0) === 0) && ((selectedTokensList?.length||0) === 0)}
-                      className={`px-3 py-1 text-sm border rounded relative group ${ (((selectedObjsList?.length||0) > 0) || ((selectedTokensList?.length||0) > 0)) ? 'bg-amber-600 border-amber-500 hover:bg-amber-500' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
-                      title="Save selected as a new asset"
-                      aria-label="Save"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <SaveIcon className="w-4 h-4" />
-                        <span className="text-xs">Save</span>
-                      </span>
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Save</div>
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setSaveDialogOpen(true)}
+                        disabled={((selectedObjsList?.length||0) === 0) && ((selectedTokensList?.length||0) === 0)}
+                        className={`px-3 py-1 text-sm border rounded relative group ${ (((selectedObjsList?.length||0) > 0) || ((selectedTokensList?.length||0) > 0)) ? 'bg-amber-600 border-amber-500 hover:bg-amber-500' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
+                        title="Save selected as a new asset"
+                        aria-label="Save"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <SaveIcon className="w-4 h-4" />
+                          <span className="text-xs">Save</span>
+                        </span>
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Save</div>
+                      </button>
+                      <button
+                        onClick={deleteCurrentSelection}
+                        disabled={((selectedObjsList?.length||0) === 0) && ((selectedTokensList?.length||0) === 0)}
+                        className={`px-3 py-1 text-sm border rounded relative group ${ (((selectedObjsList?.length||0) > 0) || ((selectedTokensList?.length||0) > 0)) ? 'bg-red-700 border-red-600 hover:bg-red-600' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
+                        title="Delete selected"
+                        aria-label="Delete"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <span className="text-xs">Delete</span>
+                        </span>
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Delete</div>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -2021,39 +2060,74 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                         <>
                         <h3 className="font-bold text-sm mb-2">Token Settings</h3>
                         <div className="grid gap-2">
-                        <label className="block text-xs">Size (tiles)</label>
-                        <div className="flex items-center gap-3 mb-1">
-                          <div className="inline-flex items-center gap-1">
-                            <span className="text-xs">Cols (X)</span>
-                            <NumericInput
-                              value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
-                              min={1}
-                              max={100}
-                              step={1}
-                              className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                              onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, sizeCols: n })); }}
-                            />
+                        <div className="flex items-end gap-3 mb-1">
+                          <span className="text-xs">Size</span>
+                          <div className="inline-flex items-center">
+                            <div className="relative">
+                              <NumericInput
+                                value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
+                                min={1}
+                                max={100}
+                                step={1}
+                                className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, sizeCols: n })); }}
+                              />
+                              <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
+                            </div>
                           </div>
-                          <div className="inline-flex items-center gap-1">
-                            <span className="text-xs">Rows (Y)</span>
-                            <NumericInput
-                              value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
-                              min={1}
-                              max={100}
-                              step={1}
-                              className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                              onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, sizeRows: n })); }}
-                            />
+                          <div className="inline-flex items-center">
+                            <div className="relative">
+                              <NumericInput
+                                value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
+                                min={1}
+                                max={100}
+                                step={1}
+                                className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, sizeRows: n })); }}
+                              />
+                              <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
+                            </div>
                           </div>
                         </div>
                         <label className="block text-xs">Rotation</label>
-                        <input type="range" min="0" max="359" value={gridSettings.rotation} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, rotation: parseInt(e.target.value) })); }} />
+                        <div className="flex items-center gap-3 mb-1">
+                          <NumericInput
+                            value={gridSettings.rotation}
+                            min={0}
+                            max={359}
+                            step={1}
+                            className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                            onCommit={(v) => { const n = Math.max(0, Math.min(359, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, rotation: n })); }}
+                          />
+                          <RotationWheel
+                            value={gridSettings.rotation}
+                            onChange={(n) => { const d = Math.max(0, Math.min(359, Math.round(n))); snapshotSettings(); setGridSettings((s) => ({ ...s, rotation: d })); }}
+                            size={72}
+                          />
+                        </div>
                         <div className="flex gap-2">
                           <label className="text-xs"><input type="checkbox" checked={gridSettings.flipX} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, flipX: e.target.checked })); }} />{" "}Flip X</label>
                           <label className="text-xs"><input type="checkbox" checked={gridSettings.flipY} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, flipY: e.target.checked })); }} />{" "}Flip Y</label>
                         </div>
                         <label className="block text-xs">Opacity</label>
-                        <input className="w-full" type="range" min="0.05" max="1" step="0.05" value={gridSettings.opacity} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) })); }} />
+                        <div className="w-full">
+                          <style>{`.alpha-range{ -webkit-appearance:none; appearance:none; width:100%; background:transparent; height:24px; margin:0; }
+                          .alpha-range:focus{ outline:none; }
+                          .alpha-range::-webkit-slider-runnable-track{ height:12px; border-radius:2px; background-color:#e5e7eb; background-image: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1)), linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%); background-size:auto,8px 8px,8px 8px,8px 8px,8px 8px; background-position:0 0,0 0,0 4px,4px -4px,-4px 0px; }
+                          .alpha-range::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:4px; margin-top:-2px; background:#ffffff; border:2px solid #374151; box-shadow:0 0 0 1px rgba(0,0,0,0.1); }
+                          .alpha-range::-moz-range-track{ height:12px; border-radius:2px; background-color:#e5e7eb; background-image: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1)), linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%); background-size:auto,8px 8px,8px 8px,8px 8px,8px 8px; background-position:0 0,0 0,0 4px,4px -4px,-4px 0px; }
+                          .alpha-range::-moz-range-thumb{ width:16px; height:16px; border-radius:4px; background:#ffffff; border:2px solid #374151; }`}</style>
+                          <input
+                            type="range"
+                            min="0.05"
+                            max="1"
+                            step="0.05"
+                            value={gridSettings.opacity}
+                            onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) })); }}
+                            className="alpha-range"
+                            aria-label="Opacity"
+                          />
+                        </div>
                       <div className="grid grid-cols-2 gap-2 mt-2">
                         <label className="text-xs">Name
                           <TextCommitInput className="w-full p-1 text-black rounded" value={selectedToken?.meta?.name || ''} onCommit={(v) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, name: v } })} />

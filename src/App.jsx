@@ -39,19 +39,19 @@ function App() {
     switch (screen) {
       case "mapBuilder":
         return isDM(session) ? (
-          <MapBuilder goBack={() => setScreen("menu")} session={session} onLogout={logout} />
+          <MapBuilder goBack={() => setScreen("menu")} session={session} onLogout={logout} onNavigate={setScreen} currentScreen={screen} />
         ) : (
           <Login onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
         );
       case "startSession":
         return isDM(session) ? (
-          <StartSession goBack={() => setScreen("menu")} session={session} onLogout={logout} />
+          <StartSession goBack={() => setScreen("menu")} session={session} onLogout={logout} onNavigate={setScreen} currentScreen={screen} />
         ) : (
           <Login onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
         );
       case "assetCreation":
         return isDM(session) ? (
-          <AssetCreation goBack={() => setScreen("menu")} session={session} onLogout={logout} />
+          <AssetCreation goBack={() => setScreen("menu")} session={session} onLogout={logout} onNavigate={setScreen} currentScreen={screen} />
         ) : (
           <Login onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
         );
