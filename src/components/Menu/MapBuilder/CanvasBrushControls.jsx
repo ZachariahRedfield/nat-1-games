@@ -22,25 +22,14 @@ export default function CanvasBrushControls({
       <div className="mt-1">
         <label className="block text-xs mb-1">Brush Size (tiles)</label>
         <div className="flex items-center gap-2">
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={brushSize}
-            onChange={(e) => {
-              snapshotSettings?.();
-              setBrushSize(parseInt(e.target.value));
-            }}
-            className="flex-1"
-          />
           <NumericInput
             value={brushSize}
-            min={1}
-            max={10}
-            step={1}
+            min={0.1}
+            max={100}
+            step={0.1}
             className="w-12 px-1 py-0.5 text-xs text-black rounded"
             onCommit={(v) => {
-              const n = Math.max(1, Math.min(10, Math.round(v)));
+              const n = Math.max(0.1, Math.min(100, parseFloat(v)));
               snapshotSettings?.();
               setBrushSize(n);
             }}

@@ -107,6 +107,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
   };
 
   const [promptState, setPromptState] = useState(null); // { title, defaultValue, resolve }
+  const promptInputRef = useRef(null);
   const promptUser = (title, defaultValue = '') =>
     new Promise((resolve) => setPromptState({ title, defaultValue: defaultValue ?? '', resolve }));
 
@@ -341,6 +342,8 @@ export default function MapBuilder({ goBack, session, onLogout }) {
   // Grid engine (snap)
   const [gridSettings, setGridSettings] = useState({
     sizeTiles: 1,
+    sizeCols: 1,
+    sizeRows: 1,
     rotation: 0,
     flipX: false,
     flipY: false,
@@ -1259,7 +1262,9 @@ export default function MapBuilder({ goBack, session, onLogout }) {
       // Sync controls to the selected object's properties
       setGridSettings((s) => ({
         ...s,
-        sizeTiles: Math.max(1, obj.wTiles || 1),
+        sizeTiles: Math.max(1, Math.round(obj.wTiles || 1)),
+        sizeCols: Math.max(1, Math.round(obj.wTiles || 1)),
+        sizeRows: Math.max(1, Math.round(obj.hTiles || 1)),
         rotation: obj.rotation || 0,
         flipX: !!obj.flipX,
         flipY: !!obj.flipY,
@@ -1347,7 +1352,9 @@ export default function MapBuilder({ goBack, session, onLogout }) {
       setSelectedToken(tok);
       setGridSettings((s) => ({
         ...s,
-        sizeTiles: Math.max(1, tok.wTiles || 1),
+        sizeTiles: Math.max(1, Math.round(tok.wTiles || 1)),
+        sizeCols: Math.max(1, Math.round(tok.wTiles || 1)),
+        sizeRows: Math.max(1, Math.round(tok.hTiles || 1)),
         rotation: tok.rotation || 0,
         flipX: false,
         flipY: false,
@@ -1667,6 +1674,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
               <input
                 autoFocus
                 defaultValue={promptState.defaultValue || ''}
+                ref={promptInputRef}
                 className="w-full p-2 rounded text-black mb-3"
                 onKeyDown={(e)=> { if (e.key === 'Enter') {
                   const val = e.currentTarget.value;
@@ -1677,8 +1685,7 @@ export default function MapBuilder({ goBack, session, onLogout }) {
               <div className="flex justify-end gap-2">
                 <button className="px-3 py-1 bg-gray-700 rounded" onClick={()=> { promptState.resolve(null); setPromptState(null); }}>Cancel</button>
                 <button className="px-3 py-1 bg-blue-600 rounded" onClick={()=> {
-                  const inputEl = (document.activeElement && document.activeElement.tagName==='INPUT') ? document.activeElement : null;
-                  const val = inputEl ? inputEl.value : promptState.defaultValue || '';
+                  const val = promptInputRef && promptInputRef.current ? promptInputRef.current.value : (promptState.defaultValue || '');
                   promptState.resolve(val);
                   setPromptState(null);
                 }}>OK</button>
@@ -2015,7 +2022,30 @@ export default function MapBuilder({ goBack, session, onLogout }) {
                         <h3 className="font-bold text-sm mb-2">Token Settings</h3>
                         <div className="grid gap-2">
                         <label className="block text-xs">Size (tiles)</label>
-                        <input type="range" min="1" max="20" value={gridSettings.sizeTiles} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, sizeTiles: parseInt(e.target.value) })); }} />
+                        <div className="flex items-center gap-3 mb-1">
+                          <div className="inline-flex items-center gap-1">
+                            <span className="text-xs">Cols (X)</span>
+                            <NumericInput
+                              value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
+                              min={1}
+                              max={100}
+                              step={1}
+                              className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                              onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, sizeCols: n })); }}
+                            />
+                          </div>
+                          <div className="inline-flex items-center gap-1">
+                            <span className="text-xs">Rows (Y)</span>
+                            <NumericInput
+                              value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
+                              min={1}
+                              max={100}
+                              step={1}
+                              className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                              onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, sizeRows: n })); }}
+                            />
+                          </div>
+                        </div>
                         <label className="block text-xs">Rotation</label>
                         <input type="range" min="0" max="359" value={gridSettings.rotation} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, rotation: parseInt(e.target.value) })); }} />
                         <div className="flex gap-2">

@@ -103,6 +103,8 @@ export default function Grid({
 
   const quantize = (v, step) => {
     if (!step || step <= 0) return v;
+    // For step = 1, mimic snap-to-grid behavior exactly (floor, not round)
+    if (step === 1) return Math.floor(v);
     return Math.round(v / step) * step;
   };
 
@@ -141,9 +143,8 @@ export default function Grid({
       removeObjectById,
     }
   ) => {
-    const size = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
-    const wTiles = size,
-      hTiles = size;
+    const wTiles = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
+    const hTiles = Math.max(1, Math.round(gridSettings.sizeRows || gridSettings.sizeTiles || 1));
 
     const r0 = clamp(
       centerRow - Math.floor(hTiles / 2),
@@ -369,22 +370,25 @@ export default function Grid({
     const variantIndex = chooseVariantIndex();
     const variantAspect = isNatural ? (variants?.[variantIndex || 0]?.aspectRatio || 1) : (selectedAsset.aspectRatio || 1);
 
-    const baseSize = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
-    const sizeTiles = naturalSettings?.randomSize?.enabled
-      ? Math.max(1, Math.round(Math.min(naturalSettings.randomSize.max || baseSize, Math.max(naturalSettings.randomSize.min || 1, Math.random() * ((naturalSettings.randomSize.max || baseSize) - (naturalSettings.randomSize.min || 1)) + (naturalSettings.randomSize.min || 1)))))
-      : baseSize;
-    const wTiles = sizeTiles;
     const aspect = variantAspect;
-    const hTiles = Math.max(1, Math.round(wTiles / aspect));
+    const wTiles = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
+    const hTiles = Math.max(1, Math.round(gridSettings.sizeRows || Math.round(wTiles / aspect)));
 
-    // Center on hovered tile, then clamp so the footprint stays in-bounds
+    // Snap-like behavior when snapStep === 1 even if snapToGrid is off
+    const step = gridSettings?.snapStep ?? 1;
+    const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
+    const baseRow = snapLike ? Math.floor(centerRow) : centerRow;
+    const baseCol = snapLike ? Math.floor(centerCol) : centerCol;
+    const halfH = snapLike ? Math.floor(hTiles / 2) : (hTiles / 2);
+    const halfW = snapLike ? Math.floor(wTiles / 2) : (wTiles / 2);
+    // Center on hovered position, then clamp so the footprint stays in-bounds
     const r0 = clamp(
-      centerRow - Math.floor(hTiles / 2),
+      baseRow - halfH,
       0,
       Math.max(0, rows - hTiles)
     );
     const c0 = clamp(
-      centerCol - Math.floor(wTiles / 2),
+      baseCol - halfW,
       0,
       Math.max(0, cols - wTiles)
     );
@@ -417,22 +421,36 @@ export default function Grid({
   };
 
   const placeGridColorStampAt = (centerRow, centerCol) => {
-    // Size in tiles (square, since a solid color has no aspect)
-    const size = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
-    const wTiles = size;
-    const hTiles = size;
+    // Size in tiles (rectangular via sizeCols/sizeRows)
+    const wTiles = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
+    const hTiles = Math.max(1, Math.round(gridSettings.sizeRows || gridSettings.sizeTiles || 1));
 
-    // Center on hovered tile, clamp so full footprint stays in bounds
-    const r0 = clamp(
-      centerRow - Math.floor(hTiles / 2),
+    // Snap-like behavior when snapStep === 1 even if snapToGrid is off
+    const step = gridSettings?.snapStep ?? 1;
+    const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
+    const baseRow = snapLike ? Math.floor(centerRow) : centerRow;
+    const baseCol = snapLike ? Math.floor(centerCol) : centerCol;
+    const halfH = snapLike ? Math.floor(hTiles / 2) : (hTiles / 2);
+    const halfW = snapLike ? Math.floor(wTiles / 2) : (wTiles / 2);
+    // Center on hovered position, clamp so full footprint stays in bounds
+    let r0 = clamp(
+      baseRow - halfH,
       0,
       Math.max(0, rows - hTiles)
     );
-    const c0 = clamp(
-      centerCol - Math.floor(wTiles / 2),
+    let c0 = clamp(
+      baseCol - halfW,
       0,
       Math.max(0, cols - wTiles)
     );
+    // Ensure integer cell indices for tile updates
+    if (!snapLike) {
+      r0 = Math.round(r0);
+      c0 = Math.round(c0);
+      // Re-clamp after rounding
+      r0 = clamp(r0, 0, Math.max(0, rows - hTiles));
+      c0 = clamp(c0, 0, Math.max(0, cols - wTiles));
+    }
 
     // Build updates for NÃ—N
     const updates = [];
@@ -466,12 +484,12 @@ export default function Grid({
 
   const placeTokenAt = (centerRow, centerCol) => {
     if (!selectedAsset) return;
-    const baseSize = Math.max(1, Math.round(gridSettings.sizeTiles || 1));
+    const baseW = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
+    const baseH = Math.max(1, Math.round(gridSettings.sizeRows || gridSettings.sizeTiles || 1));
     const snap = !!gridSettings?.snapToGrid;
     if (selectedAsset.kind === 'token') {
-      const wTiles = baseSize;
-      const aspect = selectedAsset.aspectRatio || 1;
-      const hTiles = Math.max(1, Math.round(wTiles / aspect));
+      const wTiles = baseW;
+      const hTiles = baseH;
       const r0 = clamp(
         (snap ? (centerRow - Math.floor(hTiles / 2)) : (centerRow - hTiles / 2)),
         0,
@@ -503,9 +521,8 @@ export default function Grid({
       for (const m of selectedAsset.members) {
         const tokAsset = assets.find((a)=> a.id === m.assetId);
         if (!tokAsset) continue;
-        const wTiles = baseSize;
-        const aspect = tokAsset.aspectRatio || 1;
-        const hTiles = Math.max(1, Math.round(wTiles / aspect));
+        const wTiles = baseW;
+        const hTiles = baseH;
         const r0 = clamp(
           (snap ? (centerRow - Math.floor(hTiles / 2)) : (centerRow - hTiles / 2)),
           0,
@@ -555,6 +572,10 @@ export default function Grid({
 
   useEffect(() => {
     const onKey = (e) => {
+      const t = e.target;
+      if (t && (t.isContentEditable === true || (t.tagName && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')))) {
+        return; // ignore deletion hotkeys while typing in form fields
+      }
       // Delete/Escape for tokens
       if (selectedTokenIds.length || selectedTokenId) {
         if (e.key === "Delete" || e.key === "Backspace") {
@@ -624,8 +645,10 @@ export default function Grid({
     // Keep the object's center stable as you resize
     const centerRow = obj.row + obj.hTiles / 2;
     const centerCol = obj.col + obj.wTiles / 2;
-    let newRow = Math.round(centerRow - hTiles / 2);
-    let newCol = Math.round(centerCol - wTiles / 2);
+    const step = gridSettings?.snapStep ?? 1;
+    const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
+    let newRow = snapLike ? Math.round(centerRow - hTiles / 2) : (centerRow - hTiles / 2);
+    let newCol = snapLike ? Math.round(centerCol - wTiles / 2) : (centerCol - wTiles / 2);
     newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
     newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
 
@@ -650,8 +673,10 @@ export default function Grid({
     const hTiles = Math.max(1, Math.round(wTiles / 1));
     const centerRow = tok.row + (tok.hTiles || 1) / 2;
     const centerCol = tok.col + (tok.wTiles || 1) / 2;
-    let newRow = Math.round(centerRow - hTiles / 2);
-    let newCol = Math.round(centerCol - wTiles / 2);
+    const step = gridSettings?.snapStep ?? 1;
+    const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
+    let newRow = snapLike ? Math.round(centerRow - hTiles / 2) : (centerRow - hTiles / 2);
+    let newCol = snapLike ? Math.round(centerCol - wTiles / 2) : (centerCol - wTiles / 2);
     newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
     newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
     updateTokenById?.(selectedTokenId, {
@@ -1109,10 +1134,14 @@ export default function Grid({
     const row = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
     const col = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
 
-      // De-dupe only when snapping; in free-place we allow continuous stamps
-      if (gridSettings?.snapToGrid) {
-        if (row === lastTileRef.current.row && col === lastTileRef.current.col) return;
-        lastTileRef.current = { row, col };
+      // De-dupe when snapping OR when free-placement step is 1 (snap-like)
+      const step = gridSettings?.snapStep ?? 1;
+      const dedupeLikeSnap = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
+      if (dedupeLikeSnap) {
+        const keyRow = Math.floor(rowRaw);
+        const keyCol = Math.floor(colRaw);
+        if (keyRow === lastTileRef.current.row && keyCol === lastTileRef.current.col) return;
+        lastTileRef.current = { row: keyRow, col: keyCol };
       }
 
       // For token assets, only place on pointer down (single-click), not on move
@@ -1263,7 +1292,7 @@ export default function Grid({
       if (ring) cursorStyle = 'grab';
       else if (zoomToolActive) cursorStyle = 'zoom-in';
       else {
-        if (engine === 'grid') cursorStyle = 'cell';
+        if (engine === 'grid') cursorStyle = (gridSettings?.snapToGrid ? 'cell' : 'crosshair');
         else if (engine === 'canvas') cursorStyle = isErasing ? 'crosshair' : 'crosshair';
         else cursorStyle = 'default';
       }
@@ -1271,7 +1300,7 @@ export default function Grid({
   } else {
     if (zoomToolActive) cursorStyle = 'zoom-in';
     else {
-      if (engine === 'grid') cursorStyle = 'cell';
+      if (engine === 'grid') cursorStyle = (gridSettings?.snapToGrid ? 'cell' : 'crosshair');
       else if (engine === 'canvas') cursorStyle = isErasing ? 'crosshair' : 'crosshair';
       else cursorStyle = 'default';
     }

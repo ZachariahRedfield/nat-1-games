@@ -54,62 +54,73 @@ export default function BrushSettings({
         <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
         <div className="grid gap-2">
           <label className="block text-xs">Size (tiles)</label>
-          <div className="flex items-center gap-2 mb-1">
-            <NumericInput
-              value={gridSettings.sizeTiles}
-              min={1}
-              max={20}
-              step={1}
-              className="w-12 px-1 py-0.5 text-xs text-black rounded"
-              onCommit={(v) => {
-                const n = Math.max(1, Math.min(20, Math.round(v)));
-                snapshotSettings?.();
-                setGridSettings((s) => ({ ...s, sizeTiles: n }));
-              }}
-              title="Size in tiles"
-            />
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="20"
-            value={gridSettings.sizeTiles}
-            onChange={(e) => {
-              snapshotSettings?.();
-              setGridSettings((s) => ({ ...s, sizeTiles: parseInt(e.target.value) }));
-            }}
-          />
-
-          {/* Snap to grid toggle for natural placement */}
-          <label className="text-xs inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={!!gridSettings.snapToGrid}
-              onChange={(e) => {
-                snapshotSettings?.();
-                setGridSettings((s) => ({ ...s, snapToGrid: e.target.checked }));
-              }}
-            />
-            Snap to Grid
-          </label>
-          {/* Step size for free placement (when Snap to Grid is off) */}
-          {!gridSettings.snapToGrid && (
-            <div className="grid grid-cols-2 gap-2 items-center">
-              <label className="text-xs">Grid Step (tiles)</label>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="inline-flex items-center gap-1">
+              <span className="text-xs">Cols (X)</span>
               <NumericInput
-                value={gridSettings.snapStep ?? 1}
-                min={0.05}
-                step={0.05}
-                className="w-16 px-1 py-0.5 text-xs text-black rounded"
+                value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
+                min={1}
+                max={100}
+                step={1}
+                className="w-12 px-1 py-0.5 text-xs text-black rounded"
                 onCommit={(v) => {
-                  const n = Math.max(0.05, parseFloat(v));
+                  const n = Math.max(1, Math.min(100, Math.round(v)));
                   snapshotSettings?.();
-                  setGridSettings((s) => ({ ...s, snapStep: n }));
+                  setGridSettings((s) => ({ ...s, sizeCols: n }));
                 }}
-                title="Used when Snap to Grid is off"
+                title="Width in tiles (columns)"
               />
             </div>
-          )}
+            <div className="inline-flex items-center gap-1">
+              <span className="text-xs">Rows (Y)</span>
+              <NumericInput
+                value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
+                min={1}
+                max={100}
+                step={1}
+                className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                onCommit={(v) => {
+                  const n = Math.max(1, Math.min(100, Math.round(v)));
+                  snapshotSettings?.();
+                  setGridSettings((s) => ({ ...s, sizeRows: n }));
+                }}
+                title="Height in tiles (rows)"
+              />
+            </div>
+          </div>
+          {/* size slider removed */}
+
+          {/* Grid Snap + Step (contained in one slim box) */}
+          <div className="text-xs inline-flex items-center gap-3 px-2 py-1 border border-gray-700 rounded w-fit">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={!!gridSettings.snapToGrid}
+                onChange={(e) => {
+                  snapshotSettings?.();
+                  setGridSettings((s) => ({ ...s, snapToGrid: e.target.checked }));
+                }}
+              />
+              Grid Snap
+            </label>
+            {!gridSettings.snapToGrid && (
+              <div className="inline-flex items-center gap-2">
+                <span>Step</span>
+                <NumericInput
+                  value={gridSettings.snapStep ?? 1}
+                  min={0.05}
+                  step={0.05}
+                  className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                  onCommit={(v) => {
+                    const n = Math.max(0.05, parseFloat(v));
+                    snapshotSettings?.();
+                    setGridSettings((s) => ({ ...s, snapStep: n }));
+                  }}
+                  title="Used when Grid Snap is off"
+                />
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-2 mt-2">
             <label className="text-xs inline-flex items-center gap-2">
@@ -241,39 +252,50 @@ export default function BrushSettings({
       <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
       <div className="grid gap-2">
         <label className="block text-xs">Size (tiles)</label>
-        <div className="flex items-center gap-2 mb-1">
-          <NumericInput
-            value={gridSettings.sizeTiles}
-            min={1}
-            max={20}
-            step={1}
-            className="w-12 px-1 py-0.5 text-xs text-black rounded"
-            onCommit={(v) => { const n = Math.max(1, Math.min(20, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeTiles: n })); }}
-          />
-        </div>
-        <input
-          type="range"
-          min="1"
-          max="20"
-          value={gridSettings.sizeTiles}
-          onChange={(e) => {
-            snapshotSettings?.();
-            setGridSettings((s) => ({ ...s, sizeTiles: parseInt(e.target.value) }));
-          }}
-        />
-        <label className="text-xs inline-flex items-center gap-2"><input type="checkbox" checked={!!gridSettings.snapToGrid} onChange={(e)=>{ snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapToGrid: e.target.checked })); }} /> Snap to Grid</label>
-        {!gridSettings.snapToGrid && (
-          <div className="grid grid-cols-2 gap-2 items-center">
-            <label className="text-xs">Grid Step (tiles)</label>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="inline-flex items-center gap-1">
+            <span className="text-xs">Cols (X)</span>
             <NumericInput
-              value={gridSettings.snapStep ?? 1}
-              min={0.05}
-              step={0.05}
-              className="w-16 px-1 py-0.5 text-xs text-black rounded"
-              onCommit={(v)=> { const n = Math.max(0.05, parseFloat(v)); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapStep: n })); }}
+              value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
+              min={1}
+              max={100}
+              step={1}
+              className="w-12 px-1 py-0.5 text-xs text-black rounded"
+              onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeCols: n })); }}
             />
           </div>
-        )}
+          <div className="inline-flex items-center gap-1">
+            <span className="text-xs">Rows (Y)</span>
+            <NumericInput
+              value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
+              min={1}
+              max={100}
+              step={1}
+              className="w-12 px-1 py-0.5 text-xs text-black rounded"
+              onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => ({ ...s, sizeRows: n })); }}
+            />
+          </div>
+        </div>
+        {/* size slider removed */}
+        <div className="text-xs inline-flex items-center gap-3 px-2 py-1 border border-gray-700 rounded w-fit">
+          <label className="inline-flex items-center gap-2">
+            <input type="checkbox" checked={!!gridSettings.snapToGrid} onChange={(e)=>{ snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapToGrid: e.target.checked })); }} />
+            Grid Snap
+          </label>
+          {!gridSettings.snapToGrid && (
+            <div className="inline-flex items-center gap-2">
+              <span>Step</span>
+              <NumericInput
+                value={gridSettings.snapStep ?? 1}
+                min={0.05}
+                step={0.05}
+                className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                onCommit={(v)=> { const n = Math.max(0.05, parseFloat(v)); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapStep: n })); }}
+                title="Used when Grid Snap is off"
+              />
+            </div>
+          )}
+        </div>
         <label className="block text-xs">Rotation</label>
         <div className="flex items-center gap-2 mb-1">
           <NumericInput
