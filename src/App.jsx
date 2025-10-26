@@ -6,12 +6,14 @@ import AssetCreation from "./components/Menu/AssetCreation/AssetCreation";
 import Login from "./components/Auth/Login";
 import UserBadge from "./components/Auth/UserBadge";
 import { getSession, isDM, clearSession } from "./utils/auth";
+import { clearCurrentProjectDir } from "./components/Menu/MapBuilder/saveLoadManager";
 import { supabase } from "./utils/supabaseClient";
 
 function App() {
   // Default to Login; auto-route if prior session exists
   const [screen, setScreen] = useState("login");
   const [session, setSessionState] = useState(null);
+  const [prevScreen, setPrevScreen] = useState(null);
 
   useEffect(() => {
     const s = getSession();
@@ -34,6 +36,14 @@ function App() {
     setSessionState(null);
     setScreen('login');
   };
+
+  // Clear quick-save project handle when leaving Map Builder
+  useEffect(() => {
+    if (prevScreen === 'mapBuilder' && screen !== 'mapBuilder') {
+      try { clearCurrentProjectDir(); } catch {}
+    }
+    setPrevScreen(screen);
+  }, [screen]);
 
   const renderScreen = () => {
     switch (screen) {

@@ -1517,6 +1517,8 @@ export default function Grid({
               onToggleSnap={() => {
                 setGridSettings?.((s) => ({ ...s, snapToGrid: !s?.snapToGrid }));
               }}
+              linkXY={!!gridSettings.linkXY}
+              onToggleLink={() => setGridSettings?.((s) => ({ ...s, linkXY: !s?.linkXY }))}
             />
           );
         })()}

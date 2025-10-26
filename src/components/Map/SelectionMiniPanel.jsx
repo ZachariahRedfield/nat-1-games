@@ -16,10 +16,12 @@ export default function SelectionMiniPanel({
   onChangeOpacity, // (value 0..1)
   snapToGrid = true,
   onToggleSnap, // () => void
+  linkXY = false,
+  onToggleLink, // () => void
 }) {
   if (!obj) return null;
 
-  const panelW = 220;
+  const panelW = 280;
   const panelH = 120;
   const left = obj.col * tileSize;
   const top = obj.row * tileSize;
@@ -73,6 +75,19 @@ export default function SelectionMiniPanel({
     onChangeSize?.(W, H);
   };
 
+  const LinkIcon = ({ className = "w-4 h-4" }) => (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+      <path d="M6.5 4.5h3a3 3 0 0 1 0 6h-3" strokeLinecap="round" />
+      <path d="M9.5 11.5h-3a3 3 0 0 1 0-6h3" strokeLinecap="round" />
+    </svg>
+  );
+  const LinkBrokenIcon = ({ className = "w-4 h-4" }) => (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+      <path d="M6.5 4.5h3a3 3 0 0 1 0 6h-3" strokeLinecap="round" />
+      <path d="M9 6L10.5 4.5M7 6L5.5 4.5M9 10l1.5 1.5M7 10L5.5 11.5" strokeLinecap="round" />
+    </svg>
+  );
+
   return (
     <div
       className="absolute bg-gray-900/95 text-white border border-gray-700 rounded shadow-lg p-2 relative"
@@ -105,12 +120,28 @@ export default function SelectionMiniPanel({
               max={100}
               step={1}
               className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
-              onCommit={(v) => handleSizeCommit(v, obj.hTiles)}
+              onCommit={(v) => {
+                const n = Math.max(1, Math.round(v));
+                if (linkXY) handleSizeCommit(n, n);
+                else handleSizeCommit(n, obj.hTiles);
+              }}
               title="Cols (tiles)"
             />
             <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
           </div>
         </div>
+
+        {/* Link/Unlink toggle between X and Y */}
+        <button
+          type="button"
+          onClick={onToggleLink}
+          title={linkXY ? 'Linked: change one to set both' : 'Unlinked: set X and Y independently'}
+          className={`mx-1 p-1 rounded border ${linkXY ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:text-white'}`}
+          aria-pressed={linkXY}
+        >
+          {linkXY ? <LinkIcon /> : <LinkBrokenIcon />}
+        </button>
+
         <div className="inline-flex items-center">
           <div className="relative">
             <NumericInput
@@ -119,7 +150,11 @@ export default function SelectionMiniPanel({
               max={100}
               step={1}
               className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
-              onCommit={(v) => handleSizeCommit(obj.wTiles, v)}
+              onCommit={(v) => {
+                const n = Math.max(1, Math.round(v));
+                if (linkXY) handleSizeCommit(n, n);
+                else handleSizeCommit(obj.wTiles, n);
+              }}
               title="Rows (tiles)"
             />
             <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>

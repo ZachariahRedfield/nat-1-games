@@ -14,6 +14,7 @@ import SiteHeader from "../../common/SiteHeader";
 import LayerBar from "./LayerBar";
 import AssetPanel from "./AssetPanel";
 import AssetCreator from "./AssetCreator";
+import VerticalToolStrip from "./VerticalToolStrip";
 
 // Compact tool icons for Interaction area
 const BrushIcon = ({ className = "w-4 h-4" }) => (
@@ -65,10 +66,10 @@ const PanIcon = ({ className = "w-4 h-4" }) => (
 
 export default function MapBuilder({ goBack, session, onLogout, onNavigate, currentScreen }) {
   // --- dimensions ---
-  const [rowsInput, setRowsInput] = useState("50");
-  const [colsInput, setColsInput] = useState("50");
-  const rows = Math.max(1, Math.min(200, parseInt(rowsInput) || 50));
-  const cols = Math.max(1, Math.min(200, parseInt(colsInput) || 50));
+  const [rowsInput, setRowsInput] = useState("30");
+  const [colsInput, setColsInput] = useState("30");
+  const rows = Math.max(1, Math.min(200, parseInt(rowsInput) || 30));
+  const cols = Math.max(1, Math.min(200, parseInt(colsInput) || 30));
 
   // --- per-layer tile grids (for color / legacy tiles) ---
   const [maps, setMaps] = useState({
@@ -132,8 +133,8 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   };
 
   // --- view / scroll ---
-  // Default zoom ~45% (32 is 100%)
-  const [tileSize, setTileSize] = useState(14.4);
+  // Default zoom ~75% (32 is 100%)
+  const [tileSize, setTileSize] = useState(24);
   const [showToolbar, setShowToolbar] = useState(false);
   const scrollRef = useRef(null);
   const gridContentRef = useRef(null);
@@ -562,8 +563,8 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     );
 
   const updateGridSizes = () => {
-    const r = Math.max(1, Math.min(200, parseInt(rowsInput) || 50));
-    const c = Math.max(1, Math.min(200, parseInt(colsInput) || 50));
+    const r = Math.max(1, Math.min(200, parseInt(rowsInput) || 30));
+    const c = Math.max(1, Math.min(200, parseInt(colsInput) || 30));
     setMaps((prev) => ({
       background: resizeLayer(prev.background, r, c),
       base: resizeLayer(prev.base, r, c),
@@ -1862,119 +1863,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                   {/* zoom controls removed */}
                 </div>
               </div>
-              {/* INTERACTION MODE (two-row contextual) */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-bold text-sm">Interaction</h3>
-                </div>
-                {/* Row 1: Mode segmented (+ Zoom Tool) */}
-                <div className="inline-flex items-center gap-0 bg-gray-700/40 border border-gray-600 rounded overflow-hidden">
-                  <button
-                    onClick={() => { setZoomToolActive(false); setPanToolActive(false); setInteractionMode("draw"); }}
-                    title="Draw"
-                    aria-label="Draw"
-                    className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && !panToolActive && interactionMode === "draw") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
-                  >
-                    <BrushIcon className="w-4 h-4" />
-                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Draw</div>
-                  </button>
-                  <button
-                    onClick={() => { setZoomToolActive(false); setPanToolActive(false); setInteractionMode("select"); }}
-                    title="Select"
-                    aria-label="Select"
-                    className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && !panToolActive && interactionMode === "select") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
-                  >
-                    <CursorIcon className="w-4 h-4" />
-                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Select</div>
-                  </button>
-                  <button
-                    onClick={() => { setPanToolActive(true); setZoomToolActive(false); }}
-                    title="Pan Tool: drag to move the map (Space/MMB)"
-                    aria-label="Pan Tool"
-                    className={`px-3 py-1 text-sm relative group ${panToolActive ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
-                  >
-                    <PanIcon className="w-4 h-4" />
-                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Pan</div>
-                  </button>
-                  <button
-                    onClick={() => { setZoomToolActive(true); setPanToolActive(false); }}
-                    title="Zoom Tool: drag a rectangle to zoom"
-                    aria-label="Zoom Tool"
-                    className={`px-3 py-1 text-sm relative group ${zoomToolActive ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
-                  >
-                    <ZoomIcon className="w-4 h-4" />
-                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Zoom</div>
-                  </button>
-                </div>
-                {/* Row 2: Context */}
-                {!panToolActive && !zoomToolActive && (
-                <div className="mt-2 flex items-center gap-2">
-                  {interactionMode === 'draw' ? (
-                    <>
-                      {assetGroup !== 'token' && (
-                        <div className="inline-flex items-center gap-0 bg-gray-700/40 border border-gray-600 rounded overflow-hidden">
-                          <button
-                            onClick={() => setEngine("grid")}
-                            title="Grid"
-                            aria-label="Grid"
-                            className={`px-3 py-1 text-sm relative group ${engine === "grid" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
-                          >
-                            <GridIcon className="w-4 h-4" />
-                            <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Grid</div>
-                          </button>
-                          <button
-                            onClick={() => setEngine("canvas")}
-                            title="Canvas"
-                            aria-label="Canvas"
-                            className={`px-3 py-1 text-sm relative group ${engine === "canvas" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
-                          >
-                            <CanvasIcon className="w-4 h-4" />
-                            <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Canvas</div>
-                          </button>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => setIsErasing((s) => !s)}
-                        className={`px-3 py-1 text-sm border rounded relative group ${isErasing ? 'bg-red-700 border-red-600' : 'bg-gray-700/40 border-gray-600'}`}
-                        title={`Eraser: ${isErasing ? 'On' : 'Off'}`}
-                        aria-label={`Eraser: ${isErasing ? 'On' : 'Off'}`}
-                      >
-                        <EraserIcon className="w-4 h-4" />
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Eraser: {isErasing ? 'On' : 'Off'}</div>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => setSaveDialogOpen(true)}
-                        disabled={((selectedObjsList?.length||0) === 0) && ((selectedTokensList?.length||0) === 0)}
-                        className={`px-3 py-1 text-sm border rounded relative group ${ (((selectedObjsList?.length||0) > 0) || ((selectedTokensList?.length||0) > 0)) ? 'bg-amber-600 border-amber-500 hover:bg-amber-500' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
-                        title="Save selected as a new asset"
-                        aria-label="Save"
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          <SaveIcon className="w-4 h-4" />
-                          <span className="text-xs">Save</span>
-                        </span>
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Save</div>
-                      </button>
-                      <button
-                        onClick={deleteCurrentSelection}
-                        disabled={((selectedObjsList?.length||0) === 0) && ((selectedTokensList?.length||0) === 0)}
-                        className={`px-3 py-1 text-sm border rounded relative group ${ (((selectedObjsList?.length||0) > 0) || ((selectedTokensList?.length||0) > 0)) ? 'bg-red-700 border-red-600 hover:bg-red-600' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
-                        title="Delete selected"
-                        aria-label="Delete"
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          <span className="text-xs">Delete</span>
-                        </span>
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Delete</div>
-                      </button>
-                    </>
-                  )}
-                </div>
-                )}
-              </div>
+              {/* Interaction section removed; tool controls live on the vertical strip */}
 
               {/* SETTINGS (Brush) or Token */}
               {!panToolActive && !zoomToolActive && (engine === "grid" || interactionMode === "select") && (
@@ -2234,7 +2123,26 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
               tileSize={tileSize}
               setTileSize={setTileSize}
             />
-            <div className="min-w-full min-h-full flex justify-center items-start md:items-center p-6">
+            <div className="relative min-w-full min-h-full flex justify-center items-start md:items-center p-6">
+              {/* Overlaid vertical tool strip (doesn't push grid) */}
+              <div className="absolute left-2 top-2 z-[10015] pointer-events-auto">
+                <VerticalToolStrip
+                  interactionMode={interactionMode}
+                  zoomToolActive={zoomToolActive}
+                  panToolActive={panToolActive}
+                  setInteractionMode={setInteractionMode}
+                  setZoomToolActive={setZoomToolActive}
+                  setPanToolActive={setPanToolActive}
+                  isErasing={isErasing}
+                  setIsErasing={setIsErasing}
+                  engine={engine}
+                  setEngine={setEngine}
+                  assetGroup={assetGroup}
+                  canActOnSelection={(selectedObjsList?.length || 0) > 0 || (selectedTokensList?.length || 0) > 0}
+                  onSaveSelection={() => setSaveDialogOpen(true)}
+                  onDeleteSelection={deleteCurrentSelection}
+                />
+              </div>
               <Grid
                 maps={maps}
                 objects={objects}
