@@ -16,7 +16,6 @@ export default function RotationWheel({ value = 0, onChange, onStart, size = 72,
     const dy = cy - clientY; // invert Y so top is +90
     let ang = Math.atan2(dy, dx) * (180 / Math.PI); // -180..180 (0 at +X axis)
     ang = Math.round((ang + 360) % 360); // 0..359
-    // Convert so 0 is to the right, increasing counter-clockwise is fine
     if (typeof onChange === "function") onChange(ang);
   };
 
@@ -37,51 +36,54 @@ export default function RotationWheel({ value = 0, onChange, onStart, size = 72,
     window.removeEventListener("pointerup", onPointerUp);
   };
 
-  const sz = Math.max(32, size);
-  const r = (sz - 8) / 2; // padding for stroke/knob
-  const theta = (value % 360) * (Math.PI / 180);
-  const hx = Math.cos(theta) * r;
-  const hy = -Math.sin(theta) * r; // invert Y for screen coords
+  const sz = Math.max(48, size);
+  const r = (sz - 10) / 2; // padding for stroke/knob
+  const cx = sz / 2;
+  const cy = sz / 2;
+  const theta = ((value % 360) + 360) % 360 * (Math.PI / 180);
+  const knobX = cx + Math.cos(theta) * r;
+  const knobY = cy - Math.sin(theta) * r; // invert Y for screen coords
+
+  // Build a sector path from 0 deg (east) to value deg (counter-clockwise)
+  const x0 = cx + r; // angle 0
+  const y0 = cy;
+  const x1 = knobX;
+  const y1 = knobY;
+  const largeArc = ((value % 360) + 360) % 360 > 180 ? 1 : 0;
+  const sectorPath = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${largeArc} 0 ${x1} ${y1} Z`;
 
   return (
     <div
       ref={ref}
-      className={`relative rounded-full border border-gray-600 bg-gray-800/60 ${className}`}
+      className={`relative ${className}`}
       style={{ width: sz, height: sz, touchAction: "none" }}
       onPointerDown={onPointerDown}
       onContextMenu={(e) => e.preventDefault()}
       title={`${value}\u00B0`}
     >
-      {/* tick marks */}
-      {[0, 90, 180, 270].map((a) => (
-        <div
-          key={`tick-${a}`}
-          className="absolute bg-gray-500"
-          style={{
-            left: sz / 2 - 1,
-            top: sz / 2 - 4,
-            width: 2,
-            height: 8,
-            transform: `rotate(${a}deg) translateY(-${r}px)`,
-            transformOrigin: "center center",
-          }}
-        />
-      ))}
-      {/* knob */}
-      <div
-        className="absolute bg-white rounded-full shadow"
-        style={{
-          left: sz / 2 + hx - 4,
-          top: sz / 2 + hy - 4,
-          width: 8,
-          height: 8,
-        }}
-      />
-      {/* center dot */}
-      <div
-        className="absolute rounded-full bg-gray-500"
-        style={{ left: sz / 2 - 2, top: sz / 2 - 2, width: 4, height: 4 }}
-      />
+      <svg width={sz} height={sz} viewBox={`0 0 ${sz} ${sz}`}> 
+        {/* base circle */}
+        <circle cx={cx} cy={cy} r={r} fill="#111827" stroke="#4b5563" strokeWidth="1.5" />
+        {/* filled sector (pie) */}
+        {value > 0 && (
+          <path d={sectorPath} fill="#64748b" opacity="0.35" />
+        )}
+        {/* ticks at 0/90/180/270 */}
+        {[0,90,180,270].map((a) => {
+          const rad = a * Math.PI / 180;
+          const tx1 = cx + Math.cos(rad) * (r - 6);
+          const ty1 = cy - Math.sin(rad) * (r - 6);
+          const tx2 = cx + Math.cos(rad) * (r);
+          const ty2 = cy - Math.sin(rad) * (r);
+          return (
+            <line key={`tick-${a}`} x1={tx1} y1={ty1} x2={tx2} y2={ty2} stroke="#6b7280" strokeWidth="2" strokeLinecap="round" />
+          );
+        })}
+        {/* center dot */}
+        <circle cx={cx} cy={cy} r={2} fill="#9ca3af" />
+        {/* knob at current angle */}
+        <circle cx={knobX} cy={knobY} r={5} fill="#ffffff" stroke="#111827" strokeWidth="1" />
+      </svg>
     </div>
   );
 }
