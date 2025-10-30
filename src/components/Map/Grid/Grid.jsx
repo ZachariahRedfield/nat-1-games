@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 // Grid.jsx overview
 // - Organizes draw modes (grid vs canvas), selection/dragging, and rendering
 // - Helpers and constants shared via ./utils
@@ -23,10 +23,11 @@ export default function Grid({
   engine, // 'grid' | 'canvas'
   selectedAsset, // Asset or null
   gridSettings, // { sizeTiles, rotation, flipX, flipY, opacity }
+  stampSettings = null, // when stamping new assets, use these settings (per-asset defaults)
   setGridSettings,
   brushSize = 2, // canvas brush size in tiles
   canvasOpacity = 0.35,
-  canvasColor = "#cccccc",
+  canvasColor = null,
   canvasSpacing = 0.27, // fraction of radius
   canvasBlendMode = "source-over",
   canvasSmoothing = 0.55,
@@ -92,9 +93,12 @@ export default function Grid({
 
   const mouseDownRef = useRef(false);
 
-  // Canvas brush â€“ stamp engine state (CSS space)
+  // Canvas brush – stamp engine state (CSS space)
   const lastStampCssRef = useRef(null);
   const emaCssRef = useRef(null);
+
+  // Active settings used for stamping (not selection edits)
+  const stamp = stampSettings || gridSettings || {};
 
   // Grid-stamp de-dupe within a stroke
   const lastTileRef = useRef({ row: -1, col: -1 });
@@ -318,7 +322,7 @@ export default function Grid({
     ctx.globalAlpha = Math.max(
       0.01,
       selectedAsset?.kind === "image"
-        ? gridSettings?.opacity ?? 1
+        ? (stamp?.opacity ?? gridSettings?.opacity ?? 1)
         : canvasOpacity
     );
 
@@ -328,12 +332,16 @@ export default function Grid({
       const pxSize = brushSize * BASE_TILE; // canvas pixels
       ctx.translate(p.x, p.y);
       // optional rotation/flips from gridSettings (reused)
-      const rot = ((gridSettings?.rotation || 0) * Math.PI) / 180;
+      const rot = (((stamp?.rotation ?? gridSettings?.rotation) || 0) * Math.PI) / 180;
       ctx.rotate(rot);
-      ctx.scale(gridSettings?.flipX ? -1 : 1, gridSettings?.flipY ? -1 : 1);
+      ctx.scale((stamp?.flipX ?? gridSettings?.flipX) ? -1 : 1, (stamp?.flipY ?? gridSettings?.flipY) ? -1 : 1);
       ctx.drawImage(img, -pxSize / 2, -pxSize / 2, pxSize, pxSize);
     } else {
-      // solid disc
+      // solid disc only when a Material (color) is selected
+      if (!canvasColor || selectedAsset?.kind !== 'color') {
+        ctx.restore();
+        return;
+      }
       ctx.fillStyle = hexToRgba(canvasColor, 1);
       ctx.beginPath();
       ctx.arc(p.x, p.y, (brushSize * BASE_TILE) / 2, 0, Math.PI * 2);
@@ -374,11 +382,11 @@ export default function Grid({
     const variantAspect = isNatural ? (variants?.[variantIndex || 0]?.aspectRatio || 1) : (selectedAsset.aspectRatio || 1);
 
     const aspect = variantAspect;
-    const wTiles = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
-    const hTiles = Math.max(1, Math.round(gridSettings.sizeRows || Math.round(wTiles / aspect)));
+    const wTiles = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
+    const hTiles = Math.max(1, Math.round((stamp.sizeRows ?? Math.round(wTiles / aspect))));
 
     // Snap-like behavior when snapStep === 1 even if snapToGrid is off
-    const step = gridSettings?.snapStep ?? 1;
+    const step = (gridSettings?.snapStep ?? 1);
     const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
     const baseRow = snapLike ? Math.floor(centerRow) : centerRow;
     const baseCol = snapLike ? Math.floor(centerCol) : centerCol;
@@ -397,17 +405,17 @@ export default function Grid({
     );
 
     // Determine rotation with optional smart adjacency (square stamps only)
-    const decideRotation = () => gridSettings.rotation || 0;
+    const decideRotation = () => (stamp.rotation ?? gridSettings.rotation ?? 0);
 
     const autoRotation = naturalSettings?.randomRotation
       ? [0, 90, 180, 270][Math.floor(Math.random() * 4)]
       : decideRotation();
 
-    const flipX = naturalSettings?.randomFlipX ? (Math.random() < 0.5) : !!gridSettings.flipX;
-    const flipY = naturalSettings?.randomFlipY ? (Math.random() < 0.5) : !!gridSettings.flipY;
+    const flipX = naturalSettings?.randomFlipX ? (Math.random() < 0.5) : !!(stamp.flipX ?? gridSettings.flipX);
+    const flipY = naturalSettings?.randomFlipY ? (Math.random() < 0.5) : !!(stamp.flipY ?? gridSettings.flipY);
     const opacity = naturalSettings?.randomOpacity?.enabled
       ? Math.max(0.05, Math.min(1, (naturalSettings.randomOpacity.min ?? 0.05) + Math.random() * Math.max(0, (naturalSettings.randomOpacity.max ?? 1) - (naturalSettings.randomOpacity.min ?? 0.05)) ))
-      : Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1));
+      : Math.max(0.05, Math.min(1, (stamp.opacity ?? gridSettings.opacity ?? 1)));
 
     addObject(currentLayer, {
       assetId: selectedAsset.id,
@@ -425,8 +433,8 @@ export default function Grid({
 
   const placeGridColorStampAt = (centerRow, centerCol) => {
     // Size in tiles (rectangular via sizeCols/sizeRows)
-    const wTiles = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
-    const hTiles = Math.max(1, Math.round(gridSettings.sizeRows || gridSettings.sizeTiles || 1));
+    const wTiles = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
+    const hTiles = Math.max(1, Math.round((stamp.sizeRows ?? stamp.sizeTiles ?? gridSettings.sizeRows ?? gridSettings.sizeTiles ?? 1)));
 
     // Snap-like behavior when snapStep === 1 even if snapToGrid is off
     const step = gridSettings?.snapStep ?? 1;
@@ -455,7 +463,7 @@ export default function Grid({
       c0 = clamp(c0, 0, Math.max(0, cols - wTiles));
     }
 
-    // Build updates for NÃ—N
+    // Build updates for N×N
     const updates = [];
     for (let r = 0; r < hTiles; r++) {
       for (let c = 0; c < wTiles; c++) {
@@ -464,7 +472,8 @@ export default function Grid({
     }
 
     // Opacity comes from gridSettings.opacity; color from the selected color asset (canvasColor prop)
-    const a = Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1));
+    if (!canvasColor || selectedAsset?.kind !== 'color') return; // do not draw if no Material selected
+    const a = Math.max(0.05, Math.min(1, (stamp.opacity ?? gridSettings.opacity ?? 1)));
     const rgba = hexToRgba(canvasColor, a);
 
     // Write directly into the tile map (MapBuilder.placeTiles respects the color we pass)
@@ -487,8 +496,8 @@ export default function Grid({
 
   const placeTokenAt = (centerRow, centerCol) => {
     if (!selectedAsset) return;
-    const baseW = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
-    const baseH = Math.max(1, Math.round(gridSettings.sizeRows || gridSettings.sizeTiles || 1));
+    const baseW = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
+    const baseH = Math.max(1, Math.round((stamp.sizeRows ?? stamp.sizeTiles ?? gridSettings.sizeRows ?? gridSettings.sizeTiles ?? 1)));
     const snap = !!gridSettings?.snapToGrid;
     if (selectedAsset.kind === 'token') {
       const wTiles = baseW;
@@ -511,10 +520,10 @@ export default function Grid({
         col: c0,
         wTiles,
         hTiles,
-        rotation: gridSettings.rotation || 0,
-        flipX: !!gridSettings.flipX,
-        flipY: !!gridSettings.flipY,
-        opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+        rotation: (stamp.rotation ?? gridSettings.rotation ?? 0),
+        flipX: !!(stamp.flipX ?? gridSettings.flipX),
+        flipY: !!(stamp.flipY ?? gridSettings.flipY),
+        opacity: Math.max(0.05, Math.min(1, (stamp.opacity ?? gridSettings.opacity ?? 1))),
         glowColor: glow,
         meta: { name: selectedAsset?.name || 'Token', hp: 0, initiative: 0 },
       });
@@ -550,10 +559,10 @@ export default function Grid({
           col: p.c0,
           wTiles: p.wTiles,
           hTiles: p.hTiles,
-          rotation: gridSettings.rotation || 0,
-          flipX: !!gridSettings.flipX,
-          flipY: !!gridSettings.flipY,
-          opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+          rotation: (stamp.rotation ?? gridSettings.rotation ?? 0),
+          flipX: !!(stamp.flipX ?? gridSettings.flipX),
+          flipY: !!(stamp.flipY ?? gridSettings.flipY),
+          opacity: Math.max(0.05, Math.min(1, (stamp.opacity ?? gridSettings.opacity ?? 1))),
           glowColor: glow,
           meta: { name: p.name || 'Token', hp: 0, initiative: 0 },
         });
@@ -964,9 +973,11 @@ export default function Grid({
       } else if (selectedAsset?.kind === "image" || selectedAsset?.kind === 'natural') {
         onBeginObjectStroke?.(currentLayer);
         placeGridImageAt(row, col);
-      } else {
+      } else if (selectedAsset?.kind === 'color' && canvasColor) {
         onBeginTileStroke?.(currentLayer);
         placeGridColorStampAt(row, col);
+      } else {
+        // no asset or unsupported asset for grid color; do nothing
       }
       return;
     }
@@ -1338,6 +1349,17 @@ export default function Grid({
     }
   }
 
+  // When switching interaction mode away from select, clear any selections
+  useEffect(() => {
+    if (interactionMode === 'select') return;
+    setSelectedObjId(null);
+    setSelectedObjIds([]);
+    onSelectionChange?.([]);
+    setSelectedTokenId(null);
+    setSelectedTokenIds([]);
+    onTokenSelectionChange?.([]);
+  }, [interactionMode]);
+
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>
       <div ref={contentRef} style={{ position: "relative", width: cssWidth, height: cssHeight }}>
@@ -1571,4 +1593,7 @@ export default function Grid({
     </div>
   );
 }
+
+  
+
 

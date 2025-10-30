@@ -90,21 +90,24 @@ export default function AssetPanel({
       <div className="mb-2 border border-gray-600 rounded overflow-hidden">
         <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
           <span className="text-xs uppercase tracking-wide">Assets</span>
-          <div className="inline-flex items-center bg-gray-800 rounded overflow-hidden border border-gray-700">
-          <button
-            className={`text-xs px-2 py-0.5 ${showAssetPreviews ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-200'}`}
-            onClick={() => setShowAssetPreviews(true)}
-            title="Show image thumbnails"
-          >
-            Images
-          </button>
-          <button
-            className={`text-xs px-2 py-0.5 ${!showAssetPreviews ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-200'}`}
-            onClick={() => setShowAssetPreviews(false)}
-            title="Show names list"
-          >
-            Names
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] opacity-80">View:</span>
+            <div className="inline-flex items-center bg-gray-800 rounded overflow-hidden border border-gray-700">
+              <button
+                className={`text-xs px-2 py-0.5 ${showAssetPreviews ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-200'}`}
+                onClick={() => setShowAssetPreviews(true)}
+                title="Show image thumbnails"
+              >
+                Images
+              </button>
+              <button
+                className={`text-xs px-2 py-0.5 ${!showAssetPreviews ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-200'}`}
+                onClick={() => setShowAssetPreviews(false)}
+                title="Show names list"
+              >
+                Names
+              </button>
+            </div>
           </div>
         </div>
         <div className={`p-2 ${showAssetPreviews ? 'grid grid-cols-2 md:grid-cols-3 gap-4' : 'grid grid-cols-2 md:grid-cols-3 gap-2'}`}>

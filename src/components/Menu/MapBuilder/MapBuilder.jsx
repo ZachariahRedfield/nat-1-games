@@ -1,4 +1,4 @@
-﻿import MapStatus from "./MapStatus";
+import MapStatus from "./MapStatus";
 import React, { useRef, useState, useEffect } from "react";
 import Grid from "../../Map/Grid/Grid";
 import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
@@ -142,6 +142,78 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const [tileSize, setTileSize] = useState(24);
   const scrollRef = useRef(null);
   const gridContentRef = useRef(null);
+  const layerBarWrapRef = useRef(null);
+  const [overlayTop, setOverlayTop] = useState(40);
+  const [overlayLeft, setOverlayLeft] = useState(0);
+  const [overlayCenter, setOverlayCenter] = useState(0);
+  const [overlayWidth, setOverlayWidth] = useState(0);
+  const [layerBarHeight, setLayerBarHeight] = useState(0);
+  const [fixedBarTop, setFixedBarTop] = useState(0);
+  const [fixedBarLeft, setFixedBarLeft] = useState(0);
+  const [fixedBarWidth, setFixedBarWidth] = useState(0);
+  useEffect(() => {
+    const measure = () => {
+      const el = layerBarWrapRef.current;
+      if (!el) return;
+      const h = el.getBoundingClientRect().height || 0;
+      setLayerBarHeight(Math.max(0, Math.round(h)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
+  // Keep overlays anchored to the top-left of the MAP area (tan scroll container)
+  useEffect(() => {
+    const measure = () => {
+      const container = scrollRef.current;
+      if (!container) return;
+      const cr = container.getBoundingClientRect();
+      // Position just beneath the LAYERS bar by a small gap
+      const insetTop = 2;
+      const insetLeft = 8;
+      setOverlayTop(Math.round(cr.top + insetTop));
+      setOverlayLeft(Math.round(cr.left + insetLeft));
+      // Center undo/redo across the map area width
+      setOverlayCenter(Math.round(cr.left + cr.width / 2));
+    };
+    // Measure now and again on next frames to catch late layout
+    measure();
+    const raf1 = requestAnimationFrame(() => requestAnimationFrame(measure));
+    const on = () => measure();
+    const sc = scrollRef.current;
+    sc?.addEventListener('scroll', on);
+    window.addEventListener('resize', on);
+    return () => {
+      sc?.removeEventListener('scroll', on);
+      window.removeEventListener('resize', on);
+      cancelAnimationFrame(raf1);
+    };
+  }, [tileSize, rows, cols, layerBarHeight]);
+
+  // Fixed LayerBar positioning (under header, aligned to scroll container)
+  useEffect(() => {
+    const measureBarPos = () => {
+      const sc = scrollRef.current;
+      if (!sc) return;
+      const cr = sc.getBoundingClientRect();
+      const offsetW = sc.offsetWidth || cr.width;
+      const clientW = sc.clientWidth || cr.width;
+      const innerW = Math.max(0, Math.min(offsetW, clientW));
+      // Align fixed LAYERS bar to the top of the tan area
+      setFixedBarTop(Math.round(cr.top));
+      setFixedBarLeft(Math.round(cr.left));
+      // Use inner (client) width so the fixed bar does not cover the vertical scrollbar area
+      setFixedBarWidth(Math.round(innerW));
+    };
+    measureBarPos();
+    window.addEventListener('resize', measureBarPos);
+    const id = requestAnimationFrame(measureBarPos);
+    return () => {
+      window.removeEventListener('resize', measureBarPos);
+      cancelAnimationFrame(id);
+    };
+  }, []);
   const [zoomToolActive, setZoomToolActive] = useState(false);
   const [panToolActive, setPanToolActive] = useState(false);
   // Zoom scrubber (stationary slider)
@@ -321,6 +393,9 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       // Hide drawing engines for tokens; rely on click-to-place behavior
       setInteractionMode("select");
       setEngine("grid");
+    } else if (a.kind === "color") {
+      // Do not change engine; only update the active color
+      if (a.color) setCanvasColor(a.color);
     } else if (a.allowedEngines?.includes(prefer)) {
       setEngine(prefer);
     } else if (a.allowedEngines?.length) {
@@ -328,9 +403,110 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     } else {
       setEngine("canvas");
     }
-    // If picking a color asset, sync canvasColor so paint uses it
-    if (a.kind === "color" && a.color) setCanvasColor(a.color);
   };
+
+  // ====== SETTINGS (contextual) ======
+  // Grid engine (snap)
+  const [gridSettings, setGridSettings] = useState({
+    sizeTiles: 1,
+    sizeCols: 1,
+    sizeRows: 1,
+    linkXY: false,
+    rotation: 0,
+    flipX: false,
+    flipY: false,
+    opacity: 1,
+    snapToGrid: true, // engine toggle essentially
+    snapStep: 1,
+    smartAdjacency: true, // neighbor-aware alignment for grid stamps
+  });
+
+  // ====== Asset drawer-only settings (per-asset defaults)
+  const normalizeStamp = (d = {}) => ({
+    sizeTiles: Number.isFinite(d.sizeTiles) ? d.sizeTiles : 1,
+    sizeCols: Number.isFinite(d.sizeCols) ? d.sizeCols : (Number.isFinite(d.sizeTiles) ? d.sizeTiles : 1),
+    sizeRows: Number.isFinite(d.sizeRows) ? d.sizeRows : (Number.isFinite(d.sizeTiles) ? d.sizeTiles : 1),
+    rotation: Number.isFinite(d.rotation) ? d.rotation : 0,
+    flipX: !!d.flipX,
+    flipY: !!d.flipY,
+    opacity: Number.isFinite(d.opacity) ? d.opacity : 1,
+    snapToGrid: d.snapToGrid ?? true,
+    snapStep: Number.isFinite(d.snapStep) ? d.snapStep : 1,
+    linkXY: !!d.linkXY,
+  });
+  const [assetStamp, setAssetStamp] = useState(() => normalizeStamp());
+
+  // Sync gridSettings from the selected asset's saved stampDefaults
+  useEffect(() => {
+    if (!selectedAsset) return;
+    const d = selectedAsset.stampDefaults || selectedAsset.defaults || {};
+    setGridSettings((s) => ({
+      ...s,
+      sizeTiles: Number.isFinite(d.sizeTiles) ? d.sizeTiles : (s.sizeTiles ?? 1),
+      sizeCols: Number.isFinite(d.sizeCols) ? d.sizeCols : (Number.isFinite(d.sizeTiles) ? d.sizeTiles : (s.sizeCols ?? 1)),
+      sizeRows: Number.isFinite(d.sizeRows) ? d.sizeRows : (Number.isFinite(d.sizeTiles) ? d.sizeTiles : (s.sizeRows ?? 1)),
+      rotation: Number.isFinite(d.rotation) ? d.rotation : (s.rotation ?? 0),
+      flipX: d.flipX ?? (s.flipX ?? false),
+      flipY: d.flipY ?? (s.flipY ?? false),
+      opacity: Number.isFinite(d.opacity) ? d.opacity : (s.opacity ?? 1),
+      snapToGrid: d.snapToGrid ?? (s.snapToGrid ?? true),
+      snapStep: Number.isFinite(d.snapStep) ? d.snapStep : (s.snapStep ?? 1),
+      linkXY: d.linkXY ?? (s.linkXY ?? false),
+    }));
+  }, [selectedAssetId]);
+
+  // Load drawer settings from the selected asset defaults (Assets tab only)
+  useEffect(() => {
+    const d = (selectedAsset?.stampDefaults || selectedAsset?.defaults || {});
+    setAssetStamp(normalizeStamp(d));
+  }, [selectedAssetId]);
+
+  // Persist drawer settings into the selected asset (assets tab only)
+  useEffect(() => {
+    if (!selectedAssetId || !assetStamp) return;
+    const cur = getAsset(selectedAssetId);
+    const prev = cur?.stampDefaults || {};
+    const stamp = normalizeStamp(assetStamp);
+    const same = prev &&
+      prev.sizeTiles === stamp.sizeTiles &&
+      prev.sizeCols === stamp.sizeCols &&
+      prev.sizeRows === stamp.sizeRows &&
+      prev.rotation === stamp.rotation &&
+      !!prev.flipX === stamp.flipX &&
+      !!prev.flipY === stamp.flipY &&
+      Math.abs((prev.opacity ?? 1) - (stamp.opacity ?? 1)) < 0.0001 &&
+      !!prev.snapToGrid === stamp.snapToGrid &&
+      (prev.snapStep ?? 1) === stamp.snapStep &&
+      !!prev.linkXY === stamp.linkXY;
+    if (!same) updateAssetById(selectedAssetId, { stampDefaults: stamp });
+  }, [selectedAssetId, assetStamp]);
+
+  // Also persist changes made via the main Settings panel when no selection is active
+  // This saves the current gridSettings as the selected asset's defaults so they persist across sessions.
+  useEffect(() => {
+    if (!selectedAssetId) return;
+    if (hasSelection) return; // avoid overwriting defaults while editing an existing selection
+    const cur = getAsset(selectedAssetId);
+    if (!cur) return;
+    const stamp = normalizeStamp(gridSettings || {});
+    const prev = cur.stampDefaults || {};
+    const same = prev &&
+      prev.sizeTiles === stamp.sizeTiles &&
+      prev.sizeCols === stamp.sizeCols &&
+      prev.sizeRows === stamp.sizeRows &&
+      prev.rotation === stamp.rotation &&
+      !!prev.flipX === stamp.flipX &&
+      !!prev.flipY === stamp.flipY &&
+      Math.abs((prev.opacity ?? 1) - (stamp.opacity ?? 1)) < 0.0001 &&
+      !!prev.snapToGrid === stamp.snapToGrid &&
+      (prev.snapStep ?? 1) === stamp.snapStep &&
+      !!prev.linkXY === stamp.linkXY;
+    if (!same) {
+      updateAssetById(selectedAssetId, { stampDefaults: stamp });
+      // Keep Assets drawer preview/settings in sync
+      setAssetStamp(stamp);
+    }
+  }, [selectedAssetId, hasSelection, gridSettings]);
 
   // When asset group changes, auto-select a matching asset and force Grid engine for Token/Natural groups
   React.useEffect(() => {
@@ -354,27 +530,13 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     }
   }, [assetGroup, assets]);
 
-  // ====== SETTINGS (contextual) ======
-  // Grid engine (snap)
-  const [gridSettings, setGridSettings] = useState({
-    sizeTiles: 1,
-    sizeCols: 1,
-    sizeRows: 1,
-    linkXY: false,
-    rotation: 0,
-    flipX: false,
-    flipY: false,
-    opacity: 1,
-    snapToGrid: true, // engine toggle essentially
-    snapStep: 1,
-    smartAdjacency: true, // neighbor-aware alignment for grid stamps
-  });
+  // (gridSettings defined above)
 
   // Canvas engine (free brush)
   const [brushSize, setBrushSize] = useState(2); // in tiles
   const [canvasOpacity, setCanvasOpacity] = useState(0.35);
   const [canvasSpacing, setCanvasSpacing] = useState(0.27); // fraction of radius
-  const [canvasColor, setCanvasColor] = useState("#cccccc"); // used when asset.kind === 'color'
+  const [canvasColor, setCanvasColor] = useState(null); // used when asset.kind === 'color'
   const [canvasBlendMode, setCanvasBlendMode] = useState("source-over");
   const [canvasSmoothing, setCanvasSmoothing] = useState(0.55); // EMA smoothing factor (0..1)
   const [showAssetPreviews, setShowAssetPreviews] = useState(true);
@@ -459,11 +621,25 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
 
       if (configured) setNeedsAssetsFolder(false); else setNeedsAssetsFolder(true);
 
-      // Merge FS and global by id, preferring FS entries
-      const byId = new Map();
-      for (const a of Array.isArray(global) ? global : []) { if (a?.id) byId.set(a.id, a); }
-      for (const a of Array.isArray(fsAssets) ? fsAssets : []) { if (a?.id) byId.set(a.id, a); }
-      const merged = Array.from(byId.values());
+      // Merge FS and global by id
+      // Prefer FS entries for file paths, but carry over metadata like stampDefaults from global when FS lacks it.
+      const gMap = new Map((Array.isArray(global) ? global : []).filter(Boolean).map((a) => [a.id, a]));
+      const fMap = new Map((Array.isArray(fsAssets) ? fsAssets : []).filter(Boolean).map((a) => [a.id, a]));
+      const allIds = new Set([...gMap.keys(), ...fMap.keys()]);
+      const merged = [];
+      for (const id of allIds) {
+        const g = gMap.get(id);
+        const f = fMap.get(id);
+        if (f && g) {
+          const combined = { ...g, ...f };
+          if (combined.stampDefaults == null && g.stampDefaults != null) combined.stampDefaults = g.stampDefaults;
+          merged.push(combined);
+        } else if (f) {
+          merged.push({ ...f });
+        } else if (g) {
+          merged.push({ ...g });
+        }
+      }
 
       globalAssetsRef.current = merged;
       setAssets(merged);
@@ -702,24 +878,8 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     setTokens((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const snapshotSettings = () => {
-    setUndoStack((prev) => [
-      ...prev,
-      {
-        type: "settings",
-        settings: {
-          gridSettings: { ...gridSettings },
-          brushSize,
-          canvasOpacity,
-          canvasSpacing,
-          canvasBlendMode,
-          canvasSmoothing,
-          naturalSettings: { ...naturalSettings },
-        },
-      },
-    ]);
-    setRedoStack([]);
-  };
+  // No-op: Do not track settings changes in undo/redo
+  const snapshotSettings = () => {};
 
   // ====== object add/remove ======
   const addObject = (layer, obj) => {
@@ -1808,8 +1968,8 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
             </div>
           </div>
         )}
-        {/* TOOLBAR (always visible) */}
-        <div className="w-72 bg-gray-800 text-white border-r-2 border-gray-600 flex flex-col min-h-0">
+        {/* TOOLBAR removed from layout (hidden) */}
+        <div className="hidden">
             <div className="p-4 space-y-5 overflow-y-auto">
               {/* Assets panel removed from toolbar; lives in bottom drawer */}
 
@@ -1823,7 +1983,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                     <>
                       {interactionMode === 'select' && (selectedObjsList?.length || 0) > 1 ? (
                         <div className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700 rounded px-2 py-1">
-                          Multiple selected Ã¢â‚¬â€ settings locked. Save as a group to edit parent settings later.
+                          Multiple selected â€” settings locked. Save as a group to edit parent settings later.
                         </div>
                       ) : (
                         <BrushSettings
@@ -1887,7 +2047,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                     <>
                       {(selectedTokensList?.length || 0) > 1 ? (
                         <div className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700 rounded px-2 py-1">
-                          Multiple tokens selected Ã¢â‚¬â€ settings locked. Save as a Token Group to manage as a set.
+                          Multiple tokens selected â€” settings locked. Save as a Token Group to manage as a set.
                         </div>
                       ) : (
                         <>
@@ -2048,20 +2208,23 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
               <MapStatus selectedAsset={selectedAsset} engine={engine} currentLayer={currentLayer} layerVisibility={layerVisibility} />
             </div>
           </div>
-        )}
 
         {/* CENTERED DRAW AREA */}
         <div className="flex-1 overflow-hidden">
           <div
             ref={scrollRef}
-            className="w-full h-full overflow-auto"
+            className="w-full h-full overflow-auto overflow-x-hidden"
             style={{
               backgroundImage:
                 "radial-gradient(80% 60% at 50% 0%, rgba(255, 243, 210, 0.6), rgba(255, 243, 210, 0.9)), repeating-linear-gradient(0deg, rgba(190,155,90,0.06), rgba(190,155,90,0.06) 2px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 4px)",
+              backgroundPosition: "50% 0, 2px 0",
+              backgroundRepeat: "no-repeat, repeat",
               backgroundColor: "#f4e4c1",
+              marginTop: layerBarHeight,
             }}
           >
-            {/* Top layer bar (slim, horizontal) */}
+            {/* Top layer bar placeholder for measurement only (no layout) */}
+            <div ref={layerBarWrapRef} className="invisible absolute">
             <LayerBar
               currentLayer={currentLayer}
               setCurrentLayer={setCurrentLayer}
@@ -2074,9 +2237,25 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
               tileSize={tileSize}
               setTileSize={setTileSize}
             />
-            <div className="relative min-w-full min-h-full flex justify-center items-start md:items-center p-6">
-              {/* Overlaid vertical tool strip (doesn't push grid) */}
-              <div className="absolute left-2 top-2 z-[10015] pointer-events-auto">
+            </div>
+            {/* Fixed LAYERS bar overlay aligned to the scroll container */}
+            <div className="fixed z-[10020]" style={{ top: fixedBarTop, left: fixedBarLeft, width: fixedBarWidth }}>
+              <LayerBar
+                currentLayer={currentLayer}
+                setCurrentLayer={setCurrentLayer}
+                layerVisibility={layerVisibility}
+                toggleLayerVisibility={toggleLayerVisibility}
+                tokensVisible={tokensVisible}
+                setTokensVisible={setTokensVisible}
+                showGridLines={showGridLines}
+                setShowGridLines={setShowGridLines}
+                tileSize={tileSize}
+                setTileSize={setTileSize}
+              />
+            </div>
+            <div className="relative w-full min-h-full flex justify-center items-start md:items-center p-6">
+              {/* Fixed overlays under LAYERS; do not affect layout; overlap grid */}
+              <div className="fixed z-[10015] pointer-events-auto" style={{ top: overlayTop, left: overlayLeft }}>
                 <VerticalToolStrip
                   interactionMode={interactionMode}
                   zoomToolActive={zoomToolActive}
@@ -2094,9 +2273,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                   onDeleteSelection={deleteCurrentSelection}
                 />
               </div>
-
-              {/* Center-top Undo/Redo symbol buttons overlay */}
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[10015] pointer-events-auto">
+              <div className="fixed z-[10015] pointer-events-auto" style={{ top: overlayTop, left: overlayCenter, transform: 'translateX(-50%)' }}>
                 <div className="inline-flex items-center gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
                   <button
                     onClick={undo}
@@ -2104,7 +2281,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                     aria-label="Undo"
                     className={`w-8 h-8 flex items-center justify-center rounded ${undoStack.length ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-transparent text-white/50 cursor-not-allowed'}`}
                   >
-                    {/* Curved back arrow */}
                     <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                       <path d="M6 5H3.5L6.5 2" strokeLinecap="round" strokeLinejoin="round" />
                       <path d="M3.5 5c2.5-2.2 6.2-2 8.5.3 2.2 2.2 2.2 5.8 0 8" strokeLinecap="round" />
@@ -2116,10 +2292,9 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                     aria-label="Redo"
                     className={`w-8 h-8 flex items-center justify-center rounded ${redoStack.length ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-transparent text-white/50 cursor-not-allowed'}`}
                   >
-                    {/* Curved forward arrow */}
                     <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                       <path d="M10 5h2.5L9.5 2" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M12.5 5c-2.5-2.2-6.2-2-8.5.3-2.2 2.2-2.2 5.8 0 8" strokeLinecap="round" />
+                      <path d="M12.5 5c-2.5-2.2-6.2-2-8.5.3-2.2 2.2 2.2 5.8 0 8" strokeLinecap="round" />
                     </svg>
                   </button>
                 </div>
@@ -2132,6 +2307,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                 engine={engine}
                 selectedAsset={selectedAsset}
                 gridSettings={gridSettings}
+                stampSettings={assetStamp}
                 setGridSettings={setGridSettings}
                 brushSize={brushSize}
                 canvasOpacity={canvasOpacity}
@@ -2251,6 +2427,8 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
         initialHeight={90}
         minHeight={0}
         maxHeightPct={0.7}
+        assetStamp={assetStamp}
+        setAssetStamp={setAssetStamp}
       />
 
       <SaveSelectionDialog
@@ -2267,6 +2445,9 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     </div>
   );
 }
+
+
+
 
 
 

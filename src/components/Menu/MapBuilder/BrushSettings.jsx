@@ -27,6 +27,9 @@ export default function BrushSettings({
   titleOverride,
   // shared
   snapshotSettings,
+  showSnapControls = true,
+  // When using in Assets drawer, allow showing Step even if snap controls are hidden
+  showStep = true,
 }) {
   // Link X/Y sizes (stored in gridSettings.linkXY, defaults to false)
   const linkXY = !!(gridSettings?.linkXY);
@@ -34,6 +37,13 @@ export default function BrushSettings({
     snapshotSettings?.();
     setGridSettings((s) => ({ ...s, linkXY: !s?.linkXY }));
   };
+  // Consistent numeric inputs in Assets tab (when showSnapControls=false)
+  const numXYCls = showSnapControls
+    ? "w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+    : "w-14 pr-5 px-2 py-1 text-xs text-black rounded border border-gray-500 bg-white";
+  const numSmallCls = showSnapControls
+    ? "w-12 px-1 py-0.5 text-xs text-black rounded"
+    : "w-14 px-2 py-1 text-xs text-black rounded border border-gray-500 bg-white";
 
   const LinkIcon = ({ className = "w-4 h-4" }) => (
     <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
@@ -74,16 +84,16 @@ export default function BrushSettings({
       <div>
         <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
         <div className="grid gap-2">
-          <div className="flex items-end gap-3 mb-1">
-            <span className="text-xs">Size</span>
-            <div className="inline-flex items-center">
+          {(!showSnapControls) ? (
+            <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
+              <span>Size</span>
               <div className="relative">
                 <NumericInput
                   value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
                   min={1}
                   max={100}
                   step={1}
-                  className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                  className={numXYCls}
                   onCommit={(v) => {
                     const n = Math.max(1, Math.min(100, Math.round(v)));
                     snapshotSettings?.();
@@ -93,24 +103,22 @@ export default function BrushSettings({
                 />
                 <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
               </div>
-            </div>
-            <button
-              type="button"
-              onClick={toggleLinkXY}
-              title={linkXY ? 'Linked: change one to set both' : 'Unlinked: set X and Y independently'}
-              className={`mx-1 p-1 rounded border ${linkXY ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:text-white'}`}
-              aria-pressed={linkXY}
-            >
-              {linkXY ? <LinkIcon /> : <LinkBrokenIcon />}
-            </button>
-            <div className="inline-flex items-center">
+              <button
+                type="button"
+                onClick={toggleLinkXY}
+                title={linkXY ? 'Linked: change one to set both' : 'Unlinked: set X and Y independently'}
+                className={`p-1 rounded border ${linkXY ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:text-white'}`}
+                aria-pressed={linkXY}
+              >
+                {linkXY ? <LinkIcon /> : <LinkBrokenIcon />}
+              </button>
               <div className="relative">
                 <NumericInput
                   value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
                   min={1}
                   max={100}
                   step={1}
-                  className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                  className={numXYCls}
                   onCommit={(v) => {
                     const n = Math.max(1, Math.min(100, Math.round(v)));
                     snapshotSettings?.();
@@ -121,40 +129,106 @@ export default function BrushSettings({
                 <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-end gap-3 mb-1">
+              <span className="text-xs">Size</span>
+              <div className="inline-flex items-center">
+                <div className="relative">
+                  <NumericInput
+                    value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
+                    min={1}
+                    max={100}
+                    step={1}
+                    className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                    onCommit={(v) => {
+                      const n = Math.max(1, Math.min(100, Math.round(v)));
+                      snapshotSettings?.();
+                      setGridSettings((s) => linkXY ? ({ ...s, sizeCols: n, sizeRows: n }) : ({ ...s, sizeCols: n }));
+                    }}
+                    title="Width in tiles (columns)"
+                  />
+                  <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={toggleLinkXY}
+                title={linkXY ? 'Linked: change one to set both' : 'Unlinked: set X and Y independently'}
+                className={`mx-1 p-1 rounded border ${linkXY ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:text-white'}`}
+                aria-pressed={linkXY}
+              >
+                {linkXY ? <LinkIcon /> : <LinkBrokenIcon />}
+              </button>
+              <div className="inline-flex items-center">
+                <div className="relative">
+                  <NumericInput
+                    value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
+                    min={1}
+                    max={100}
+                    step={1}
+                    className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                    onCommit={(v) => {
+                      const n = Math.max(1, Math.min(100, Math.round(v)));
+                      snapshotSettings?.();
+                      setGridSettings((s) => linkXY ? ({ ...s, sizeRows: n, sizeCols: n }) : ({ ...s, sizeRows: n }));
+                    }}
+                    title="Height in tiles (rows)"
+                  />
+                  <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
+                </div>
+              </div>
+            </div>
+          )}
           {/* size slider removed */}
 
-          {/* Grid Snap + Step (contained in one slim box) */}
-          <div className="text-xs inline-flex items-center gap-3 px-2 py-1 border border-gray-700 rounded w-fit">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={!!gridSettings.snapToGrid}
-                onChange={(e) => {
-                  snapshotSettings?.();
-                  setGridSettings((s) => ({ ...s, snapToGrid: e.target.checked }));
-                }}
+          {/* Asset-only Step control (visible when snap controls are hidden) */}
+          {!showSnapControls && showStep && (
+            <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-gray-700 rounded w-fit">
+              <span>Step</span>
+              <NumericInput
+                value={gridSettings.snapStep ?? 1}
+                min={0.05}
+                step={0.05}
+                className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                onCommit={(v)=> { const n = Math.max(0.05, parseFloat(v)); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapStep: n })); }}
+                title="Spacing between placements while drawing"
               />
-              Grid Snap
-            </label>
-            {!gridSettings.snapToGrid && (
-              <div className="inline-flex items-center gap-2">
-                <span>Step</span>
-                <NumericInput
-                  value={gridSettings.snapStep ?? 1}
-                  min={0.05}
-                  step={0.05}
-                  className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                  onCommit={(v) => {
-                    const n = Math.max(0.05, parseFloat(v));
+            </div>
+          )}
+
+          {/* Grid Snap + Step (hidden in Assets drawer via showSnapControls) */}
+          {showSnapControls && (
+            <div className="text-xs inline-flex items-center gap-3 px-2 py-1 border border-gray-700 rounded w-fit">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!gridSettings.snapToGrid}
+                  onChange={(e) => {
                     snapshotSettings?.();
-                    setGridSettings((s) => ({ ...s, snapStep: n }));
+                    setGridSettings((s) => ({ ...s, snapToGrid: e.target.checked }));
                   }}
-                  title="Used when Grid Snap is off"
                 />
-              </div>
-            )}
-          </div>
+                Grid Snap
+              </label>
+              {!gridSettings.snapToGrid && (
+                <div className="inline-flex items-center gap-2">
+                  <span>Step</span>
+                  <NumericInput
+                    value={gridSettings.snapStep ?? 1}
+                    min={0.05}
+                    step={0.05}
+                    className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                    onCommit={(v) => {
+                      const n = Math.max(0.05, parseFloat(v));
+                      snapshotSettings?.();
+                      setGridSettings((s) => ({ ...s, snapStep: n }));
+                    }}
+                    title="Used when Grid Snap is off"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2 mt-2">
             <label className="text-xs inline-flex items-center gap-2">
@@ -285,64 +359,117 @@ export default function BrushSettings({
     <div>
       <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
       <div className="grid gap-2">
-        <div className="flex items-end gap-3 mb-1">
-          <span className="text-xs">Size</span>
-          <div className="inline-flex items-center">
+        {(!showSnapControls) ? (
+          <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
+            <span>Size</span>
             <div className="relative">
               <NumericInput
                 value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
                 min={1}
                 max={100}
                 step={1}
-                className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                className={numXYCls}
                 onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => linkXY ? ({ ...s, sizeCols: n, sizeRows: n }) : ({ ...s, sizeCols: n })); }}
               />
               <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={toggleLinkXY}
-            title={linkXY ? 'Linked: change one to set both' : 'Unlinked: set X and Y independently'}
-            className={`mx-1 p-1 rounded border ${linkXY ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:text-white'}`}
-            aria-pressed={linkXY}
-          >
-            {linkXY ? <LinkIcon /> : <LinkBrokenIcon />}
-          </button>
-          <div className="inline-flex items-center">
+            <button
+              type="button"
+              onClick={toggleLinkXY}
+              title={linkXY ? 'Linked: change one to set both' : 'Unlinked: set X and Y independently'}
+              className={`p-1 rounded border ${linkXY ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:text-white'}`}
+              aria-pressed={linkXY}
+            >
+              {linkXY ? <LinkIcon /> : <LinkBrokenIcon />}
+            </button>
             <div className="relative">
               <NumericInput
                 value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
                 min={1}
                 max={100}
                 step={1}
-                className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                className={numXYCls}
                 onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => linkXY ? ({ ...s, sizeRows: n, sizeCols: n }) : ({ ...s, sizeRows: n })); }}
               />
               <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-end gap-3 mb-1">
+            <span className="text-xs">Size</span>
+            <div className="inline-flex items-center">
+              <div className="relative">
+                <NumericInput
+                  value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
+                  min={1}
+                  max={100}
+                  step={1}
+                  className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                  onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => linkXY ? ({ ...s, sizeCols: n, sizeRows: n }) : ({ ...s, sizeCols: n })); }}
+                />
+                <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={toggleLinkXY}
+              title={linkXY ? 'Linked: change one to set both' : 'Unlinked: set X and Y independently'}
+              className={`mx-1 p-1 rounded border ${linkXY ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:text-white'}`}
+              aria-pressed={linkXY}
+            >
+              {linkXY ? <LinkIcon /> : <LinkBrokenIcon />}
+            </button>
+            <div className="inline-flex items-center">
+              <div className="relative">
+                <NumericInput
+                  value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
+                  min={1}
+                  max={100}
+                  step={1}
+                  className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
+                  onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings?.(); setGridSettings((s) => linkXY ? ({ ...s, sizeRows: n, sizeCols: n }) : ({ ...s, sizeRows: n })); }}
+                />
+                <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
+              </div>
+            </div>
+          </div>
+        )}
         {/* size slider removed */}
-        <div className="text-xs inline-flex items-center gap-3 px-2 py-1 border border-gray-700 rounded w-fit">
-          <label className="inline-flex items-center gap-2">
-            <input type="checkbox" checked={!!gridSettings.snapToGrid} onChange={(e)=>{ snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapToGrid: e.target.checked })); }} />
-            Grid Snap
-          </label>
-          {!gridSettings.snapToGrid && (
-            <div className="inline-flex items-center gap-2">
+          {/* Asset-only Step control (visible when snap controls are hidden) */}
+          {!showSnapControls && showStep && (
+            <div className="text-xs inline-flex items-center justify-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
               <span>Step</span>
               <NumericInput
                 value={gridSettings.snapStep ?? 1}
                 min={0.05}
                 step={0.05}
-                className="w-12 px-1 py-0.5 text-xs text-black rounded"
+                className={numSmallCls}
                 onCommit={(v)=> { const n = Math.max(0.05, parseFloat(v)); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapStep: n })); }}
-                title="Used when Grid Snap is off"
+                title="Spacing between placements while drawing"
               />
             </div>
           )}
-        </div>
+        {showSnapControls && (
+          <div className="text-xs inline-flex items-center gap-3 px-2 py-1 border border-white rounded-none w-fit">
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={!!gridSettings.snapToGrid} onChange={(e)=>{ snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapToGrid: e.target.checked })); }} />
+              Grid Snap
+            </label>
+            {!gridSettings.snapToGrid && (
+              <div className="inline-flex items-center gap-2">
+                <span>Step</span>
+                <NumericInput
+                  value={gridSettings.snapStep ?? 1}
+                  min={0.05}
+                  step={0.05}
+                  className={numSmallCls}
+                  onCommit={(v)=> { const n = Math.max(0.05, parseFloat(v)); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, snapStep: n })); }}
+                  title="Used when Grid Snap is off"
+                />
+              </div>
+            )}
+          </div>
+        )}
         <label className="block text-xs">Rotation</label>
         <div className="flex items-center gap-3 mb-2">
           <NumericInput
@@ -350,12 +477,17 @@ export default function BrushSettings({
             min={0}
             max={359}
             step={1}
-            className="w-12 px-1 py-0.5 text-xs text-black rounded"
+            className={numSmallCls}
             onCommit={(v)=> { const n = Math.max(0, Math.min(359, Math.round(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, rotation: n })); }}
           />
           <RotationWheel
             value={gridSettings.rotation}
-            onChange={(n)=> { const d = Math.max(0, Math.min(359, Math.round(n))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, rotation: d })); }}
+            onStart={()=> snapshotSettings?.()}
+            onChange={(n)=> {
+              const d = Math.max(0, Math.min(359, Math.round(n)));
+              if (d === (gridSettings.rotation ?? 0)) return; // avoid redundant updates/loops
+              setGridSettings((s)=> ({ ...s, rotation: d }));
+            }}
             size={72}
           />
         </div>
@@ -383,28 +515,62 @@ export default function BrushSettings({
             Flip Y
           </label>
         </div>
-        <label className="block text-xs">Opacity</label>
-        <div className="flex items-center gap-2 mb-1">
-          <NumericInput
-            value={gridSettings.opacity}
-            min={0.05}
-            max={1}
-            step={0.05}
-            className="w-12 px-1 py-0.5 text-xs text-black rounded"
-            onCommit={(v)=> { const n = Math.max(0.05, Math.min(1, parseFloat(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, opacity: n })); }}
-          />
-        </div>
-        <AlphaSlider
-          value={gridSettings.opacity}
-          min={0.05}
-          max={1}
-          step={0.05}
-          onChange={(e) => {
-            snapshotSettings?.();
-            setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) }));
-          }}
-        />
+        {(!showSnapControls) ? (
+          <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
+            <span>Opacity</span>
+            <NumericInput
+              value={gridSettings.opacity}
+              min={0.05}
+              max={1}
+              step={0.05}
+              className={numSmallCls}
+              onCommit={(v)=> { const n = Math.max(0.05, Math.min(1, parseFloat(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, opacity: n })); }}
+            />
+            <div className="w-40">
+              <AlphaSlider
+                value={gridSettings.opacity}
+                min={0.05}
+                max={1}
+                step={0.05}
+                onChange={(e) => {
+                  snapshotSettings?.();
+                  setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) }));
+                }}
+                trackHeight={16}
+                thumbSize={18}
+                checkerColor="#64748b"
+                trackBgColor="#9ca3af"
+                checkerSize={10}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <label className="block text-xs">Opacity</label>
+            <div className="flex items-center gap-2 mb-1">
+              <NumericInput
+                value={gridSettings.opacity}
+                min={0.05}
+                max={1}
+                step={0.05}
+                className={numSmallCls}
+                onCommit={(v)=> { const n = Math.max(0.05, Math.min(1, parseFloat(v))); snapshotSettings?.(); setGridSettings((s)=> ({ ...s, opacity: n })); }}
+              />
+            </div>
+            <AlphaSlider
+              value={gridSettings.opacity}
+              min={0.05}
+              max={1}
+              step={0.05}
+              onChange={(e) => {
+                snapshotSettings?.();
+                setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) }));
+              }}
+            />
+          </>
+        )}
       </div>
     </div>
   );
 }
+

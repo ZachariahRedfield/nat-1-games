@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function RotationWheel({ value = 0, onChange, size = 72, className = "" }) {
+export default function RotationWheel({ value = 0, onChange, onStart, size = 72, className = "" }) {
   const ref = React.useRef(null);
   const draggingRef = React.useRef(false);
 
@@ -22,6 +22,7 @@ export default function RotationWheel({ value = 0, onChange, size = 72, classNam
 
   const onPointerDown = (e) => {
     draggingRef.current = true;
+    try { onStart?.(); } catch {}
     setFromEvent(e);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
