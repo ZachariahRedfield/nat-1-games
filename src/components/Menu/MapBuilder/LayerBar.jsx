@@ -52,23 +52,23 @@ export default function LayerBar({
           <button
             key={`layerbar-${l}`}
             onClick={() => setCurrentLayer(l)}
-            className={`text-sm ${currentLayer === l ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-200'}`}
+            className={`px-2 py-0.5 text-sm rounded-full border border-white/90 ${currentLayer === l ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-200'}`}
             title={`Edit ${l}`}
           >
             {l}
           </button>
         ))}
-        {(() => { const vis = layerVisibility?.[currentLayer] !== false; const cap = currentLayer.charAt(0).toUpperCase() + currentLayer.slice(1); const label = `${vis ? 'Hide' : 'Show'} ${cap}`; return (<button className="px-2 py-0.5 text-[12px] rounded bg-gray-700" onClick={() => toggleLayerVisibility(currentLayer)} title={label}>{label}</button>); })()}
+        {(() => { const vis = layerVisibility?.[currentLayer] !== false; const cap = currentLayer.charAt(0).toUpperCase() + currentLayer.slice(1); const label = `${vis ? 'Hide' : 'Show'} ${cap}`; return (<button className="px-2 py-0.5 text-[12px] rounded-full border border-white/90 bg-gray-700" onClick={() => toggleLayerVisibility(currentLayer)} title={label}>{label}</button>); })()}
         <div className="h-4 w-px bg-gray-600 mx-1" />
         <button
-          className="px-2 py-0.5 text-[12px] rounded bg-gray-700"
+          className="px-2 py-0.5 text-[12px] rounded-full border border-white/90 bg-gray-700"
           onClick={() => setTokensVisible((v) => !v)}
           title={tokensVisible ? 'Hide Tokens' : 'Show Tokens'}
         >
           {tokensVisible ? 'Hide Tokens' : 'Show Tokens'}
         </button>
         <button
-          className="px-2 py-0.5 text-[12px] rounded bg-gray-700"
+          className="px-2 py-0.5 text-[12px] rounded-full border border-white/90 bg-gray-700"
           onClick={() => setShowGridLines((v) => !v)}
           title={showGridLines ? 'Hide Grid' : 'Show Grid'}
         >

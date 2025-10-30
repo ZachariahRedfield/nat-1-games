@@ -2,8 +2,6 @@ import React from "react";
 // User badge removed; shown in global SiteHeader
 
 export default function Header({
-  showToolbar,
-  onToggleToolbar,
   onUndo,
   onRedo,
   onSave,
@@ -12,33 +10,39 @@ export default function Header({
   onBack,
   session,
   onLogout,
+  showSaveWords = false,
+  // New: control Maps toggle from parent
+  mapsMenuOpen = false,
+  onToggleMaps,
+  onOpenMapSize,
 }) {
   return (
     <header className="p-4 bg-gray-800 grid grid-cols-[1fr_auto_1fr] items-center text-white">
-      {/* Left: Undo/Redo */}
-      <div className="flex gap-2 justify-start">
-        <div className="flex gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
-          <button onClick={onUndo} className="px-2.5 py-1 text-sm bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded">Undo</button>
-          <button onClick={onRedo} className="px-2.5 py-1 text-sm bg-gray-700 hover:bg-gray-600 border border-gray-500 rounded">Redo</button>
-        </div>
-      </div>
+      {/* Left spacer to keep center aligned */}
+      <div />
       {/* Center: Save / Save As / Load (aligned under main menu) */}
       <div className="flex gap-2 justify-center">
-        <div className="flex gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
-          <button onClick={onSave} className="px-2.5 py-1 text-sm bg-green-700 hover:bg-green-600 border border-green-500 rounded">Save</button>
-          <button onClick={onSaveAs} className="px-2.5 py-1 text-sm bg-emerald-700 hover:bg-emerald-600 border border-emerald-500 rounded">Save As</button>
-          <button onClick={onLoad} className="px-2.5 py-1 text-sm bg-blue-700 hover:bg-blue-600 border border-blue-500 rounded">Load</button>
+        <div className="flex flex-col items-center gap-1">
+          {/* Manage Map toggle button (underline style) */}
+          <button
+            className={`${mapsMenuOpen ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-200'} text-sm px-2 pb-0.5 border-b-2 border-white/90`}
+            onClick={onToggleMaps}
+            aria-pressed={mapsMenuOpen}
+          >
+            Manage Map
+          </button>
+          {showSaveWords && (
+            <div className="flex gap-6 text-sm text-gray-200">
+              <button onClick={onSave} className="hover:text-white">Save</button>
+              <button onClick={onSaveAs} className="hover:text-white">Save As</button>
+              <button onClick={onLoad} className="hover:text-white">Load</button>
+              <button onClick={onOpenMapSize} className="hover:text-white">Map Size</button>
+            </div>
+          )}
         </div>
       </div>
-      {/* Right: Hide Toolbar */}
-      <div className="flex justify-end">
-        <button
-          onClick={onToggleToolbar}
-          className="text-[11px] px-2 py-0.5 bg-gray-700/60 hover:bg-gray-600/70 border border-gray-600 rounded"
-        >
-          {showToolbar ? "Hide Toolbar" : "Show Toolbar"}
-        </button>
-      </div>
+      {/* Right spacer to keep center aligned */}
+      <div />
     </header>
   );
 }

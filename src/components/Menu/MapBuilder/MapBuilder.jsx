@@ -1,4 +1,4 @@
-import MapStatus from "./MapStatus";
+﻿import MapStatus from "./MapStatus";
 import React, { useRef, useState, useEffect } from "react";
 import Grid from "../../Map/Grid/Grid";
 import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
@@ -12,7 +12,7 @@ import SaveSelectionDialog from "./SaveSelectionDialog";
 import Header from "./Header";
 import SiteHeader from "../../common/SiteHeader";
 import LayerBar from "./LayerBar";
-import AssetPanel from "./AssetPanel";
+import BottomAssetsDrawer from "./BottomAssetsDrawer";
 import AssetCreator from "./AssetCreator";
 import VerticalToolStrip from "./VerticalToolStrip";
 
@@ -105,6 +105,8 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const [tokenHUDShowInitiative, setTokenHUDShowInitiative] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
+  // Toggle showing words under Save/Save As/Load in header center
+  const [mapsMenuOpen, setMapsMenuOpen] = useState(false);
   // ====== App notifications (custom UI instead of browser dialogs)
   const [toasts, setToasts] = useState([]); // [{id, text, kind}]
   const toastIdRef = useRef(1);
@@ -125,6 +127,9 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const confirmUser = (message, { title = 'Confirm', okText = 'OK', cancelText = 'Cancel' } = {}) =>
     new Promise((resolve) => setConfirmState({ title, message, okText, cancelText, resolve }));
 
+  // Manage Map: Map Size modal
+  const [mapSizeModalOpen, setMapSizeModalOpen] = useState(false);
+
   // --- canvas refs (per layer) ---
   const canvasRefs = {
     background: useRef(null),
@@ -135,7 +140,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   // --- view / scroll ---
   // Default zoom ~75% (32 is 100%)
   const [tileSize, setTileSize] = useState(24);
-  const [showToolbar, setShowToolbar] = useState(false);
   const scrollRef = useRef(null);
   const gridContentRef = useRef(null);
   const [zoomToolActive, setZoomToolActive] = useState(false);
@@ -233,7 +237,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const [assets, setAssets] = useState(() => []);
   const [selectedAssetId, setSelectedAssetId] = useState(null);
   const [assetGroup, setAssetGroup] = useState("image"); // 'image' | 'token' | 'material' | 'natural'
-  const [showAssetKindMenu, setShowAssetKindMenu] = useState(false);
+  const [showAssetKindMenu, setShowAssetKindMenu] = useState(true);
 
     // ====== Zoom Tool (rectangle zoom) ======
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -390,7 +394,12 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
         withId.img = im;
       }
     }
-    setAssets((prev)=> [withId, ...prev]);
+    // Add immediately and persist synchronously to avoid drops
+    setAssets((prev)=> {
+      const next = [withId, ...prev];
+      try { saveGlobalAssets(next); } catch {}
+      return next;
+    });
     setAssetGroup(group === 'material' ? 'material' : group === 'natural' ? 'natural' : group === 'token' ? 'token' : 'image');
     setSelectedAssetId(withId.id);
     setEngine('grid');
@@ -445,24 +454,20 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     (async () => {
       // If assets folder is configured and permitted, do not show prompt
       const configured = await isAssetsFolderConfigured();
-      if (configured) setNeedsAssetsFolder(false);
+      const fsAssets = configured ? (await loadAssetsFromStoredParent()) : [];
+      const global = await loadGlobalAssets();
 
-      const fsAssets = await loadAssetsFromStoredParent();
-      if (Array.isArray(fsAssets)) {
-        // Even if empty, we respect configured status and avoid prompting
-        globalAssetsRef.current = fsAssets;
-        setAssets(fsAssets);
-        if (fsAssets[0]) setSelectedAssetId(fsAssets[0].id);
-      } else {
-        // No FS assets available (no permission / not configured), prompt user
-        setNeedsAssetsFolder(true);
-        const global = await loadGlobalAssets();
-        if (Array.isArray(global) && global.length) {
-          globalAssetsRef.current = global;
-          setAssets(global);
-          if (global[0]) setSelectedAssetId(global[0].id);
-        }
-      }
+      if (configured) setNeedsAssetsFolder(false); else setNeedsAssetsFolder(true);
+
+      // Merge FS and global by id, preferring FS entries
+      const byId = new Map();
+      for (const a of Array.isArray(global) ? global : []) { if (a?.id) byId.set(a.id, a); }
+      for (const a of Array.isArray(fsAssets) ? fsAssets : []) { if (a?.id) byId.set(a.id, a); }
+      const merged = Array.from(byId.values());
+
+      globalAssetsRef.current = merged;
+      setAssets(merged);
+      if (merged[0]) setSelectedAssetId(merged[0].id);
     })();
     return () => {
       if (persistTimerRef.current) { clearTimeout(persistTimerRef.current); persistTimerRef.current = null; }
@@ -1673,8 +1678,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     <div className="w-full h-full flex flex-col">
       <SiteHeader session={session} onLogout={onLogout} onNavigate={onNavigate} currentScreen={currentScreen || 'mapBuilder'} />
       <Header
-        showToolbar={showToolbar}
-        onToggleToolbar={() => setShowToolbar((s) => !s)}
         onUndo={undo}
         onRedo={redo}
         onSave={saveProject}
@@ -1683,7 +1686,12 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
         onBack={onBackClick}
         session={session}
         onLogout={onLogout}
+        showSaveWords={mapsMenuOpen}
+        mapsMenuOpen={mapsMenuOpen}
+        onToggleMaps={() => setMapsMenuOpen((v) => !v)}
+        onOpenMapSize={() => setMapSizeModalOpen(true)}
       />
+
 
       {needsAssetsFolder && (
         <div className="bg-amber-800 text-amber-100 border-b border-amber-600 px-4 py-2 flex items-center justify-between">
@@ -1800,69 +1808,12 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
             </div>
           </div>
         )}
-        {/* TOOLBAR */}
-        {showToolbar && (
-          <div className="w-72 bg-gray-800 text-white border-r-2 border-gray-600 flex flex-col min-h-0">
+        {/* TOOLBAR (always visible) */}
+        <div className="w-72 bg-gray-800 text-white border-r-2 border-gray-600 flex flex-col min-h-0">
             <div className="p-4 space-y-5 overflow-y-auto">
-              {/* ASSETS (WHAT) at top */}
-              <AssetPanel
-                assetGroup={assetGroup}
-                setAssetGroup={setAssetGroup}
-                showAssetKindMenu={showAssetKindMenu}
-                setShowAssetKindMenu={setShowAssetKindMenu}
-                showAssetPreviews={showAssetPreviews}
-                setShowAssetPreviews={setShowAssetPreviews}
-                assets={assets}
-                selectedAssetId={selectedAssetId}
-                selectedAsset={selectedAsset}
-                selectAsset={selectAsset}
-                tokens={tokens}
-                objects={objects}
-                creatorOpen={creatorOpen}
-                creatorKind={creatorKind}
-                editingAsset={editingAsset}
-                openCreator={openCreator}
-                setCreatorOpen={setCreatorOpen}
-                setEditingAsset={setEditingAsset}
-                handleCreatorCreate={handleCreatorCreate}
-                updateAssetById={updateAssetById}
-                setAssets={setAssets}
-                setSelectedAssetId={setSelectedAssetId}
-                alertFn={(msg) => showToast(msg, 'warning', 3500)}
-                confirmFn={(msg) => confirmUser(msg)}
-              />
+              {/* Assets panel removed from toolbar; lives in bottom drawer */}
 
-              {/* MAP SIZE */}
-              <div className="mb-2">
-                <h3 className="font-bold text-sm mb-2">Map Size</h3>
-                <div className="flex items-start gap-4">
-                  {/* Row/Col + Apply group */}
-                  <div className="inline-grid grid-cols-[auto_auto] gap-x-1 gap-y-1 items-center">
-                    <div className="text-xs text-gray-300">Row</div>
-                    <NumericInput
-                      value={parseInt(rowsInput) || 0}
-                      min={1}
-                      max={200}
-                      step={1}
-                      onCommit={(n)=> setRowsInput(String(n))}
-                      className="box-border w-12 px-1 py-0.5 text-xs text-black rounded"
-                    />
-                    <div className="text-xs text-gray-300">Col</div>
-                    <NumericInput
-                      value={parseInt(colsInput) || 0}
-                      min={1}
-                      max={200}
-                      step={1}
-                      onCommit={(n)=> setColsInput(String(n))}
-                      className="box-border w-12 px-1 py-0.5 text-xs text-black rounded"
-                    />
-                    <div></div>
-                    <button className="box-border w-16 px-1 py-0.5 bg-blue-600 hover:bg-blue-500 rounded text-xs" onClick={updateGridSizes}>Apply</button>
-                  </div>
-
-                  {/* zoom controls removed */}
-                </div>
-              </div>
+              {/* Map Size controls moved to Manage Map modal */}
               {/* Interaction section removed; tool controls live on the vertical strip */}
 
               {/* SETTINGS (Brush) or Token */}
@@ -1872,7 +1823,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                     <>
                       {interactionMode === 'select' && (selectedObjsList?.length || 0) > 1 ? (
                         <div className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700 rounded px-2 py-1">
-                          Multiple selected — settings locked. Save as a group to edit parent settings later.
+                          Multiple selected Ã¢â‚¬â€ settings locked. Save as a group to edit parent settings later.
                         </div>
                       ) : (
                         <BrushSettings
@@ -1936,7 +1887,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                     <>
                       {(selectedTokensList?.length || 0) > 1 ? (
                         <div className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700 rounded px-2 py-1">
-                          Multiple tokens selected — settings locked. Save as a Token Group to manage as a set.
+                          Multiple tokens selected Ã¢â‚¬â€ settings locked. Save as a Token Group to manage as a set.
                         </div>
                       ) : (
                         <>
@@ -2143,6 +2094,36 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                   onDeleteSelection={deleteCurrentSelection}
                 />
               </div>
+
+              {/* Center-top Undo/Redo symbol buttons overlay */}
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[10015] pointer-events-auto">
+                <div className="inline-flex items-center gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
+                  <button
+                    onClick={undo}
+                    disabled={!undoStack.length}
+                    aria-label="Undo"
+                    className={`w-8 h-8 flex items-center justify-center rounded ${undoStack.length ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-transparent text-white/50 cursor-not-allowed'}`}
+                  >
+                    {/* Curved back arrow */}
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
+                      <path d="M6 5H3.5L6.5 2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M3.5 5c2.5-2.2 6.2-2 8.5.3 2.2 2.2 2.2 5.8 0 8" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={redo}
+                    disabled={!redoStack.length}
+                    aria-label="Redo"
+                    className={`w-8 h-8 flex items-center justify-center rounded ${redoStack.length ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-transparent text-white/50 cursor-not-allowed'}`}
+                  >
+                    {/* Curved forward arrow */}
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
+                      <path d="M10 5h2.5L9.5 2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M12.5 5c-2.5-2.2-6.2-2-8.5.3-2.2 2.2-2.2 5.8 0 8" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
               <Grid
                 maps={maps}
                 objects={objects}
@@ -2196,6 +2177,81 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
           </div>
         </div>
       </main>
+
+      {/* MAP SIZE MODAL */}
+      {mapSizeModalOpen && (
+        <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60">
+          <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100">
+            <div className="font-semibold mb-2">Map Size</div>
+            <div className="grid grid-cols-2 gap-3 mb-3 items-end">
+              <label className="text-xs">Rows
+                <input
+                  type="number"
+                  value={rowsInput}
+                  min={1}
+                  max={200}
+                  step={1}
+                  onChange={(e)=> setRowsInput(e.target.value)}
+                  className="box-border w-full px-1 py-0.5 text-xs text-black rounded"
+                />
+              </label>
+              <label className="text-xs">Cols
+                <input
+                  type="number"
+                  value={colsInput}
+                  min={1}
+                  max={200}
+                  step={1}
+                  onChange={(e)=> setColsInput(e.target.value)}
+                  className="box-border w-full px-1 py-0.5 text-xs text-black rounded"
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="px-2 py-1 text-xs bg-gray-700 rounded" onClick={()=> setMapSizeModalOpen(false)}>Cancel</button>
+              <button
+                className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded"
+                onClick={() => { updateGridSizes(); setMapSizeModalOpen(false); }}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Assets drawer overlay (resizable, overlaps content) */}
+      <BottomAssetsDrawer
+        assetPanelProps={{
+          assetGroup,
+          setAssetGroup,
+          showAssetKindMenu,
+          setShowAssetKindMenu,
+          showAssetPreviews,
+          setShowAssetPreviews,
+          assets,
+          selectedAssetId,
+          selectedAsset,
+          selectAsset,
+          tokens,
+          objects,
+          creatorOpen,
+          creatorKind,
+          editingAsset,
+          openCreator,
+          setCreatorOpen,
+          setEditingAsset,
+          handleCreatorCreate,
+          updateAssetById,
+          setAssets,
+          setSelectedAssetId,
+          alertFn: (msg) => showToast(msg, 'warning', 3500),
+          confirmFn: (msg) => confirmUser(msg),
+        }}
+        initialHeight={90}
+        minHeight={0}
+        maxHeightPct={0.7}
+      />
 
       <SaveSelectionDialog
         open={saveDialogOpen}

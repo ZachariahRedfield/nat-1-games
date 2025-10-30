@@ -503,6 +503,8 @@ export default function Grid({
         0,
         Math.max(0, cols - wTiles)
       );
+      // Use the token asset's default glow if present
+      const glow = selectedAsset?.glowDefault || '#7dd3fc';
       addToken?.({
         assetId: selectedAsset.id,
         row: r0,
@@ -513,7 +515,7 @@ export default function Grid({
         flipX: !!gridSettings.flipX,
         flipY: !!gridSettings.flipY,
         opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
-        glowColor: '#7dd3fc',
+        glowColor: glow,
         meta: { name: selectedAsset?.name || 'Token', hp: 0, initiative: 0 },
       });
       return;
@@ -540,6 +542,8 @@ export default function Grid({
         cursorCol += wTiles; // place next to the right
       }
       for (const p of placed) {
+        const tokAsset = assets.find((a)=> a.id === p.assetId);
+        const glow = tokAsset?.glowDefault || '#7dd3fc';
         addToken?.({
           assetId: p.assetId,
           row: p.r0,
@@ -550,7 +554,7 @@ export default function Grid({
           flipX: !!gridSettings.flipX,
           flipY: !!gridSettings.flipY,
           opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
-          glowColor: '#7dd3fc',
+          glowColor: glow,
           meta: { name: p.name || 'Token', hp: 0, initiative: 0 },
         });
       }
