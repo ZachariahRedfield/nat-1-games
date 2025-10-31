@@ -40,7 +40,7 @@ export default function LayerBar({
   setTileSize,
 }) {
   return (
-    <div className="sticky top-0 left-0 right-0 z-[10020] bg-gray-800 text-white px-2 py-1 border-b border-gray-700 shadow">
+    <div className="w-full z-[10020] bg-gray-800 text-white px-2 py-1 border-b border-gray-700 shadow">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 mr-2">
           <span className="text-[11px] uppercase opacity-80">Layers</span>

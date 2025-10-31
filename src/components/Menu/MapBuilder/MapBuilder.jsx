@@ -161,7 +161,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-  }, []);
+  }, [mapsMenuOpen]);
 
   // Keep overlays anchored to the top-left of the MAP area (tan scroll container)
   useEffect(() => {
@@ -172,7 +172,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       // Position just beneath the LAYERS bar by a small gap
       const insetTop = 2;
       const insetLeft = 8;
-      setOverlayTop(Math.round(cr.top + insetTop));
+      setOverlayTop(Math.round(cr.top + (layerBarHeight || 0) + insetTop));
       setOverlayLeft(Math.round(cr.left + insetLeft));
       // Center undo/redo across the map area width
       setOverlayCenter(Math.round(cr.left + cr.width / 2));
@@ -189,7 +189,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       window.removeEventListener('resize', on);
       cancelAnimationFrame(raf1);
     };
-  }, [tileSize, rows, cols, layerBarHeight]);
+  }, [tileSize, rows, cols, layerBarHeight, mapsMenuOpen]);
 
   // Fixed LayerBar positioning (under header, aligned to scroll container)
   useEffect(() => {
@@ -213,7 +213,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       window.removeEventListener('resize', measureBarPos);
       cancelAnimationFrame(id);
     };
-  }, []);
+  }, [mapsMenuOpen]);
   const [zoomToolActive, setZoomToolActive] = useState(false);
   const [panToolActive, setPanToolActive] = useState(false);
   // Zoom scrubber (stationary slider)
@@ -2220,16 +2220,16 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
               backgroundPosition: "50% 0, 2px 0",
               backgroundRepeat: "no-repeat, repeat",
               backgroundColor: "#f4e4c1",
-              marginTop: layerBarHeight,
+              paddingTop: layerBarHeight,
             }}
           >
             {/* Top layer bar placeholder for measurement only (no layout) */}
-            <div ref={layerBarWrapRef} className="invisible absolute">
-            <LayerBar
-              currentLayer={currentLayer}
-              setCurrentLayer={setCurrentLayer}
-              layerVisibility={layerVisibility}
-              toggleLayerVisibility={toggleLayerVisibility}
+            <div ref={layerBarWrapRef} className="absolute opacity-0 pointer-events-none -z-10" style={{ top: -9999, left: -9999 }}>
+              <LayerBar
+                currentLayer={currentLayer}
+                setCurrentLayer={setCurrentLayer}
+                layerVisibility={layerVisibility}
+                toggleLayerVisibility={toggleLayerVisibility}
               tokensVisible={tokensVisible}
               setTokensVisible={setTokensVisible}
               showGridLines={showGridLines}
