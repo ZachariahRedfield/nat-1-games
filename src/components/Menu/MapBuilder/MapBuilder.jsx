@@ -1,5 +1,8 @@
 import MapStatus from "./MapStatus";
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
+import CommandBus from "../../../core/command/CommandBus";
+import History from "../../../core/command/History";
+import { useCommandLogStore } from "../../../core/state/mapStore";
 import Grid from "../../Map/Grid/Grid";
 import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
 
@@ -70,6 +73,14 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const [colsInput, setColsInput] = useState("30");
   const rows = Math.max(1, Math.min(200, parseInt(rowsInput) || 30));
   const cols = Math.max(1, Math.min(200, parseInt(colsInput) || 30));
+  const rowsInputRef = useRef(rowsInput);
+  const colsInputRef = useRef(colsInput);
+  useEffect(() => {
+    rowsInputRef.current = rowsInput;
+  }, [rowsInput]);
+  useEffect(() => {
+    colsInputRef.current = colsInput;
+  }, [colsInput]);
 
   // --- per-layer tile grids (for color / legacy tiles) ---
   const [maps, setMaps] = useState({
@@ -103,6 +114,27 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const [selectedTokensList, setSelectedTokensList] = useState([]);
   const [tokenHUDVisible, setTokenHUDVisible] = useState(true);
   const [tokenHUDShowInitiative, setTokenHUDShowInitiative] = useState(false);
+  const appendCommandLog = useCommandLogStore((state) => state.append);
+  const clearCommandLog = useCommandLogStore((state) => state.clear);
+  const historyRef = useRef(null);
+  if (!historyRef.current) historyRef.current = new History();
+  const commandBusRef = useRef(null);
+  if (!commandBusRef.current) commandBusRef.current = new CommandBus(historyRef.current);
+  const commandBus = commandBusRef.current;
+  const commandHistory = historyRef.current;
+  const [commandHistoryCounts, setCommandHistoryCounts] = useState({ undo: 0, redo: 0 });
+  const mapsRef = useRef(maps);
+  const objectsRef = useRef(objects);
+  const tokensRef = useRef(tokens);
+  useEffect(() => {
+    mapsRef.current = maps;
+  }, [maps]);
+  useEffect(() => {
+    objectsRef.current = objects;
+  }, [objects]);
+  useEffect(() => {
+    tokensRef.current = tokens;
+  }, [tokens]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   // Toggle showing words under Save/Save As/Load in header center
@@ -110,13 +142,13 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   // ====== App notifications (custom UI instead of browser dialogs)
   const [toasts, setToasts] = useState([]); // [{id, text, kind}]
   const toastIdRef = useRef(1);
-  const showToast = (text, kind = 'info', ttl = 2500) => {
+  const showToast = useCallback((text, kind = 'info', ttl = 2500) => {
     const id = toastIdRef.current++;
     setToasts((prev) => [...prev, { id, text, kind }]);
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, ttl);
-  };
+  }, []);
 
   const [promptState, setPromptState] = useState(null); // { title, defaultValue, resolve }
   const promptInputRef = useRef(null);
@@ -162,6 +194,21 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, [mapsMenuOpen]);
+  useEffect(() => {
+    const unsubscribe = commandHistory.subscribe((event) => {
+      setCommandHistoryCounts({ undo: event.undoCount || 0, redo: event.redoCount || 0 });
+      if (event.kind === 'push' && event.entry) {
+        appendCommandLog({ type: event.entry.type, payload: event.entry.payload });
+      } else if (event.kind === 'undo') {
+        showToast(event.entry?.label ? `Undid ${event.entry.label}` : 'Undid action', 'info', 1800);
+      } else if (event.kind === 'redo') {
+        showToast(event.entry?.label ? `Redid ${event.entry.label}` : 'Redid action', 'info', 1800);
+      } else if (event.kind === 'clear') {
+        clearCommandLog();
+      }
+    });
+    return unsubscribe;
+  }, [appendCommandLog, clearCommandLog, commandHistory, showToast]);
 
   // Keep overlays anchored to the top-left of the MAP area (tan scroll container)
   useEffect(() => {
@@ -301,6 +348,15 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     base: true,
     sky: true, // sky visible by default
   });
+  const [layerOpacityMap, setLayerOpacityMap] = useState({
+    background: 1,
+    base: 1,
+    sky: 1,
+  });
+  const layerOpacityRef = useRef(layerOpacityMap);
+  useEffect(() => {
+    layerOpacityRef.current = layerOpacityMap;
+  }, [layerOpacityMap]);
   // Visual grid line toggle
   const [showGridLines, setShowGridLines] = useState(true);
 
@@ -793,25 +849,173 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       Array.from({ length: c }, (_, ci) => grid[ri]?.[ci] ?? null)
     );
 
-  const updateGridSizes = () => {
-    const r = Math.max(1, Math.min(200, parseInt(rowsInput) || 30));
-    const c = Math.max(1, Math.min(200, parseInt(colsInput) || 30));
-    setMaps((prev) => ({
-      background: resizeLayer(prev.background, r, c),
-      base: resizeLayer(prev.base, r, c),
-      sky: resizeLayer(prev.sky, r, c),
-    }));
-
-    // objects keep their positions; optional: clip objects that go out of bounds
-    setObjects((prev) => {
-      const clip = (arr) =>
-        arr.filter((o) => o.row >= 0 && o.col >= 0 && o.row < r && o.col < c);
+  useEffect(() => {
+    const unregisterPaint = commandBus.register("PaintStrokeBatch", (payload) => {
+      const { layerId, updates } = payload;
+      const currentMaps = mapsRef.current || {};
+      const currentLayer = currentMaps[layerId];
+      if (!currentLayer) {
+        return { skipHistory: true, undo: () => {}, redo: () => {} };
+      }
+      const height = currentLayer.length;
+      const width = currentLayer[0]?.length || 0;
+      const previous = [];
+      let changed = false;
+      const nextLayer = currentLayer.map((row) => [...row]);
+      for (const { row, col, color } of updates) {
+        if (row < 0 || col < 0 || row >= height || col >= width) continue;
+        const prevColor = nextLayer[row][col] ?? null;
+        previous.push({ row, col, color: prevColor });
+        if (prevColor !== color) {
+          nextLayer[row][col] = color ?? null;
+          changed = true;
+        }
+      }
+      if (!changed) {
+        return { skipHistory: true, undo: () => {}, redo: () => {} };
+      }
+      setMaps((prev) => ({ ...prev, [layerId]: nextLayer }));
       return {
-        background: clip(prev.background),
-        base: clip(prev.base),
-        sky: clip(prev.sky),
+        label: "Paint tiles",
+        undo: () => {
+          setMaps((prev) => {
+            const layer = prev[layerId];
+            if (!layer) return prev;
+            const restored = layer.map((row) => [...row]);
+            for (const { row, col, color } of previous) {
+              if (
+                row < 0 ||
+                col < 0 ||
+                row >= restored.length ||
+                col >= restored[row].length
+              )
+                continue;
+              restored[row][col] = color ?? null;
+            }
+            return { ...prev, [layerId]: restored };
+          });
+        },
+        redo: () => {
+          setMaps((prev) => {
+            const layer = prev[layerId];
+            if (!layer) return prev;
+            const restored = layer.map((row) => [...row]);
+            const h = restored.length;
+            const w = restored[0]?.length || 0;
+            for (const { row, col, color } of updates) {
+              if (row < 0 || col < 0 || row >= h || col >= w) continue;
+              restored[row][col] = color ?? null;
+            }
+            return { ...prev, [layerId]: restored };
+          });
+        },
       };
     });
+
+    const unregisterGridSize = commandBus.register("SetGridSize", (payload) => {
+      const { rows: nextRows, cols: nextCols } = payload;
+      const prevMaps = mapsRef.current || {};
+      const prevObjects = objectsRef.current || {};
+      const prevRowsInput = rowsInputRef.current;
+      const prevColsInput = colsInputRef.current;
+      const currentRows = (prevMaps.background || []).length;
+      const currentCols = prevMaps.background?.[0]?.length || 0;
+      if (currentRows === nextRows && currentCols === nextCols) {
+        return { skipHistory: true, undo: () => {}, redo: () => {} };
+      }
+      const nextMaps = {
+        background: resizeLayer(prevMaps.background || [], nextRows, nextCols),
+        base: resizeLayer(prevMaps.base || [], nextRows, nextCols),
+        sky: resizeLayer(prevMaps.sky || [], nextRows, nextCols),
+      };
+      const clip = (arr = []) =>
+        arr.filter(
+          (o) =>
+            o.row >= 0 &&
+            o.col >= 0 &&
+            o.row < nextRows &&
+            o.col < nextCols
+        );
+      const nextObjects = {
+        background: clip(prevObjects.background),
+        base: clip(prevObjects.base),
+        sky: clip(prevObjects.sky),
+      };
+      const prevMapsCopy = {
+        background: deepCopyGrid(prevMaps.background || []),
+        base: deepCopyGrid(prevMaps.base || []),
+        sky: deepCopyGrid(prevMaps.sky || []),
+      };
+      const prevObjectsCopy = {
+        background: deepCopyObjects(prevObjects.background || []),
+        base: deepCopyObjects(prevObjects.base || []),
+        sky: deepCopyObjects(prevObjects.sky || []),
+      };
+      const redoMaps = {
+        background: deepCopyGrid(nextMaps.background || []),
+        base: deepCopyGrid(nextMaps.base || []),
+        sky: deepCopyGrid(nextMaps.sky || []),
+      };
+      const redoObjects = {
+        background: deepCopyObjects(nextObjects.background || []),
+        base: deepCopyObjects(nextObjects.base || []),
+        sky: deepCopyObjects(nextObjects.sky || []),
+      };
+      setRowsInput(String(nextRows));
+      setColsInput(String(nextCols));
+      setMaps(nextMaps);
+      setObjects(nextObjects);
+      return {
+        label: "Resize grid",
+        undo: () => {
+          setRowsInput(prevRowsInput);
+          setColsInput(prevColsInput);
+          setMaps(prevMapsCopy);
+          setObjects(prevObjectsCopy);
+        },
+        redo: () => {
+          setRowsInput(String(nextRows));
+          setColsInput(String(nextCols));
+          setMaps(redoMaps);
+          setObjects(redoObjects);
+        },
+      };
+    });
+
+    const unregisterOpacity = commandBus.register("SetLayerOpacity", (payload) => {
+      const { layerId, opacity } = payload;
+      const prev = layerOpacityRef.current?.[layerId] ?? 1;
+      if (Math.abs(prev - opacity) < 0.0001) {
+        return { skipHistory: true, undo: () => {}, redo: () => {} };
+      }
+      setLayerOpacityMap((map) => ({ ...map, [layerId]: opacity }));
+      return {
+        label: "Layer opacity",
+        undo: () => {
+          setLayerOpacityMap((map) => ({ ...map, [layerId]: prev }));
+        },
+        redo: () => {
+          setLayerOpacityMap((map) => ({ ...map, [layerId]: opacity }));
+        },
+      };
+    });
+
+    const unregisterAddLayer = commandBus.register("AddLayer", () => ({
+      skipHistory: true,
+      undo: () => {},
+      redo: () => {},
+    }));
+
+    return () => {
+      unregisterPaint();
+      unregisterGridSize();
+      unregisterOpacity();
+      unregisterAddLayer();
+    };
+  }, [commandBus, resizeLayer, setMaps, setObjects, setRowsInput, setColsInput, setLayerOpacityMap]);
+
+  const updateGridSizes = () => {
+    commandBus.execute("SetGridSize", { rows, cols });
   };
 
   // ====== stroke lifecycle hooks (for Grid) ======
@@ -868,23 +1072,22 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       showToast('Deleted selected object(s).', 'success');
     }
   };
+  const hasCommandUndo = commandHistoryCounts.undo > 0;
+  const hasCommandRedo = commandHistoryCounts.redo > 0;
+  const hasUndo = hasCommandUndo || undoStack.length > 0;
+  const hasRedo = hasCommandRedo || redoStack.length > 0;
 
   // ====== apply tile updates (grid color) ======
   const placeTiles = (updates, colorHex = canvasColor) => {
-    setMaps((prev) => {
-      const src = prev[currentLayer];
-      let changed = false;
-      const nextLayer = src.map((row, ri) =>
-        row.map((tile, ci) => {
-          const hit = updates.some((u) => u.row === ri && u.col === ci);
-          if (!hit) return tile;
-          const newVal = isErasing ? null : colorHex;
-          if (newVal !== tile) changed = true;
-          return newVal;
-        })
-      );
-      if (!changed) return prev;
-      return { ...prev, [currentLayer]: nextLayer };
+    if (!updates || !updates.length) return;
+    const baseColor = colorHex ?? canvasColor;
+    commandBus.execute("PaintStrokeBatch", {
+      layerId: currentLayer,
+      updates: updates.map((u) => ({
+        row: u.row,
+        col: u.col,
+        color: isErasing ? null : baseColor,
+      })),
     });
   };
 
@@ -961,6 +1164,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
 
   // ====== undo / redo ======
   const undo = () => {
+    if (commandBus.undo()) return;
     if (!undoStack.length) return;
     const entry = undoStack[undoStack.length - 1];
     setUndoStack((p) => p.slice(0, -1));
@@ -1062,6 +1266,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   };
 
   const redo = () => {
+    if (commandBus.redo()) return;
     if (!redoStack.length) return;
     const entry = redoStack[redoStack.length - 1];
     setRedoStack((p) => p.slice(0, -1));
@@ -1160,6 +1365,21 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       if (entry.objects) setObjects((prev) => ({ ...prev, [entry.layer]: deepCopyObjects(entry.objects) }));
     }
   };
+
+  useEffect(() => {
+    const onCommandKey = (e) => {
+      if ((e.key === 'z' || e.key === 'Z') && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+    };
+    window.addEventListener('keydown', onCommandKey);
+    return () => window.removeEventListener('keydown', onCommandKey);
+  }, [redo, undo]);
 
   // ====== save / load (desktop FS API + mobile bundle fallback) ======
   const saveProject = async () => {
@@ -2327,9 +2547,9 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                 <div className="inline-flex items-center gap-2 bg-gray-700/40 border border-gray-600 rounded px-2 py-1">
                   <button
                     onClick={undo}
-                    disabled={!undoStack.length}
+                    disabled={!hasUndo}
                     aria-label="Undo"
-                    className={`w-8 h-8 flex items-center justify-center rounded ${undoStack.length ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-transparent text-white/50 cursor-not-allowed'}`}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${hasUndo ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-transparent text-white/50 cursor-not-allowed'}`}
                   >
                     <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                       <path d="M6 5H3.5L6.5 2" strokeLinecap="round" strokeLinejoin="round" />
@@ -2338,9 +2558,9 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                   </button>
                   <button
                     onClick={redo}
-                    disabled={!redoStack.length}
+                    disabled={!hasRedo}
                     aria-label="Redo"
-                    className={`w-8 h-8 flex items-center justify-center rounded ${redoStack.length ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-transparent text-white/50 cursor-not-allowed'}`}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${hasRedo ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-transparent text-white/50 cursor-not-allowed'}`}
                   >
                     <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                       <path d="M10 5h2.5L9.5 2" strokeLinecap="round" strokeLinejoin="round" />
