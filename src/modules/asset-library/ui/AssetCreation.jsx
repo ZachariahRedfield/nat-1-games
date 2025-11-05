@@ -1,5 +1,5 @@
 import React from "react";
-import SiteHeader from "../../common/SiteHeader";
+import SiteHeader from "../../../components/common/SiteHeader";
 
 export default function AssetCreation({ goBack, session, onLogout, onNavigate, currentScreen }) {
   return (

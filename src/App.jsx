@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from "react";
-import MainMenu from "./components/Menu/MainMenu/MainMenu";
-import MapBuilder from "./components/Menu/MapBuilder/MapBuilder";
-import StartSession from "./components/Menu/SessonManager/StartSession";
-import AssetCreation from "./components/Menu/AssetCreation/AssetCreation";
-import Login from "./components/Auth/Login";
-import UserBadge from "./components/Auth/UserBadge";
-import { getSession, isDM, clearSession } from "./utils/auth";
-import { clearCurrentProjectDir } from "./components/Menu/MapBuilder/saveLoadManager";
+import { MainMenuScreen } from "./modules/main-menu";
+import { MapBuilderScreen, clearCurrentProjectDir } from "./modules/map-builder";
+import { SessionManagerScreen } from "./modules/session-manager";
+import { AssetCreationScreen } from "./modules/asset-library";
+import { LoginScreen, UserBadge, getSession, isDM, clearSession } from "./modules/auth";
 import { supabase } from "./utils/supabaseClient";
 
 function App() {
@@ -49,24 +46,24 @@ function App() {
     switch (screen) {
       case "mapBuilder":
         return isDM(session) ? (
-          <MapBuilder goBack={() => setScreen("menu")} session={session} onLogout={logout} onNavigate={setScreen} currentScreen={screen} />
+          <MapBuilderScreen goBack={() => setScreen("menu")} session={session} onLogout={logout} onNavigate={setScreen} currentScreen={screen} />
         ) : (
-          <Login onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
+          <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
         );
       case "startSession":
         return isDM(session) ? (
-          <StartSession goBack={() => setScreen("menu")} session={session} onLogout={logout} onNavigate={setScreen} currentScreen={screen} />
+          <SessionManagerScreen goBack={() => setScreen("menu")} session={session} onLogout={logout} onNavigate={setScreen} currentScreen={screen} />
         ) : (
-          <Login onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
+          <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
         );
       case "assetCreation":
         return isDM(session) ? (
-          <AssetCreation goBack={() => setScreen("menu")} session={session} onLogout={logout} onNavigate={setScreen} currentScreen={screen} />
+          <AssetCreationScreen goBack={() => setScreen("menu")} session={session} onLogout={logout} onNavigate={setScreen} currentScreen={screen} />
         ) : (
-          <Login onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
+          <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
         );
       case "login":
-        return <Login onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />;
+        return <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />;
       case "player":
         // White screen placeholder for Player with a logout/user badge in the corner
         return (
@@ -77,7 +74,7 @@ function App() {
           </div>
         );
       default:
-        return <MainMenu setScreen={setScreen} session={session} onLogout={logout} />;
+        return <MainMenuScreen setScreen={setScreen} session={session} onLogout={logout} />;
     }
   };
 

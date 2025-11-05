@@ -1,6 +1,6 @@
 import React from "react";
-import { getSession, setSession, login as apiLogin, signup as apiSignup } from "../../utils/auth";
-import { supabase } from "../../utils/supabaseClient";
+import { supabase } from "../../../utils/supabaseClient";
+import { getSession, setSession, login as apiLogin, signup as apiSignup } from "../services/authService";
 
 export default function Login({ onLoggedIn, goBack }) {
   const [username, setUsername] = React.useState("");

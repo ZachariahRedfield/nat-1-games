@@ -1,5 +1,5 @@
 import React from "react";
-import { LAYERS } from "./utils";
+import { LAYERS } from "../domain/mapBuilderModel";
 import { EyeIcon, EyeOffIcon } from "./icons";
 import LayersIcon from "./LayersIcon";
 

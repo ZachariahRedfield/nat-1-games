@@ -1,7 +1,7 @@
 import React from "react";
-import NumericInput from "../../common/NumericInput";
-import RotationWheel from "../../common/RotationWheel";
-import AlphaSlider from "../../common/AlphaSlider";
+import NumericInput from "../../../components/common/NumericInput";
+import RotationWheel from "../../../components/common/RotationWheel";
+import AlphaSlider from "../../../components/common/AlphaSlider";
 import CanvasBrushControls from "./CanvasBrushControls";
 
 export default function BrushSettings({

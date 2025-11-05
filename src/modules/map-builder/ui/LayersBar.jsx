@@ -1,5 +1,5 @@
 import React from "react";
-import { LAYERS } from "./utils";
+import { LAYERS } from "../domain/mapBuilderModel";
 
 const EyeIcon = ({ className = "w-4 h-4" }) => (
   <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>

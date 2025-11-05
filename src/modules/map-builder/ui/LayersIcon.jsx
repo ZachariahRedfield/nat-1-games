@@ -1,5 +1,5 @@
 import React from "react";
-import { LAYERS } from "./utils";
+import { LAYERS } from "../domain/mapBuilderModel";
 
 export default function LayersIcon({ currentLayer, layerVisibility, onPick }) {
   // Three horizontal lines stacked and spaced; top is 'sky', bottom 'background'

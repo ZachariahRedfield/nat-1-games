@@ -1,16 +1,16 @@
 import MapStatus from "./MapStatus";
 import React, { useRef, useState, useEffect } from "react";
-import Grid from "../../Map/Grid/Grid";
-import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
+import Grid from "../../../components/Map/Grid/Grid";
+import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "../services/saveLoadManager";
 
-import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
+import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "../domain/mapBuilderModel";
 import BrushSettings from "./BrushSettings";
-import NumericInput from "../../common/NumericInput";
-import RotationWheel from "../../common/RotationWheel";
-import TextCommitInput from "../../common/TextCommitInput";
+import NumericInput from "../../../components/common/NumericInput";
+import RotationWheel from "../../../components/common/RotationWheel";
+import TextCommitInput from "../../../components/common/TextCommitInput";
 import SaveSelectionDialog from "./SaveSelectionDialog";
 import Header from "./Header";
-import SiteHeader from "../../common/SiteHeader";
+import SiteHeader from "../../../components/common/SiteHeader";
 import LayerBar from "./LayerBar";
 import BottomAssetsDrawer from "./BottomAssetsDrawer";
 import AssetCreator from "./AssetCreator";
