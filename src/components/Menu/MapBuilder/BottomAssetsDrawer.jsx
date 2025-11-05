@@ -197,6 +197,7 @@ function BottomAssetsDrawer(props) {
                       titleOverride="Settings"
                       showSnapControls={false}
                       showStep={false}
+                      hideNaturalSize={true}
                     />
                   );
                 }

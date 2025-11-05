@@ -437,10 +437,16 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   });
   const [assetStamp, setAssetStamp] = useState(() => normalizeStamp());
 
+  // Flags to avoid persisting while we're initializing defaults
+  const loadingGridDefaultsRef = useRef(false);
+  const loadingAssetStampDefaultsRef = useRef(false);
+  const loadingNaturalDefaultsRef = useRef(false);
+
   // Sync gridSettings from the selected asset's saved stampDefaults
   useEffect(() => {
     if (!selectedAsset) return;
     const d = selectedAsset.stampDefaults || selectedAsset.defaults || {};
+    loadingGridDefaultsRef.current = true;
     setGridSettings((s) => ({
       ...s,
       sizeTiles: Number.isFinite(d.sizeTiles) ? d.sizeTiles : (s.sizeTiles ?? 1),
@@ -454,12 +460,16 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       snapStep: Number.isFinite(d.snapStep) ? d.snapStep : (s.snapStep ?? 1),
       linkXY: d.linkXY ?? (s.linkXY ?? false),
     }));
+    // Defer clearing flag until after React applies state and effects run
+    setTimeout(() => { loadingGridDefaultsRef.current = false; }, 0);
   }, [selectedAssetId]);
 
   // Load drawer settings from the selected asset defaults (Assets tab only)
   useEffect(() => {
     const d = (selectedAsset?.stampDefaults || selectedAsset?.defaults || {});
+    loadingAssetStampDefaultsRef.current = true;
     setAssetStamp(normalizeStamp(d));
+    setTimeout(() => { loadingAssetStampDefaultsRef.current = false; }, 0);
   }, [selectedAssetId]);
 
   // Load Natural defaults into UI when selecting a Natural asset
@@ -467,12 +477,15 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     const a = getAsset(selectedAssetId);
     if (!a || a.kind !== 'natural') return;
     const d = a.naturalDefaults || {};
+    loadingNaturalDefaultsRef.current = true;
     setNaturalSettings((cur) => ({ ...cur, ...normalizeNatural(d) }));
+    setTimeout(() => { loadingNaturalDefaultsRef.current = false; }, 0);
   }, [selectedAssetId]);
 
   // Persist drawer settings into the selected asset (assets tab only)
   useEffect(() => {
     if (!selectedAssetId || !assetStamp) return;
+    if (loadingAssetStampDefaultsRef.current) return; // skip initial load
     const cur = getAsset(selectedAssetId);
     const prev = cur?.stampDefaults || {};
     const stamp = normalizeStamp(assetStamp);
@@ -495,6 +508,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   useEffect(() => {
     if (!selectedAssetId) return;
     if (hasSelection) return; // avoid overwriting defaults while editing an existing selection
+    if (loadingGridDefaultsRef.current) return; // skip initial apply
     const cur = getAsset(selectedAssetId);
     if (!cur) return;
     const stamp = normalizeStamp(gridSettings || {});
@@ -640,6 +654,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   useEffect(() => {
     if (!selectedAssetId) return;
     if (hasSelection) return;
+    if (loadingNaturalDefaultsRef.current) return;
     const cur = getAsset(selectedAssetId);
     if (!cur || cur.kind !== 'natural') return;
     const next = normalizeNatural(naturalSettings);
@@ -678,16 +693,32 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       const allIds = new Set([...gMap.keys(), ...fMap.keys()]);
       const merged = [];
       for (const id of allIds) {
-      const g = gMap.get(id);
-      const f = fMap.get(id);
-      if (f && g) {
-        // Prefer FS for file-location fields (e.g., path), but prefer Global for metadata/defaults
-        const combined = { ...f, ...g };
-        merged.push(combined);
+        const g = gMap.get(id);
+        const f = fMap.get(id);
+        if (f && g) {
+          // Prefer FS for file-location fields (e.g., path), but prefer Global for metadata/defaults
+          const combined = { ...f, ...g };
+          merged.push(combined);
         } else if (f) {
           merged.push({ ...f });
         } else if (g) {
           merged.push({ ...g });
+        }
+      }
+
+      // Secondary reconciliation: if two entries share the same name+kind but differ in id,
+      // copy missing defaults (stampDefaults / naturalDefaults) from the one that has them.
+      const byNameKind = new Map();
+      for (const a of merged) {
+        const key = `${a.kind || ''}:${(a.name || '').toLowerCase()}`;
+        const cur = byNameKind.get(key);
+        if (!cur) byNameKind.set(key, a);
+        else {
+          // If either side has defaults the other lacks, copy them over (non-destructive)
+          if (!a.stampDefaults && cur.stampDefaults) a.stampDefaults = cur.stampDefaults;
+          if (!cur.stampDefaults && a.stampDefaults) cur.stampDefaults = a.stampDefaults;
+          if (!a.naturalDefaults && cur.naturalDefaults) a.naturalDefaults = cur.naturalDefaults;
+          if (!cur.naturalDefaults && a.naturalDefaults) cur.naturalDefaults = a.naturalDefaults;
         }
       }
 

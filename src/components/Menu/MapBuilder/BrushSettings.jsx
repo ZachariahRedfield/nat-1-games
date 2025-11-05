@@ -33,6 +33,8 @@ export default function BrushSettings({
   // Optional token highlight controls for Assets Tab Token menu
   tokenHighlightColor,
   onChangeTokenHighlight,
+  // Hide size controls for natural assets (e.g., in Assets tab)
+  hideNaturalSize = false,
 }) {
   // Link X/Y sizes (stored in gridSettings.linkXY, defaults to false)
   const linkXY = !!(gridSettings?.linkXY);
@@ -89,6 +91,7 @@ export default function BrushSettings({
         <div className="grid gap-2">
           {(!showSnapControls) ? (
             <div className="flex items-center gap-3">
+              {!hideNaturalSize && (
               <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
                 <span>Size</span>
                 <div className="relative">
@@ -133,6 +136,7 @@ export default function BrushSettings({
                   <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
                 </div>
               </div>
+              )}
               {showStep && (
                 <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
                   <span>Draw Spacing</span>
@@ -148,6 +152,7 @@ export default function BrushSettings({
               )}
             </div>
           ) : (
+            !hideNaturalSize && (
             <div className="flex items-end gap-3 mb-1">
               <span className="text-xs">Size</span>
               <div className="inline-flex items-center">
@@ -196,6 +201,7 @@ export default function BrushSettings({
                 </div>
               </div>
             </div>
+            )
           )}
           {/* size slider removed */}
 
