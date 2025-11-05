@@ -1,6 +1,6 @@
 import MapStatus from "./MapStatus";
 import React, { useRef, useState, useEffect } from "react";
-import Grid from "../../Map/Grid/Grid";
+import MapViewport from "../../../features/map/components/MapViewport";
 import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
 
 import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
@@ -2349,55 +2349,14 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
                   </button>
                 </div>
               </div>
-              <Grid
-                maps={maps}
-                objects={objects}
-                tokens={tokens}
-                assets={assets}
-                engine={engine}
-                selectedAsset={selectedAsset}
-                gridSettings={gridSettings}
-                stampSettings={assetStamp}
-                setGridSettings={setGridSettings}
-                brushSize={brushSize}
-                canvasOpacity={canvasOpacity}
-                canvasColor={canvasColor}
-                canvasSpacing={canvasSpacing}
-                canvasBlendMode={canvasBlendMode}
-                canvasSmoothing={canvasSmoothing}
-                naturalSettings={naturalSettings}
-                isErasing={isErasing}
-                interactionMode={interactionMode}
+              <MapViewport
+                rows={rows}
+                cols={cols}
                 tileSize={tileSize}
-                scrollRef={scrollRef}
-                contentRef={gridContentRef}
-                zoomToolActive={zoomToolActive}
-                panToolActive={panToolActive}
-                onZoomToolRect={handleZoomToRect}
-                canvasRefs={canvasRefs}
-                currentLayer={currentLayer}
-                layerVisibility={layerVisibility}
-                tokensVisible={tokensVisible}
-                tokenHUDVisible={tokenHUDVisible}
-                tokenHUDShowInitiative={tokenHUDShowInitiative}
-                assetGroup={assetGroup}
-                onBeginTileStroke={onBeginTileStroke}
-                onBeginCanvasStroke={onBeginCanvasStroke}
-                onBeginObjectStroke={onBeginObjectStroke}
-                onBeginTokenStroke={onBeginTokenStroke}
-                placeTiles={placeTiles}
-                addObject={addObject}
-                eraseObjectAt={eraseObjectAt}
-                moveObject={moveObject}
-                removeObjectById={removeObjectById}
-                updateObjectById={updateObjectById}
-                onSelectionChange={handleSelectionChange}
-                addToken={addToken}
-                moveToken={moveToken}
-                removeTokenById={removeTokenById}
-                updateTokenById={updateTokenById}
-                onTokenSelectionChange={handleTokenSelectionChange}
                 showGridLines={showGridLines}
+                contentRef={gridContentRef}
+                className="relative"
+                style={{ width: cols * tileSize, height: rows * tileSize }}
               />
             </div>
           </div>
