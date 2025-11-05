@@ -16,6 +16,49 @@ import BottomAssetsDrawer from "./BottomAssetsDrawer";
 import AssetCreator from "./AssetCreator";
 import VerticalToolStrip from "./VerticalToolStrip";
 
+const NATURAL_DEFAULTS = {
+  randomRotation: false,
+  randomFlipX: false,
+  randomFlipY: false,
+  randomSize: { enabled: false, min: 1, max: 1 },
+  randomOpacity: { enabled: false, min: 1, max: 1 },
+  randomVariant: true,
+};
+
+const normalizeNatural = (ns = {}) => ({
+  randomRotation: !!ns.randomRotation,
+  randomFlipX: !!ns.randomFlipX,
+  randomFlipY: !!ns.randomFlipY,
+  randomSize: {
+    enabled: !!(ns.randomSize?.enabled),
+    min: Number.isFinite(ns.randomSize?.min) ? ns.randomSize.min : NATURAL_DEFAULTS.randomSize.min,
+    max: Number.isFinite(ns.randomSize?.max) ? ns.randomSize.max : NATURAL_DEFAULTS.randomSize.max,
+  },
+  randomOpacity: {
+    enabled: !!(ns.randomOpacity?.enabled),
+    min: Number.isFinite(ns.randomOpacity?.min) ? ns.randomOpacity.min : NATURAL_DEFAULTS.randomOpacity.min,
+    max: Number.isFinite(ns.randomOpacity?.max) ? ns.randomOpacity.max : NATURAL_DEFAULTS.randomOpacity.max,
+  },
+  randomVariant: ns.randomVariant ?? NATURAL_DEFAULTS.randomVariant,
+});
+
+const areNaturalSettingsEqual = (a, b) => {
+  const na = normalizeNatural(a);
+  const nb = normalizeNatural(b);
+  return (
+    na.randomRotation === nb.randomRotation &&
+    na.randomFlipX === nb.randomFlipX &&
+    na.randomFlipY === nb.randomFlipY &&
+    na.randomVariant === nb.randomVariant &&
+    na.randomSize.enabled === nb.randomSize.enabled &&
+    na.randomSize.min === nb.randomSize.min &&
+    na.randomSize.max === nb.randomSize.max &&
+    na.randomOpacity.enabled === nb.randomOpacity.enabled &&
+    na.randomOpacity.min === nb.randomOpacity.min &&
+    na.randomOpacity.max === nb.randomOpacity.max
+  );
+};
+
 // Compact tool icons for Interaction area
 const BrushIcon = ({ className = "w-4 h-4" }) => (
   <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
@@ -466,9 +509,9 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   useEffect(() => {
     const a = getAsset(selectedAssetId);
     if (!a || a.kind !== 'natural') return;
-    const d = a.naturalDefaults || {};
-    setNaturalSettings((cur) => ({ ...cur, ...normalizeNatural(d) }));
-  }, [selectedAssetId]);
+    const next = normalizeNatural(a.naturalDefaults || {});
+    setNaturalSettings((cur) => (areNaturalSettingsEqual(cur, next) ? cur : next));
+  }, [selectedAssetId, assets]);
 
   // Persist drawer settings into the selected asset (assets tab only)
   useEffect(() => {
@@ -606,31 +649,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const [flowSat, setFlowSat] = useState(70);
   const [flowLight, setFlowLight] = useState(55);
   // Natural randomization settings
-  const [naturalSettings, setNaturalSettings] = useState({
-    randomRotation: false,
-    randomFlipX: false,
-    randomFlipY: false,
-    randomSize: { enabled: false, min: 1, max: 1 },
-    randomOpacity: { enabled: false, min: 1, max: 1 },
-    randomVariant: true,
-  });
-  // Normalize Natural settings structure
-  const normalizeNatural = (ns = {}) => ({
-    randomRotation: !!ns.randomRotation,
-    randomFlipX: !!ns.randomFlipX,
-    randomFlipY: !!ns.randomFlipY,
-    randomSize: {
-      enabled: !!(ns.randomSize?.enabled),
-      min: Number.isFinite(ns.randomSize?.min) ? ns.randomSize.min : 1,
-      max: Number.isFinite(ns.randomSize?.max) ? ns.randomSize.max : 1,
-    },
-    randomOpacity: {
-      enabled: !!(ns.randomOpacity?.enabled),
-      min: Number.isFinite(ns.randomOpacity?.min) ? ns.randomOpacity.min : 1,
-      max: Number.isFinite(ns.randomOpacity?.max) ? ns.randomOpacity.max : 1,
-    },
-    randomVariant: ns.randomVariant ?? true,
-  });
+  const [naturalSettings, setNaturalSettings] = useState(() => normalizeNatural());
   // Preserve token selection in Select mode even if Assets tab changes
   React.useEffect(() => {
     if (assetGroup !== 'token' && interactionMode !== 'select' && selectedToken) setSelectedToken(null);
@@ -643,19 +662,9 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     const cur = getAsset(selectedAssetId);
     if (!cur || cur.kind !== 'natural') return;
     const next = normalizeNatural(naturalSettings);
-    const prev = cur.naturalDefaults || {};
-    const same = !!prev &&
-      !!prev.randomRotation === next.randomRotation &&
-      !!prev.randomFlipX === next.randomFlipX &&
-      !!prev.randomFlipY === next.randomFlipY &&
-      !!(prev.randomSize?.enabled) === next.randomSize.enabled &&
-      (prev.randomSize?.min ?? 1) === next.randomSize.min &&
-      (prev.randomSize?.max ?? 1) === next.randomSize.max &&
-      !!(prev.randomOpacity?.enabled) === next.randomOpacity.enabled &&
-      (prev.randomOpacity?.min ?? 1) === next.randomOpacity.min &&
-      (prev.randomOpacity?.max ?? 1) === next.randomOpacity.max &&
-      (prev.randomVariant ?? true) === next.randomVariant;
-    if (!same) updateAssetById(selectedAssetId, { naturalDefaults: next });
+    if (!areNaturalSettingsEqual(cur.naturalDefaults || {}, next)) {
+      updateAssetById(selectedAssetId, { naturalDefaults: next });
+    }
   }, [selectedAssetId, hasSelection, naturalSettings]);
 
   // ====== Global assets: load on mount, persist on change ======
