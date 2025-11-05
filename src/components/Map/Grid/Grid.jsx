@@ -893,58 +893,42 @@ export default function Grid({
         e.target.setPointerCapture?.(e.pointerId);
         return;
       }
-      const multi = e.shiftKey || e.ctrlKey || e.metaKey;
-      if (assetGroup === 'token') {
-        const hitTok = getTopMostTokenAt(Math.floor(row), Math.floor(col));
-        if (hitTok) {
-          if (multi) {
-            const has = selectedTokenIds.includes(hitTok.id);
-            const next = has ? selectedTokenIds.filter((x) => x !== hitTok.id) : [...selectedTokenIds, hitTok.id];
-            setSelectedTokenIds(next);
-            setSelectedTokenId(hitTok.id);
-            onTokenSelectionChange?.(next.map((id)=> getTokenById(id)).filter(Boolean));
-            // Disable drag for multi for now
-            dragRef.current = null;
-          } else {
-            setSelectedTokenIds([hitTok.id]);
-            setSelectedTokenId(hitTok.id);
-            onTokenSelectionChange?.([hitTok]);
-            dragRef.current = { kind: 'token', id: hitTok.id, offsetRow: row - hitTok.row, offsetCol: col - hitTok.col };
-          }
-        } else {
-          // start marquee selection for tokens
-          setSelectedTokenId(null);
-          setSelectedTokenIds([]);
-          onTokenSelectionChange?.([]);
-          dragRef.current = { kind: 'marquee-token', startRow: row, startCol: col, curRow: row, curCol: col };
-        }
+      const hitTok = getTopMostTokenAt(Math.floor(row), Math.floor(col));
+      const hitObj = getTopMostObjectAt(currentLayer, Math.floor(row), Math.floor(col));
+
+      // Prefer tokens over objects visually (tokens render on top)
+      if (hitTok) {
+        // Always single selection
+        setSelectedObjId(null);
+        setSelectedObjIds([]);
+        setSelectedTokenIds([hitTok.id]);
+        setSelectedTokenId(hitTok.id);
+        onTokenSelectionChange?.([hitTok]);
+        dragRef.current = { kind: 'token', id: hitTok.id, offsetRow: row - hitTok.row, offsetCol: col - hitTok.col };
         return;
-      } else {
-        const hitObj = getTopMostObjectAt(currentLayer, Math.floor(row), Math.floor(col));
-        if (hitObj) {
-          if (multi) {
-            const has = selectedObjIds.includes(hitObj.id);
-            const next = has ? selectedObjIds.filter((x) => x !== hitObj.id) : [...selectedObjIds, hitObj.id];
-            setSelectedObjIds(next);
-            setSelectedObjId(hitObj.id);
-            onSelectionChange?.(next.map((id)=> getObjectById(currentLayer, id)).filter(Boolean));
-            dragRef.current = null; // disable drag for multi
-          } else {
-            onBeginObjectStroke?.(currentLayer);
-            setSelectedObjIds([hitObj.id]);
-            setSelectedObjId(hitObj.id);
-            onSelectionChange?.([hitObj]);
-            dragRef.current = { kind: 'object', id: hitObj.id, offsetRow: row - hitObj.row, offsetCol: col - hitObj.col };
-          }
-        } else {
-          setSelectedObjId(null);
-          setSelectedObjIds([]);
-          onSelectionChange?.([]);
-          // start marquee selection for objects
-          dragRef.current = { kind: 'marquee-obj', startRow: row, startCol: col, curRow: row, curCol: col };
-        }
-        return; // no stamping/erasing in select mode
       }
+
+      if (hitObj) {
+        // Always single selection
+        onBeginObjectStroke?.(currentLayer);
+        setSelectedTokenId(null);
+        setSelectedTokenIds([]);
+        setSelectedObjIds([hitObj.id]);
+        setSelectedObjId(hitObj.id);
+        onSelectionChange?.([hitObj]);
+        dragRef.current = { kind: 'object', id: hitObj.id, offsetRow: row - hitObj.row, offsetCol: col - hitObj.col };
+        return;
+      }
+
+      // Nothing hit: clear all selection; no marquee multi-select
+      setSelectedObjId(null);
+      setSelectedObjIds([]);
+      onSelectionChange?.([]);
+      setSelectedTokenId(null);
+      setSelectedTokenIds([]);
+      onTokenSelectionChange?.([]);
+      dragRef.current = null;
+      return; // no stamping/erasing in select mode
     }
 
     if (engine === "grid" || (selectedAsset?.kind === 'token' && assetGroup === 'token')) {
@@ -1504,49 +1488,101 @@ export default function Grid({
 
         {(() => {
           const obj = getSelectedObject();
-          if (!obj) return null;
-          return (
-            <SelectionMiniPanel
-              key={obj.id}
-              obj={obj}
-              tileSize={tileSize}
-              containerSize={{ w: cssWidth, h: cssHeight }}
-              onChangeSize={(newW, newH) => {
-                const centerRow = obj.row + obj.hTiles / 2;
-                const centerCol = obj.col + obj.wTiles / 2;
-                const wTiles = Math.max(1, Math.round(newW));
-                const hTiles = Math.max(1, Math.round(newH));
-                let newRow = Math.round(centerRow - hTiles / 2);
-                let newCol = Math.round(centerCol - wTiles / 2);
-                newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
-                newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
-                updateObjectById(currentLayer, obj.id, { wTiles, hTiles, row: newRow, col: newCol });
-                setGridSettings?.((s) => ({ ...s, sizeCols: wTiles, sizeRows: hTiles }));
-              }}
-              onRotate={(delta) => {
-                const r0 = obj.rotation || 0;
-                let next = (r0 + delta) % 360;
-                if (next < 0) next += 360;
-                const rot = Math.round(next);
-                updateObjectById(currentLayer, obj.id, { rotation: rot });
-                setGridSettings?.((s) => ({ ...s, rotation: rot }));
-              }}
-              onFlipX={() => { updateObjectById(currentLayer, obj.id, { flipX: !obj.flipX }); setGridSettings?.((s)=> ({ ...s, flipX: !obj.flipX })); }}
-              onFlipY={() => { updateObjectById(currentLayer, obj.id, { flipY: !obj.flipY }); setGridSettings?.((s)=> ({ ...s, flipY: !obj.flipY })); }}
-              opacity={Math.max(0.05, Math.min(1, obj.opacity ?? (gridSettings.opacity ?? 1)))}
-              onChangeOpacity={(val) => {
-                const v = Math.max(0.05, Math.min(1, val || 0));
-                updateObjectById(currentLayer, obj.id, { opacity: v });
-                setGridSettings?.((s) => ({ ...s, opacity: v }));
-              }}
-              snapToGrid={!!gridSettings.snapToGrid}
-              onToggleSnap={() => {
-                setGridSettings?.((s) => ({ ...s, snapToGrid: !s?.snapToGrid }));
-              }}
-              linkXY={!!gridSettings.linkXY}
-              onToggleLink={() => setGridSettings?.((s) => ({ ...s, linkXY: !s?.linkXY }))}
-            />
-          );
+          if (obj) {
+            return (
+              <SelectionMiniPanel
+                key={`obj-${obj.id}`}
+                obj={obj}
+                tileSize={tileSize}
+                containerSize={{ w: cssWidth, h: cssHeight }}
+                onChangeSize={(newW, newH) => {
+                  const centerRow = obj.row + obj.hTiles / 2;
+                  const centerCol = obj.col + obj.wTiles / 2;
+                  const wTiles = Math.max(1, Math.round(newW));
+                  const hTiles = Math.max(1, Math.round(newH));
+                  let newRow = Math.round(centerRow - hTiles / 2);
+                  let newCol = Math.round(centerCol - wTiles / 2);
+                  newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
+                  newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
+                  updateObjectById(currentLayer, obj.id, { wTiles, hTiles, row: newRow, col: newCol });
+                  setGridSettings?.((s) => ({ ...s, sizeCols: wTiles, sizeRows: hTiles }));
+                }}
+                onRotate={(delta) => {
+                  const r0 = obj.rotation || 0;
+                  let next = (r0 + delta) % 360;
+                  if (next < 0) next += 360;
+                  const rot = Math.round(next);
+                  updateObjectById(currentLayer, obj.id, { rotation: rot });
+                  setGridSettings?.((s) => ({ ...s, rotation: rot }));
+                }}
+                onFlipX={() => { updateObjectById(currentLayer, obj.id, { flipX: !obj.flipX }); setGridSettings?.((s)=> ({ ...s, flipX: !obj.flipX })); }}
+                onFlipY={() => { updateObjectById(currentLayer, obj.id, { flipY: !obj.flipY }); setGridSettings?.((s)=> ({ ...s, flipY: !obj.flipY })); }}
+                opacity={Math.max(0.05, Math.min(1, obj.opacity ?? (gridSettings.opacity ?? 1)))}
+                onChangeOpacity={(val) => {
+                  const v = Math.max(0.05, Math.min(1, val || 0));
+                  updateObjectById(currentLayer, obj.id, { opacity: v });
+                  setGridSettings?.((s) => ({ ...s, opacity: v }));
+                }}
+                snapToGrid={!!gridSettings.snapToGrid}
+                onToggleSnap={() => {
+                  setGridSettings?.((s) => ({ ...s, snapToGrid: !s?.snapToGrid }));
+                }}
+                linkXY={!!gridSettings.linkXY}
+                onToggleLink={() => setGridSettings?.((s) => ({ ...s, linkXY: !s?.linkXY }))}
+              />
+            );
+          }
+          const tok = getSelectedToken();
+          if (tok) {
+            return (
+              <SelectionMiniPanel
+                key={`tok-${tok.id}`}
+                obj={tok}
+                tileSize={tileSize}
+                containerSize={{ w: cssWidth, h: cssHeight }}
+                onChangeSize={(newW, newH) => {
+                  const centerRow = tok.row + (tok.hTiles || 1) / 2;
+                  const centerCol = tok.col + (tok.wTiles || 1) / 2;
+                  const wTiles = Math.max(1, Math.round(newW));
+                  const hTiles = Math.max(1, Math.round(newH));
+                  let newRow = Math.round(centerRow - hTiles / 2);
+                  let newCol = Math.round(centerCol - wTiles / 2);
+                  newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
+                  newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
+                  updateTokenById?.(tok.id, { wTiles, hTiles, row: newRow, col: newCol });
+                  setGridSettings?.((s) => ({ ...s, sizeCols: wTiles, sizeRows: hTiles }));
+                }}
+                onRotate={(delta) => {
+                  const r0 = tok.rotation || 0;
+                  let next = (r0 + delta) % 360;
+                  if (next < 0) next += 360;
+                  const rot = Math.round(next);
+                  updateTokenById?.(tok.id, { rotation: rot });
+                  setGridSettings?.((s) => ({ ...s, rotation: rot }));
+                }}
+                onFlipX={() => { updateTokenById?.(tok.id, { flipX: !tok.flipX }); setGridSettings?.((s)=> ({ ...s, flipX: !tok.flipX })); }}
+                onFlipY={() => { updateTokenById?.(tok.id, { flipY: !tok.flipY }); setGridSettings?.((s)=> ({ ...s, flipY: !tok.flipY })); }}
+                opacity={Math.max(0.05, Math.min(1, tok.opacity ?? (gridSettings.opacity ?? 1)))}
+                onChangeOpacity={(val) => {
+                  const v = Math.max(0.05, Math.min(1, val || 0));
+                  updateTokenById?.(tok.id, { opacity: v });
+                  setGridSettings?.((s) => ({ ...s, opacity: v }));
+                }}
+                snapToGrid={!!gridSettings.snapToGrid}
+                onToggleSnap={() => {
+                  setGridSettings?.((s) => ({ ...s, snapToGrid: !s?.snapToGrid }));
+                }}
+                linkXY={!!gridSettings.linkXY}
+                onToggleLink={() => setGridSettings?.((s) => ({ ...s, linkXY: !s?.linkXY }))}
+                highlightColor={tok.glowColor || '#7dd3fc'}
+                onChangeHighlightColor={(hex) => {
+                  const val = typeof hex === 'string' && hex.trim() ? hex.trim() : '#7dd3fc';
+                  updateTokenById?.(tok.id, { glowColor: val });
+                }}
+              />
+            );
+          }
+          return null;
         })()}
 
         {/* 8) Marquee overlay */}

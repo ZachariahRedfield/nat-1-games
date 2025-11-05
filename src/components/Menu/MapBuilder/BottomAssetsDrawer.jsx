@@ -99,6 +99,8 @@ function BottomAssetsDrawer(props) {
     maxHeightPct = 0.7,
     assetStamp,
     setAssetStamp,
+    naturalSettings,
+    setNaturalSettings,
   } = props || {};
   const [height, setHeight] = useState(() => {
     const saved = Number(localStorage.getItem(STORAGE_KEY));
@@ -162,14 +164,55 @@ function BottomAssetsDrawer(props) {
           {/* Settings section at the bottom of the Assets drawer */}
           <div className="mt-4 pt-3 border-t border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <BrushSettings
-                kind="grid"
-                gridSettings={assetStamp}
-                setGridSettings={setAssetStamp}
-                titleOverride="Settings"
-                showSnapControls={false}
-                showStep={assetPanelProps?.selectedAsset?.kind !== 'token' && assetPanelProps?.selectedAsset?.kind !== 'tokenGroup'}
-              />
+              {(() => {
+                const persistAssetStamp = (updater) => {
+                  setAssetStamp((prev) => {
+                    const next = typeof updater === 'function' ? updater(prev) : updater;
+                    try {
+                      const sid = assetPanelProps?.selectedAssetId;
+                      if (sid && next) assetPanelProps?.updateAssetById?.(sid, { stampDefaults: next });
+                    } catch {}
+                    return next;
+                  });
+                };
+                const a = assetPanelProps?.selectedAsset;
+                if (a?.kind === 'natural') {
+                  const persistNatural = (updater) => {
+                    setNaturalSettings((prev) => {
+                      const next = typeof updater === 'function' ? updater(prev) : updater;
+                      try {
+                        const sid = assetPanelProps?.selectedAssetId;
+                        if (sid && next) assetPanelProps?.updateAssetById?.(sid, { naturalDefaults: next });
+                      } catch {}
+                      return next;
+                    });
+                  };
+                  return (
+                    <BrushSettings
+                      kind="natural"
+                      gridSettings={assetStamp}
+                      setGridSettings={persistAssetStamp}
+                      naturalSettings={naturalSettings}
+                      setNaturalSettings={persistNatural}
+                      titleOverride="Settings"
+                      showSnapControls={false}
+                      showStep={false}
+                    />
+                  );
+                }
+                return (
+                  <BrushSettings
+                    kind="grid"
+                    gridSettings={assetStamp}
+                    setGridSettings={persistAssetStamp}
+                    titleOverride="Settings"
+                    showSnapControls={false}
+                    showStep={assetPanelProps?.selectedAsset?.kind !== 'token' && assetPanelProps?.selectedAsset?.kind !== 'tokenGroup'}
+                    tokenHighlightColor={assetPanelProps?.selectedAsset?.kind === 'token' ? (assetPanelProps?.selectedAsset?.glowDefault || '#7dd3fc') : undefined}
+                    onChangeTokenHighlight={assetPanelProps?.selectedAsset?.kind === 'token' ? ((hex)=> assetPanelProps?.updateAssetById?.(assetPanelProps?.selectedAsset?.id, { glowDefault: hex })) : undefined}
+                  />
+                );
+              })()}
               {/* Preview with vertical Flip controls on the left */}
               <div className="w-full flex md:flex-row flex-col gap-2">
                 <div className="flex flex-col gap-2 items-start justify-start md:mr-2 mt-2 md:mt-8">

@@ -30,6 +30,9 @@ export default function BrushSettings({
   showSnapControls = true,
   // When using in Assets drawer, allow showing Step even if snap controls are hidden
   showStep = true,
+  // Optional token highlight controls for Assets Tab Token menu
+  tokenHighlightColor,
+  onChangeTokenHighlight,
 }) {
   // Link X/Y sizes (stored in gridSettings.linkXY, defaults to false)
   const linkXY = !!(gridSettings?.linkXY);
@@ -362,7 +365,27 @@ export default function BrushSettings({
       <h3 className="font-bold text-sm mb-2">{titleOverride || 'Settings'}</h3>
       <div className="grid gap-2">
         {(!showSnapControls) ? (
-          <div className="flex items-center gap-6 md:gap-8">
+          <>
+            {(typeof tokenHighlightColor === 'string' && typeof onChangeTokenHighlight === 'function') && (
+              <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
+                <span>Highlight</span>
+                <input
+                  type="color"
+                  value={tokenHighlightColor || '#7dd3fc'}
+                  onChange={(e)=> onChangeTokenHighlight(e.target.value)}
+                  className="w-8 h-5 p-0 border border-gray-500 rounded"
+                  title="Default token highlight color"
+                />
+                <input
+                  type="text"
+                  className="w-24 p-1 text-black rounded"
+                  value={tokenHighlightColor || '#7dd3fc'}
+                  onChange={(e)=> onChangeTokenHighlight(e.target.value)}
+                  placeholder="#7dd3fc"
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-6 md:gap-8">
             {/* Size group */}
             <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
               <span>Size</span>
@@ -412,7 +435,8 @@ export default function BrushSettings({
                 />
               </div>
             )}
-          </div>
+            </div>
+          </>
         ) : (
           <div className="flex items-end gap-3 mb-1">
             <span className="text-xs">Size</span>

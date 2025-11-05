@@ -389,9 +389,10 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     setCreatorOpen(false);
     if (!a) return;
     const prefer = a.defaultEngine || "canvas";
-    if (a.kind === "token") {
-      // Hide drawing engines for tokens; rely on click-to-place behavior
-      setInteractionMode("select");
+    if (a.kind === "token" || a.kind === 'tokenGroup') {
+      // Tokens place on click; keep user in Draw with Grid engine
+      try { setZoomToolActive(false); setPanToolActive(false); } catch {}
+      setInteractionMode("draw");
       setEngine("grid");
     } else if (a.kind === "color") {
       // Do not change engine; only update the active color
@@ -461,6 +462,14 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     setAssetStamp(normalizeStamp(d));
   }, [selectedAssetId]);
 
+  // Load Natural defaults into UI when selecting a Natural asset
+  useEffect(() => {
+    const a = getAsset(selectedAssetId);
+    if (!a || a.kind !== 'natural') return;
+    const d = a.naturalDefaults || {};
+    setNaturalSettings((cur) => ({ ...cur, ...normalizeNatural(d) }));
+  }, [selectedAssetId]);
+
   // Persist drawer settings into the selected asset (assets tab only)
   useEffect(() => {
     if (!selectedAssetId || !assetStamp) return;
@@ -507,6 +516,8 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       setAssetStamp(stamp);
     }
   }, [selectedAssetId, hasSelection, gridSettings]);
+
+  
 
   // When asset group changes, auto-select a matching asset and force Grid engine for Token/Natural groups
   React.useEffect(() => {
@@ -603,10 +614,49 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     randomOpacity: { enabled: false, min: 1, max: 1 },
     randomVariant: true,
   });
-  // Clear token selection when leaving Token assets menu
+  // Normalize Natural settings structure
+  const normalizeNatural = (ns = {}) => ({
+    randomRotation: !!ns.randomRotation,
+    randomFlipX: !!ns.randomFlipX,
+    randomFlipY: !!ns.randomFlipY,
+    randomSize: {
+      enabled: !!(ns.randomSize?.enabled),
+      min: Number.isFinite(ns.randomSize?.min) ? ns.randomSize.min : 1,
+      max: Number.isFinite(ns.randomSize?.max) ? ns.randomSize.max : 1,
+    },
+    randomOpacity: {
+      enabled: !!(ns.randomOpacity?.enabled),
+      min: Number.isFinite(ns.randomOpacity?.min) ? ns.randomOpacity.min : 1,
+      max: Number.isFinite(ns.randomOpacity?.max) ? ns.randomOpacity.max : 1,
+    },
+    randomVariant: ns.randomVariant ?? true,
+  });
+  // Preserve token selection in Select mode even if Assets tab changes
   React.useEffect(() => {
-    if (assetGroup !== 'token' && selectedToken) setSelectedToken(null);
-  }, [assetGroup]);
+    if (assetGroup !== 'token' && interactionMode !== 'select' && selectedToken) setSelectedToken(null);
+  }, [assetGroup, interactionMode, selectedToken]);
+
+  // Persist Natural settings as per-asset defaults when editing a Natural asset
+  useEffect(() => {
+    if (!selectedAssetId) return;
+    if (hasSelection) return;
+    const cur = getAsset(selectedAssetId);
+    if (!cur || cur.kind !== 'natural') return;
+    const next = normalizeNatural(naturalSettings);
+    const prev = cur.naturalDefaults || {};
+    const same = !!prev &&
+      !!prev.randomRotation === next.randomRotation &&
+      !!prev.randomFlipX === next.randomFlipX &&
+      !!prev.randomFlipY === next.randomFlipY &&
+      !!(prev.randomSize?.enabled) === next.randomSize.enabled &&
+      (prev.randomSize?.min ?? 1) === next.randomSize.min &&
+      (prev.randomSize?.max ?? 1) === next.randomSize.max &&
+      !!(prev.randomOpacity?.enabled) === next.randomOpacity.enabled &&
+      (prev.randomOpacity?.min ?? 1) === next.randomOpacity.min &&
+      (prev.randomOpacity?.max ?? 1) === next.randomOpacity.max &&
+      (prev.randomVariant ?? true) === next.randomVariant;
+    if (!same) updateAssetById(selectedAssetId, { naturalDefaults: next });
+  }, [selectedAssetId, hasSelection, naturalSettings]);
 
   // ====== Global assets: load on mount, persist on change ======
   const globalAssetsRef = useRef([]);
@@ -628,12 +678,12 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       const allIds = new Set([...gMap.keys(), ...fMap.keys()]);
       const merged = [];
       for (const id of allIds) {
-        const g = gMap.get(id);
-        const f = fMap.get(id);
-        if (f && g) {
-          const combined = { ...g, ...f };
-          if (combined.stampDefaults == null && g.stampDefaults != null) combined.stampDefaults = g.stampDefaults;
-          merged.push(combined);
+      const g = gMap.get(id);
+      const f = fMap.get(id);
+      if (f && g) {
+        // Prefer FS for file-location fields (e.g., path), but prefer Global for metadata/defaults
+        const combined = { ...f, ...g };
+        merged.push(combined);
         } else if (f) {
           merged.push({ ...f });
         } else if (g) {
@@ -2429,6 +2479,8 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
         maxHeightPct={0.7}
         assetStamp={assetStamp}
         setAssetStamp={setAssetStamp}
+        naturalSettings={naturalSettings}
+        setNaturalSettings={setNaturalSettings}
       />
 
       <SaveSelectionDialog

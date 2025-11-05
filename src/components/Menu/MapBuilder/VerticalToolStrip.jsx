@@ -89,32 +89,28 @@ export default function VerticalToolStrip({
       {/* Floating Draw options: Grid, Canvas, Eraser */}
       {drawActive && (
         <div className="absolute left-full ml-2 top-1 pointer-events-auto flex items-center gap-2">
-          {/* Grid toggle */}
-          {assetGroup !== 'token' && (
-            <div className="h-[36px] bg-gray-700/30 border border-gray-600 rounded-md flex items-center justify-center group relative">
-              <button
-                onClick={() => { showTip('grid'); setEngine?.('grid'); }}
-                aria-label="Grid"
-                className={`relative w-8 h-8 flex items-center justify-center rounded ${engine === 'grid' ? 'bg-gray-700 text-white' : 'bg-transparent text-white/90 hover:bg-gray-700/40'}`}
-              >
-                <span className={`${tip['grid'] ? 'opacity-0' : 'opacity-100'} transition-opacity`}><GridIcon /></span>
-                <span className={`absolute inset-0 flex items-center justify-center text-[10px] ${tipCls('grid')}`}>Grid</span>
-              </button>
-            </div>
-          )}
-          {/* Canvas toggle */}
-          {assetGroup !== 'token' && (
-            <div className="h-[36px] bg-gray-700/30 border border-gray-600 rounded-md flex items-center justify-center group relative">
-              <button
-                onClick={() => { showTip('canvas'); setEngine?.('canvas'); }}
-                aria-label="Canvas"
-                className={`relative w-8 h-8 flex items-center justify-center rounded ${engine === 'canvas' ? 'bg-gray-700 text-white' : 'bg-transparent text-white/90 hover:bg-gray-700/40'}`}
-              >
-                <span className={`${tip['canvas'] ? 'opacity-0' : 'opacity-100'} transition-opacity`}><CanvasIcon /></span>
-                <span className={`absolute inset-0 flex items-center justify-center text-[10px] ${tipCls('canvas')}`}>Canvas</span>
-              </button>
-            </div>
-          )}
+          {/* Grid toggle (always available) */}
+          <div className="h-[36px] bg-gray-700/30 border border-gray-600 rounded-md flex items-center justify-center group relative">
+            <button
+              onClick={() => { showTip('grid'); setEngine?.('grid'); }}
+              aria-label="Grid"
+              className={`relative w-8 h-8 flex items-center justify-center rounded ${engine === 'grid' ? 'bg-gray-700 text-white' : 'bg-transparent text-white/90 hover:bg-gray-700/40'}`}
+            >
+              <span className={`${tip['grid'] ? 'opacity-0' : 'opacity-100'} transition-opacity`}><GridIcon /></span>
+              <span className={`absolute inset-0 flex items-center justify-center text-[10px] ${tipCls('grid')}`}>Grid</span>
+            </button>
+          </div>
+          {/* Canvas toggle (disabled for Tokens) */}
+          <div className="h-[36px] bg-gray-700/30 border border-gray-600 rounded-md flex items-center justify-center group relative">
+            <button
+              onClick={() => { if (assetGroup === 'token') return; showTip('canvas'); setEngine?.('canvas'); }}
+              aria-label="Canvas"
+              className={`relative w-8 h-8 flex items-center justify-center rounded ${assetGroup === 'token' ? 'cursor-not-allowed text-white/50' : (engine === 'canvas' ? 'bg-gray-700 text-white' : 'bg-transparent text-white/90 hover:bg-gray-700/40')}`}
+            >
+              <span className={`${tip['canvas'] ? 'opacity-0' : 'opacity-100'} transition-opacity`}><CanvasIcon /></span>
+              <span className={`absolute inset-0 flex items-center justify-center text-[10px] ${tipCls('canvas')}`}>Canvas</span>
+            </button>
+          </div>
           {/* Eraser toggle */}
           <div className="h-[36px] bg-gray-700/30 border border-gray-600 rounded-md flex items-center justify-center group relative">
             <button
