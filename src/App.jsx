@@ -6,7 +6,7 @@ import AssetCreation from "./components/Menu/AssetCreation/AssetCreation";
 import Login from "./components/Auth/Login";
 import UserBadge from "./components/Auth/UserBadge";
 import { getSession, isDM, clearSession } from "./utils/auth";
-import { clearCurrentProjectDir } from "./components/Menu/MapBuilder/saveLoadManager";
+import { clearCurrentProjectDir } from "./core/io/projectIO";
 import { supabase } from "./utils/supabaseClient";
 
 function App() {

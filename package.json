@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "imports": {
+    "zod": "./src/core/io/miniZod.ts"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
