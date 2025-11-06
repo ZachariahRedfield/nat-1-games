@@ -1,6 +1,5 @@
 import React from "react";
-import NumericInput from "../../common/NumericInput";
-import TextCommitInput from "../../common/TextCommitInput";
+import { NumericInput, TextCommitInput } from "../../../shared/index.js";
 
 export default function AssetCreator({
   kind = 'image',

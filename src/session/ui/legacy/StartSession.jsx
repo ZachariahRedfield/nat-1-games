@@ -1,5 +1,5 @@
 import React from "react";
-import SiteHeader from "../../common/SiteHeader";
+import { SiteHeader } from "../../../shared/index.js";
 
 export default function StartSession({ goBack, session, onLogout, onNavigate, currentScreen }) {
   return (
