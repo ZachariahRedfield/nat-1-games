@@ -1,10 +1,16 @@
 import React from "react";
 import { SiteHeader } from "../../../shared/index.js";
+import { SCREENS } from "../../../app/screens.js";
 
 export default function AssetCreation({ goBack, session, onLogout, onNavigate, currentScreen }) {
   return (
     <div className="w-full h-full flex flex-col">
-      <SiteHeader session={session} onLogout={onLogout} onNavigate={onNavigate} currentScreen={currentScreen || 'assetCreation'} />
+      <SiteHeader
+        session={session}
+        onLogout={onLogout}
+        onNavigate={onNavigate}
+        currentScreen={currentScreen || SCREENS.ASSET_CREATION}
+      />
 
       <main className="flex-1 grid grid-cols-3 gap-4 p-6 bg-gray-900">
         <div className="bg-gray-700 p-4 rounded">Tiles</div>

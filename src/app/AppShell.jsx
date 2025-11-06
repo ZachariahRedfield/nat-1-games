@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createAppContainer } from "./AppContainer.js";
+import { AppProvider } from "./AppContext.jsx";
+import { DM_ONLY_SCREENS, SCREENS, getDefaultScreenForSession } from "./screens.js";
 
 function PlayerPlaceholder({ session, onLogout, UserBadge }) {
   return (
@@ -14,14 +16,14 @@ function PlayerPlaceholder({ session, onLogout, UserBadge }) {
 export default function AppShell() {
   const container = useMemo(() => createAppContainer(), []);
   const {
-    auth: { LoginScreen, getSession, isDM, clearSession, UserBadge },
+    auth: { LoginScreen, getSession, clearSession, UserBadge },
     mapBuilder: { MapBuilderScreen, clearCurrentProjectDir },
     assets: { AssetCreationScreen },
     session: { SessionManagerScreen },
     shared: { MainMenu, supabase },
   } = container;
 
-  const [screen, setScreen] = useState("login");
+  const [screen, setScreen] = useState(SCREENS.LOGIN);
   const [sessionState, setSessionState] = useState(null);
   const prevScreenRef = useRef(null);
 
@@ -29,13 +31,13 @@ export default function AppShell() {
     const existing = getSession();
     if (existing) {
       setSessionState(existing);
-      setScreen(existing.role === "DM" ? "menu" : "player");
+      setScreen(getDefaultScreenForSession(existing));
     }
   }, [getSession]);
 
   useEffect(() => {
     const prevScreen = prevScreenRef.current;
-    if (prevScreen === "mapBuilder" && screen !== "mapBuilder") {
+    if (prevScreen === SCREENS.MAP_BUILDER && screen !== SCREENS.MAP_BUILDER) {
       try {
         clearCurrentProjectDir();
       } catch (err) {
@@ -45,7 +47,7 @@ export default function AppShell() {
     prevScreenRef.current = screen;
   }, [screen, clearCurrentProjectDir]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     clearSession();
     try {
       supabase.auth.signOut();
@@ -53,60 +55,83 @@ export default function AppShell() {
       console.warn("Supabase signOut failed", err);
     }
     setSessionState(null);
-    setScreen("login");
-  };
+    setScreen(SCREENS.LOGIN);
+  }, [clearSession, supabase, setScreen]);
 
-  const handleLoggedIn = (session) => {
+  const handleLoggedIn = useCallback((session) => {
     setSessionState(session);
-    setScreen(session.role === "DM" ? "menu" : "player");
-  };
+    setScreen(getDefaultScreenForSession(session));
+  }, []);
+
+  const navigate = useCallback(
+    (nextScreen) => {
+      if (!nextScreen) return;
+      if (DM_ONLY_SCREENS.has(nextScreen) && sessionState?.role !== "DM") {
+        setScreen(SCREENS.LOGIN);
+        return;
+      }
+      setScreen(nextScreen);
+    },
+    [sessionState]
+  );
 
   const renderScreen = () => {
     switch (screen) {
-      case "mapBuilder":
-        return isDM(sessionState) ? (
+      case SCREENS.MAP_BUILDER:
+        return sessionState?.role === "DM" ? (
           <MapBuilderScreen
-            goBack={() => setScreen("menu")}
+            goBack={() => navigate(SCREENS.MENU)}
             session={sessionState}
             onLogout={logout}
-            onNavigate={setScreen}
+            onNavigate={navigate}
             currentScreen={screen}
           />
         ) : (
-          <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
+          <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => navigate(SCREENS.MENU)} />
         );
-      case "startSession":
-        return isDM(sessionState) ? (
+      case SCREENS.START_SESSION:
+        return sessionState?.role === "DM" ? (
           <SessionManagerScreen
-            goBack={() => setScreen("menu")}
+            goBack={() => navigate(SCREENS.MENU)}
             session={sessionState}
             onLogout={logout}
-            onNavigate={setScreen}
+            onNavigate={navigate}
             currentScreen={screen}
           />
         ) : (
-          <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
+          <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => navigate(SCREENS.MENU)} />
         );
-      case "assetCreation":
-        return isDM(sessionState) ? (
+      case SCREENS.ASSET_CREATION:
+        return sessionState?.role === "DM" ? (
           <AssetCreationScreen
-            goBack={() => setScreen("menu")}
+            goBack={() => navigate(SCREENS.MENU)}
             session={sessionState}
             onLogout={logout}
-            onNavigate={setScreen}
+            onNavigate={navigate}
             currentScreen={screen}
           />
         ) : (
-          <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />
+          <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => navigate(SCREENS.MENU)} />
         );
-      case "login":
-        return <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => setScreen("menu")} />;
-      case "player":
+      case SCREENS.LOGIN:
+        return <LoginScreen onLoggedIn={handleLoggedIn} goBack={() => navigate(SCREENS.MENU)} />;
+      case SCREENS.PLAYER:
         return <PlayerPlaceholder session={sessionState} onLogout={logout} UserBadge={UserBadge} />;
       default:
-        return <MainMenu setScreen={setScreen} session={sessionState} onLogout={logout} />;
+        return <MainMenu setScreen={navigate} session={sessionState} onLogout={logout} />;
     }
   };
 
-  return <div className="w-screen h-screen bg-gray-900 text-white">{renderScreen()}</div>;
+  return (
+    <AppProvider
+      container={container}
+      screen={screen}
+      setScreen={navigate}
+      session={sessionState}
+      setSession={setSessionState}
+      logout={logout}
+    >
+      <div className="w-screen h-screen bg-gray-900 text-white">{renderScreen()}</div>
+    </AppProvider>
+  );
 }
