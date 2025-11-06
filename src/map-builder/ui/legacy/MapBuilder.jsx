@@ -1,16 +1,13 @@
 import MapStatus from "./MapStatus";
 import React, { useRef, useState, useEffect } from "react";
-import Grid from "../../Map/Grid/Grid";
+import Grid from "../canvas/Grid/Grid.jsx";
 import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
 
 import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
 import BrushSettings from "./BrushSettings";
-import NumericInput from "../../common/NumericInput";
-import RotationWheel from "../../common/RotationWheel";
-import TextCommitInput from "../../common/TextCommitInput";
+import { NumericInput, RotationWheel, TextCommitInput, SiteHeader } from "../../../shared/index.js";
 import SaveSelectionDialog from "./SaveSelectionDialog";
 import Header from "./Header";
-import SiteHeader from "../../common/SiteHeader";
 import LayerBar from "./LayerBar";
 import BottomAssetsDrawer from "./BottomAssetsDrawer";
 import AssetCreator from "./AssetCreator";

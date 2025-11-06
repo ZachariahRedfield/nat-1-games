@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase } from "../../shared/index.js";
 
 export const SESSION_KEY = 'auth.session';
 
