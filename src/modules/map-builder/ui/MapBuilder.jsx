@@ -4,6 +4,7 @@ import Grid from "../../../components/Map/Grid/Grid";
 import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "../services/saveLoadManager";
 
 import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "../domain/mapBuilderModel";
+import { normalizeNatural, areNaturalSettingsEqual } from "../domain/naturalSettings";
 import BrushSettings from "./BrushSettings";
 import NumericInput from "../../../components/common/NumericInput";
 import RotationWheel from "../../../components/common/RotationWheel";
@@ -15,49 +16,6 @@ import LayerBar from "./LayerBar";
 import BottomAssetsDrawer from "./BottomAssetsDrawer";
 import AssetCreator from "./AssetCreator";
 import VerticalToolStrip from "./VerticalToolStrip";
-
-const NATURAL_DEFAULTS = {
-  randomRotation: false,
-  randomFlipX: false,
-  randomFlipY: false,
-  randomSize: { enabled: false, min: 1, max: 1 },
-  randomOpacity: { enabled: false, min: 1, max: 1 },
-  randomVariant: true,
-};
-
-const normalizeNatural = (ns = {}) => ({
-  randomRotation: !!ns.randomRotation,
-  randomFlipX: !!ns.randomFlipX,
-  randomFlipY: !!ns.randomFlipY,
-  randomSize: {
-    enabled: !!(ns.randomSize?.enabled),
-    min: Number.isFinite(ns.randomSize?.min) ? ns.randomSize.min : NATURAL_DEFAULTS.randomSize.min,
-    max: Number.isFinite(ns.randomSize?.max) ? ns.randomSize.max : NATURAL_DEFAULTS.randomSize.max,
-  },
-  randomOpacity: {
-    enabled: !!(ns.randomOpacity?.enabled),
-    min: Number.isFinite(ns.randomOpacity?.min) ? ns.randomOpacity.min : NATURAL_DEFAULTS.randomOpacity.min,
-    max: Number.isFinite(ns.randomOpacity?.max) ? ns.randomOpacity.max : NATURAL_DEFAULTS.randomOpacity.max,
-  },
-  randomVariant: ns.randomVariant ?? NATURAL_DEFAULTS.randomVariant,
-});
-
-const areNaturalSettingsEqual = (a, b) => {
-  const na = normalizeNatural(a);
-  const nb = normalizeNatural(b);
-  return (
-    na.randomRotation === nb.randomRotation &&
-    na.randomFlipX === nb.randomFlipX &&
-    na.randomFlipY === nb.randomFlipY &&
-    na.randomVariant === nb.randomVariant &&
-    na.randomSize.enabled === nb.randomSize.enabled &&
-    na.randomSize.min === nb.randomSize.min &&
-    na.randomSize.max === nb.randomSize.max &&
-    na.randomOpacity.enabled === nb.randomOpacity.enabled &&
-    na.randomOpacity.min === nb.randomOpacity.min &&
-    na.randomOpacity.max === nb.randomOpacity.max
-  );
-};
 
 // Compact tool icons for Interaction area
 const BrushIcon = ({ className = "w-4 h-4" }) => (
@@ -1040,7 +998,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       if (typeof entry.settings.canvasSmoothing === 'number')
         setCanvasSmoothing(entry.settings.canvasSmoothing);
       if (entry.settings.naturalSettings)
-        setNaturalSettings(entry.settings.naturalSettings);
+        setNaturalSettings(normalizeNatural(entry.settings.naturalSettings));
     
 } else if (entry.type === 'view') {
       const c = scrollRef.current;
@@ -1141,7 +1099,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       if (typeof entry.settings.canvasSmoothing === 'number')
         setCanvasSmoothing(entry.settings.canvasSmoothing);
       if (entry.settings.naturalSettings)
-        setNaturalSettings(entry.settings.naturalSettings);
+        setNaturalSettings(normalizeNatural(entry.settings.naturalSettings));
     
 } else if (entry.type === 'view') {
       const c = scrollRef.current;

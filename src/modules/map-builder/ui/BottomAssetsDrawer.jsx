@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import AssetPanel from './AssetPanel';
 import BrushSettings from "./BrushSettings";
+import { normalizeNatural } from "../domain/naturalSettings";
 
 function AssetPreview({ selectedAsset, gridSettings }) {
   const containerRef = React.useRef(null);
@@ -180,11 +181,12 @@ function BottomAssetsDrawer(props) {
                   const persistNatural = (updater) => {
                     setNaturalSettings((prev) => {
                       const next = typeof updater === 'function' ? updater(prev) : updater;
+                      const normalized = normalizeNatural(next);
                       try {
                         const sid = assetPanelProps?.selectedAssetId;
-                        if (sid && next) assetPanelProps?.updateAssetById?.(sid, { naturalDefaults: next });
+                        if (sid) assetPanelProps?.updateAssetById?.(sid, { naturalDefaults: normalized });
                       } catch {}
-                      return next;
+                      return normalized;
                     });
                   };
                   return (

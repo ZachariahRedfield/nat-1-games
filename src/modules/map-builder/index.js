@@ -21,3 +21,8 @@ export {
   deepCopyObjects,
   makeGrid,
 } from "./domain/mapBuilderModel";
+export {
+  NATURAL_DEFAULTS,
+  normalizeNatural,
+  areNaturalSettingsEqual,
+} from "./domain/naturalSettings";
