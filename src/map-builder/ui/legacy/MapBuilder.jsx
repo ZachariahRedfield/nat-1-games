@@ -29,6 +29,8 @@ import FeedbackLayer from "./modules/feedback/FeedbackLayer.jsx";
 import { useFeedbackState } from "./modules/feedback/useFeedbackState.js";
 import { useAssetLibrary } from "./modules/assets/useAssetLibrary.js";
 import { useAssetExports } from "./modules/assets/useAssetExports.js";
+import { useLegacyProjectSaving } from "./modules/save-load/useLegacyProjectSaving.js";
+import { useLegacyProjectLoading } from "./modules/save-load/useLegacyProjectLoading.js";
 
 // Compact tool icons for Interaction area
 const BrushIcon = ({ className = "w-4 h-4" }) => (
@@ -470,68 +472,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   }, [selectedAssetId, hasSelection, naturalSettings]);
 
   // ====== Load Maps Modal ======
-  const [loadModalOpen, setLoadModalOpen] = useState(false);
-  const [mapsList, setMapsList] = useState([]);
-  const openLoadModal = async () => {
-    const configured = await isAssetsFolderConfigured();
-    if (!configured) {
-      setNeedsAssetsFolder(true);
-      showToast('Select an Account Save Folder first.', 'warning');
-      return;
-    }
-    const items = await listMaps();
-    setMapsList(items || []);
-    setLoadModalOpen(true);
-  };
-  const handleLoadMapFromList = async (entry) => {
-    if (!entry?.dirHandle) return;
-    const res = await loadProjectFromDirectory(entry.dirHandle);
-    if (!res?.ok || !res?.data) return;
-    const data = res.data;
-    setRowsInput(String(Math.min(200, data.rows || 20)));
-    setColsInput(String(Math.min(200, data.cols || 20)));
-    if (data.maps) setMaps(data.maps);
-    if (data.objects) setObjects(data.objects);
-    if (data.tokens) setTokens(data.tokens);
-    if (data.assets) {
-      const hydrated = data.assets.map((a) => {
-        if ((a.kind === 'image' || a.kind === 'token') && a.src && !a.img) {
-          const img = new Image(); img.src = a.src; return { ...a, img };
-        }
-        return a;
-      });
-      setAssets(hydrated);
-      if (hydrated[0]) setSelectedAssetId(hydrated[0].id);
-    }
-    projectNameRef.current = data.name || data.settings?.name || 'My Map';
-    // canvases
-    setTimeout(() => {
-      if (data.canvases) {
-        for (const layer of ['background','base','sky']) {
-          const dataUrl = data.canvases?.[layer]; if (!dataUrl) continue;
-          const canvas = canvasRefs[layer]?.current; if (!canvas) continue;
-          const ctx = canvas.getContext('2d'); const img = new Image();
-          img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); };
-          img.src = dataUrl;
-        }
-      } else if (data.canvasDataUrl) {
-        const canvas = canvasRefs.base?.current; if (canvas) { const ctx = canvas.getContext('2d'); const img = new Image(); img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); }; img.src = data.canvasDataUrl; }
-      }
-    }, 0);
-    setLoadModalOpen(false);
-    showToast('Project loaded.', 'success');
-  };
-
-  const handleDeleteMapFromList = async (entry) => {
-    if (!entry?.folderName) return;
-    const ok = await confirmUser(`Delete map "${entry.name || entry.folderName}"?\nThis cannot be undone.`, { title: 'Delete Map', okText: 'Delete', cancelText: 'Cancel' });
-    if (!ok) return;
-    const res = await deleteMap(entry.folderName);
-    if (!res?.ok) { showToast(res?.message || 'Failed to delete map.', 'error'); return; }
-    showToast('Map deleted.', 'success');
-    const items = await listMaps();
-    setMapsList(items || []);
-  };
   // --- undo/redo ---
   // entries: { type:'tilemap'|'canvas'|'objects', layer, map? snapshot? objects? }
   const [undoStack, setUndoStack] = useState([]);
@@ -941,155 +881,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   };
 
   // ====== save / load (desktop FS API + mobile bundle fallback) ======
-  const saveProject = async () => {
-    const configured = await isAssetsFolderConfigured();
-    if (!configured) { setNeedsAssetsFolder(true); showToast('Select an Account Save Folder to save.', 'warning'); return; }
-    // If a project folder is already loaded in this session, save without prompting for a name
-    const hasLoaded = hasCurrentProjectDir?.() === true;
-    if (!hasLoaded) {
-      const defaultName = (projectNameRef.current || 'My Map');
-      const nm = await promptUser('Name this map', defaultName);
-      if (!nm && nm !== '') return; // cancel
-      projectNameRef.current = (nm || defaultName);
-    }
-    // Clean up hidden, unreferenced assets before saving
-    const { assetsAfter } = (function(){
-      try {
-        const referenced = new Set();
-        for (const l of LAYERS) {
-          for (const o of (objects[l] || [])) referenced.add(o.assetId);
-        }
-        for (const t of (tokens || [])) referenced.add(t.assetId);
-        const newAssets = assets.filter((a) => !a.hiddenFromUI || referenced.has(a.id));
-        const removedCount = assets.length - newAssets.length;
-        if (removedCount > 0) {
-          setUndoStack((prev) => [
-            ...prev,
-            { type: 'bundle', layer: currentLayer, assets: assets.map((x) => ({ ...x })) },
-          ]);
-          setRedoStack([]);
-          setAssets(newAssets);
-        }
-        return { assetsAfter: newAssets };
-      } catch {
-        return { assetsAfter: assets };
-      }
-    })();
-    const projectState = {
-      version: 1,
-      name: projectNameRef.current,
-      rows,
-      cols,
-      tileSize,
-      maps,
-      objects,
-      tokens,
-      assets: (assetsAfter || assets),
-      settings: {
-        activeLayer: currentLayer,
-        brushSize,
-        snapToGrid: !!gridSettings?.snap,
-        engine,
-        layerVisibility,
-        tokensVisible,
-        tokenHUDVisible,
-        tokenHUDShowInitiative,
-        assetGroup,
-        showGridLines,
-        canvasOpacity,
-        canvasSpacing,
-        canvasBlendMode,
-        canvasSmoothing,
-        gridSettings,
-        naturalSettings,
-      },
-    };
-
-    // Save to current project dir if present; else behave like Save As (first-time save)
-    const res = hasLoaded
-      ? await saveProjectManager(projectState, { canvasRefs, mapName: projectNameRef.current })
-      : await saveProjectAsManager(projectState, { canvasRefs, mapName: projectNameRef.current });
-    if (!res?.ok) showToast("Failed to save project. Try export.", 'error');
-    else {
-      showToast(res.message || "Project saved.", 'success');
-      // Refresh assets from the selected Assets folder
-      const fsAssets = await loadAssetsFromStoredParent();
-      if (Array.isArray(fsAssets) && fsAssets.length) {
-        setAssets(fsAssets);
-        if (fsAssets[0]) setSelectedAssetId(fsAssets[0].id);
-      }
-    }
-  };
-
-  const saveProjectAs = async () => {
-    const configured = await isAssetsFolderConfigured();
-    if (!configured) { setNeedsAssetsFolder(true); showToast('Select an Account Save Folder to save.', 'warning'); return; }
-    const defaultName = (projectNameRef.current || 'My Map');
-    const nm = await promptUser('Save As - map name', defaultName);
-    if (!nm && nm !== '') return; // cancel
-    projectNameRef.current = (nm || defaultName);
-    const { assetsAfter } = (function(){
-      try {
-        const referenced = new Set();
-        for (const l of LAYERS) {
-          for (const o of (objects[l] || [])) referenced.add(o.assetId);
-        }
-        for (const t of (tokens || [])) referenced.add(t.assetId);
-        const newAssets = assets.filter((a) => !a.hiddenFromUI || referenced.has(a.id));
-        const removedCount = assets.length - newAssets.length;
-        if (removedCount > 0) {
-          setUndoStack((prev) => [
-            ...prev,
-            { type: 'bundle', layer: currentLayer, assets: assets.map((x) => ({ ...x })) },
-          ]);
-          setRedoStack([]);
-          setAssets(newAssets);
-        }
-        return { assetsAfter: newAssets };
-      } catch {
-        return { assetsAfter: assets };
-      }
-    })();
-    const projectState = {
-      version: 1,
-      name: projectNameRef.current,
-      rows,
-      cols,
-      tileSize,
-      maps,
-      objects,
-      tokens,
-      assets: (assetsAfter || assets),
-      settings: {
-        activeLayer: currentLayer,
-        brushSize,
-        snapToGrid: !!gridSettings?.snap,
-        engine,
-        layerVisibility,
-        tokensVisible,
-        tokenHUDVisible,
-        tokenHUDShowInitiative,
-        assetGroup,
-        showGridLines,
-        canvasOpacity,
-        canvasSpacing,
-        canvasBlendMode,
-        canvasSmoothing,
-        gridSettings,
-        naturalSettings,
-      },
-    };
-    const res = await saveProjectAsManager(projectState, { canvasRefs, mapName: projectNameRef.current });
-    if (!res?.ok) showToast("Failed to save project.", 'error');
-    else {
-      showToast(res.message || "Project saved.", 'success');
-      const fsAssets = await loadAssetsFromStoredParent();
-      if (Array.isArray(fsAssets) && fsAssets.length) {
-        setAssets(fsAssets);
-        if (fsAssets[0]) setSelectedAssetId(fsAssets[0].id);
-      }
-    }
-  };
 
   const loadProject = async () => {
     const res = await loadProjectManager();
@@ -1153,6 +944,71 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
 
   // Project name remembered across saves; updated on load
   const projectNameRef = useRef('My Map');
+
+  const {
+    loadModalOpen,
+    mapsList,
+    openLoadModal,
+    closeLoadModal,
+    handleLoadMapFromList,
+    handleDeleteMapFromList,
+  } = useLegacyProjectLoading({
+    isAssetsFolderConfigured,
+    setNeedsAssetsFolder,
+    showToast,
+    listMaps,
+    loadProjectFromDirectory,
+    setRowsInput,
+    setColsInput,
+    setMaps,
+    setObjects,
+    setTokens,
+    setAssets,
+    setSelectedAssetId,
+    projectNameRef,
+    canvasRefs,
+    confirmUser,
+    deleteMap,
+  });
+
+  const { saveProject, saveProjectAs } = useLegacyProjectSaving({
+    isAssetsFolderConfigured,
+    showToast,
+    setNeedsAssetsFolder,
+    hasCurrentProjectDir,
+    promptUser,
+    saveProjectManager,
+    saveProjectAsManager,
+    loadAssetsFromStoredParent,
+    setAssets,
+    setSelectedAssetId,
+    setUndoStack,
+    setRedoStack,
+    projectNameRef,
+    canvasRefs,
+    rows,
+    cols,
+    tileSize,
+    maps,
+    objects,
+    tokens,
+    assets,
+    currentLayer,
+    brushSize,
+    gridSettings,
+    engine,
+    layerVisibility,
+    tokensVisible,
+    tokenHUDVisible,
+    tokenHUDShowInitiative,
+    assetGroup,
+    showGridLines,
+    canvasOpacity,
+    canvasSpacing,
+    canvasBlendMode,
+    canvasSmoothing,
+    naturalSettings,
+  });
 
   const handleSelectionChange = (objOrArr) => {
     const arr = Array.isArray(objOrArr) ? objOrArr : (objOrArr ? [objOrArr] : []);
@@ -1288,7 +1144,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
             <div className="w-[96%] max-w-2xl max-h-[80vh] overflow-hidden bg-gray-900 border border-gray-700 rounded text-gray-100">
               <div className="p-4 border-b border-gray-700 flex items-center justify-between">
                 <div className="font-semibold">Load Map</div>
-                <button className="px-2 py-1 text-xs bg-gray-700 rounded" onClick={()=> setLoadModalOpen(false)}>Close</button>
+                <button className="px-2 py-1 text-xs bg-gray-700 rounded" onClick={closeLoadModal}>Close</button>
               </div>
               <div className="p-3 overflow-auto" style={{ maxHeight: '64vh' }}>
                 {mapsList.length === 0 ? (
