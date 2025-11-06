@@ -1,7 +1,18 @@
 import MapStatus from "./MapStatus";
 import React, { useRef, useState, useEffect } from "react";
 import Grid from "../canvas/Grid/Grid.jsx";
-import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "../../application/save-load/index.js";
+import {
+  saveProject as saveProjectManager,
+  saveProjectAs as saveProjectAsManager,
+  loadProject as loadProjectManager,
+  loadProjectFromDirectory,
+  listMaps,
+  deleteMap,
+  loadAssetsFromStoredParent,
+  isAssetsFolderConfigured,
+  hasCurrentProjectDir,
+  clearCurrentProjectDir,
+} from "../../application/save-load/index.js";
 
 import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
 import BrushSettings from "./BrushSettings";
@@ -16,6 +27,8 @@ import { useOverlayLayout } from "./modules/layout/useOverlayLayout.js";
 import { useZoomControls } from "./modules/interaction/useZoomControls.js";
 import FeedbackLayer from "./modules/feedback/FeedbackLayer.jsx";
 import { useFeedbackState } from "./modules/feedback/useFeedbackState.js";
+import { useAssetLibrary } from "./modules/assets/useAssetLibrary.js";
+import { useAssetExports } from "./modules/assets/useAssetExports.js";
 
 // Compact tool icons for Interaction area
 const BrushIcon = ({ className = "w-4 h-4" }) => (
@@ -179,12 +192,73 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   // Visual grid line toggle
   const [showGridLines, setShowGridLines] = useState(true);
 
-  // ====== ASSETS (WHAT) ======
-  // Asset: { id, name, kind: 'image'|'color', src?, aspectRatio?, defaultEngine, allowedEngines, defaults:{...}, img? }
-  const [assets, setAssets] = useState(() => []);
-  const [selectedAssetId, setSelectedAssetId] = useState(null);
-  const [assetGroup, setAssetGroup] = useState("image"); // 'image' | 'token' | 'material' | 'natural'
-  const [showAssetKindMenu, setShowAssetKindMenu] = useState(true);
+  const [canvasColor, setCanvasColor] = useState(null);
+
+  const [engine, setEngine] = useState("grid");
+  const {
+    assets,
+    setAssets,
+    getAsset,
+    selectedAsset,
+    selectedAssetId,
+    setSelectedAssetId,
+    selectAsset,
+    assetGroup,
+    setAssetGroup,
+    showAssetKindMenu,
+    setShowAssetKindMenu,
+    showAssetPreviews,
+    setShowAssetPreviews,
+    creatorOpen,
+    setCreatorOpen,
+    creatorKind,
+    setCreatorKind,
+    editingAsset,
+    setEditingAsset,
+    openCreator,
+    openEditAsset,
+    handleCreatorCreate,
+    addColorMode,
+    setAddColorMode,
+    newColorName,
+    setNewColorName,
+    newColorHex,
+    setNewColorHex,
+    newLabelText,
+    setNewLabelText,
+    newLabelColor,
+    setNewLabelColor,
+    newLabelSize,
+    setNewLabelSize,
+    newLabelFont,
+    setNewLabelFont,
+    flowHue,
+    setFlowHue,
+    flowSat,
+    setFlowSat,
+    flowLight,
+    setFlowLight,
+    assetStamp,
+    setAssetStamp,
+    naturalSettings,
+    setNaturalSettings,
+    updateAssetById,
+    mapAssetToCreatorKind,
+    handleUpload,
+    handleCreateNatural,
+    createTextLabelAsset,
+    needsAssetsFolder,
+    setNeedsAssetsFolder,
+    promptChooseAssetsFolder,
+    normalizeStamp,
+    normalizeNaturalSettings,
+  } = useAssetLibrary({
+    setEngine,
+    setInteractionMode,
+    setZoomToolActive,
+    setPanToolActive,
+    setCanvasColor,
+  });
 
   // ====== Zoom Tool (rectangle zoom) ======
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -248,39 +322,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  // ====== ENGINE (HOW) ======
-  // "grid" (snap to tiles) or "canvas" (free brush)
-  const getAsset = (id) => assets.find((a) => a.id === id) || null;
-  const selectedAsset = getAsset(selectedAssetId);
-  const [engine, setEngine] = useState(
-    selectedAsset?.defaultEngine || "grid"
-  );
-
-  // Keep engine in sync when asset changes
-  const selectAsset = (id) => {
-    const a = getAsset(id);
-    setSelectedAssetId(id);
-    // Close any open creator when selecting an existing asset
-    setCreatorOpen(false);
-    if (!a) return;
-    const prefer = a.defaultEngine || "canvas";
-    if (a.kind === "token" || a.kind === 'tokenGroup') {
-      // Tokens place on click; keep user in Draw with Grid engine
-      try { setZoomToolActive(false); setPanToolActive(false); } catch {}
-      setInteractionMode("draw");
-      setEngine("grid");
-    } else if (a.kind === "color") {
-      // Do not change engine; only update the active color
-      if (a.color) setCanvasColor(a.color);
-    } else if (a.allowedEngines?.includes(prefer)) {
-      setEngine(prefer);
-    } else if (a.allowedEngines?.length) {
-      setEngine(a.allowedEngines[0]);
-    } else {
-      setEngine("canvas");
-    }
-  };
-
   // ====== SETTINGS (contextual) ======
   // Grid engine (snap)
   const [gridSettings, setGridSettings] = useState({
@@ -296,21 +337,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     snapStep: 1,
     smartAdjacency: true, // neighbor-aware alignment for grid stamps
   });
-
-  // ====== Asset drawer-only settings (per-asset defaults)
-  const normalizeStamp = (d = {}) => ({
-    sizeTiles: Number.isFinite(d.sizeTiles) ? d.sizeTiles : 1,
-    sizeCols: Number.isFinite(d.sizeCols) ? d.sizeCols : (Number.isFinite(d.sizeTiles) ? d.sizeTiles : 1),
-    sizeRows: Number.isFinite(d.sizeRows) ? d.sizeRows : (Number.isFinite(d.sizeTiles) ? d.sizeTiles : 1),
-    rotation: Number.isFinite(d.rotation) ? d.rotation : 0,
-    flipX: !!d.flipX,
-    flipY: !!d.flipY,
-    opacity: Number.isFinite(d.opacity) ? d.opacity : 1,
-    snapToGrid: d.snapToGrid ?? true,
-    snapStep: Number.isFinite(d.snapStep) ? d.snapStep : 1,
-    linkXY: !!d.linkXY,
-  });
-  const [assetStamp, setAssetStamp] = useState(() => normalizeStamp());
 
   // Flags to avoid persisting while we're initializing defaults
   const loadingGridDefaultsRef = useRef(false);
@@ -353,7 +379,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     if (!a || a.kind !== 'natural') return;
     const d = a.naturalDefaults || {};
     loadingNaturalDefaultsRef.current = true;
-    setNaturalSettings((cur) => ({ ...cur, ...normalizeNatural(d) }));
+    setNaturalSettings((cur) => ({ ...cur, ...normalizeNaturalSettings(d) }));
     setTimeout(() => { loadingNaturalDefaultsRef.current = false; }, 0);
   }, [selectedAssetId]);
 
@@ -409,117 +435,12 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   
 
   // When asset group changes, auto-select a matching asset and force Grid engine for Token/Natural groups
-  React.useEffect(() => {
-    const ensureSelectionBy = (pred) => {
-      const cur = selectedAsset;
-      const ok = cur && pred(cur);
-      if (ok) return;
-      const next = assets.find(pred);
-      if (next) setSelectedAssetId(next.id);
-    };
-    // Close any open asset creator when changing groups
-    setCreatorOpen(false);
-    if (assetGroup === "image") ensureSelectionBy((x) => x.kind === "image");
-    else if (assetGroup === "material") ensureSelectionBy((x) => x.kind === "color");
-    else if (assetGroup === "token") {
-      ensureSelectionBy((x) => x.kind === "token" || x.kind === 'tokenGroup');
-      setEngine("grid");
-    } else if (assetGroup === "natural") {
-      ensureSelectionBy((x) => x.kind === "natural");
-      setEngine("grid");
-    }
-  }, [assetGroup, assets]);
-
-  // (gridSettings defined above)
-
   // Canvas engine (free brush)
   const [brushSize, setBrushSize] = useState(2); // in tiles
   const [canvasOpacity, setCanvasOpacity] = useState(0.35);
   const [canvasSpacing, setCanvasSpacing] = useState(0.27); // fraction of radius
-  const [canvasColor, setCanvasColor] = useState(null); // used when asset.kind === 'color'
   const [canvasBlendMode, setCanvasBlendMode] = useState("source-over");
   const [canvasSmoothing, setCanvasSmoothing] = useState(0.55); // EMA smoothing factor (0..1)
-  const [showAssetPreviews, setShowAssetPreviews] = useState(true);
-  // Legacy add-* panels removed in favor of unified AssetCreator
-  const [creatorOpen, setCreatorOpen] = useState(false);
-  const [creatorKind, setCreatorKind] = useState('image');
-  const [editingAsset, setEditingAsset] = useState(null);
-  const openCreator = (k) => { setCreatorKind(k); setCreatorOpen(true); };
-  const handleCreatorCreate = (asset, group) => {
-    if (!asset) return;
-    const withId = { ...asset, id: uid() };
-    if (withId.kind === 'image') {
-      // ensure img present if src exists
-      if (!withId.img && withId.src) {
-        const im = new Image();
-        im.src = withId.src;
-        withId.img = im;
-      }
-    }
-    // Add immediately and persist synchronously to avoid drops
-    setAssets((prev)=> {
-      const next = [withId, ...prev];
-      try { saveGlobalAssets(next); } catch {}
-      return next;
-    });
-    setAssetGroup(group === 'material' ? 'material' : group === 'natural' ? 'natural' : group === 'token' ? 'token' : 'image');
-    setSelectedAssetId(withId.id);
-    setEngine('grid');
-    setCreatorOpen(false);
-  };
-  const updateAssetById = (id, updated) => {
-    setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, ...updated } : a)));
-  };
-  const mapAssetToCreatorKind = (a) => {
-    if (!a) return 'image';
-    if (a.kind === 'color') return 'material';
-    if (a.kind === 'natural') return 'natural';
-    if (a.kind === 'token' || a.kind === 'tokenGroup') return 'token';
-    if (a.kind === 'image' && a.labelMeta) return 'text';
-    return 'image';
-  };
-  const openEditAsset = (a) => {
-    setEditingAsset(a);
-    setCreatorKind(mapAssetToCreatorKind(a));
-    setCreatorOpen(true);
-  };
-  const [addColorMode, setAddColorMode] = useState('palette');
-  const [newColorName, setNewColorName] = useState("");
-  const [newColorHex, setNewColorHex] = useState("#66ccff");
-  // Text/Label creation state
-  const [newLabelText, setNewLabelText] = useState("");
-  const [newLabelColor, setNewLabelColor] = useState("#ffffff");
-  const [newLabelSize, setNewLabelSize] = useState(28);
-  const [newLabelFont, setNewLabelFont] = useState("Arial");
-  const [flowHue, setFlowHue] = useState(200);
-  const [flowSat, setFlowSat] = useState(70);
-  const [flowLight, setFlowLight] = useState(55);
-  // Natural randomization settings
-  const [naturalSettings, setNaturalSettings] = useState({
-    randomRotation: false,
-    randomFlipX: false,
-    randomFlipY: false,
-    randomSize: { enabled: false, min: 1, max: 1 },
-    randomOpacity: { enabled: false, min: 1, max: 1 },
-    randomVariant: true,
-  });
-  // Normalize Natural settings structure
-  const normalizeNatural = (ns = {}) => ({
-    randomRotation: !!ns.randomRotation,
-    randomFlipX: !!ns.randomFlipX,
-    randomFlipY: !!ns.randomFlipY,
-    randomSize: {
-      enabled: !!(ns.randomSize?.enabled),
-      min: Number.isFinite(ns.randomSize?.min) ? ns.randomSize.min : 1,
-      max: Number.isFinite(ns.randomSize?.max) ? ns.randomSize.max : 1,
-    },
-    randomOpacity: {
-      enabled: !!(ns.randomOpacity?.enabled),
-      min: Number.isFinite(ns.randomOpacity?.min) ? ns.randomOpacity.min : 1,
-      max: Number.isFinite(ns.randomOpacity?.max) ? ns.randomOpacity.max : 1,
-    },
-    randomVariant: ns.randomVariant ?? true,
-  });
   // Preserve token selection in Select mode even if Assets tab changes
   React.useEffect(() => {
     if (assetGroup !== 'token' && interactionMode !== 'select' && selectedToken) setSelectedToken(null);
@@ -532,7 +453,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     if (loadingNaturalDefaultsRef.current) return;
     const cur = getAsset(selectedAssetId);
     if (!cur || cur.kind !== 'natural') return;
-    const next = normalizeNatural(naturalSettings);
+    const next = normalizeNaturalSettings(naturalSettings);
     const prev = cur.naturalDefaults || {};
     const same = !!prev &&
       !!prev.randomRotation === next.randomRotation &&
@@ -547,75 +468,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       (prev.randomVariant ?? true) === next.randomVariant;
     if (!same) updateAssetById(selectedAssetId, { naturalDefaults: next });
   }, [selectedAssetId, hasSelection, naturalSettings]);
-
-  // ====== Global assets: load on mount, persist on change ======
-  const globalAssetsRef = useRef([]);
-  const [needsAssetsFolder, setNeedsAssetsFolder] = useState(false);
-  const persistTimerRef = useRef(null);
-  useEffect(() => {
-    (async () => {
-      // If assets folder is configured and permitted, do not show prompt
-      const configured = await isAssetsFolderConfigured();
-      const fsAssets = configured ? (await loadAssetsFromStoredParent()) : [];
-      const global = await loadGlobalAssets();
-
-      if (configured) setNeedsAssetsFolder(false); else setNeedsAssetsFolder(true);
-
-      // Merge FS and global by id
-      // Prefer FS entries for file paths, but carry over metadata like stampDefaults from global when FS lacks it.
-      const gMap = new Map((Array.isArray(global) ? global : []).filter(Boolean).map((a) => [a.id, a]));
-      const fMap = new Map((Array.isArray(fsAssets) ? fsAssets : []).filter(Boolean).map((a) => [a.id, a]));
-      const allIds = new Set([...gMap.keys(), ...fMap.keys()]);
-      const merged = [];
-      for (const id of allIds) {
-        const g = gMap.get(id);
-        const f = fMap.get(id);
-        if (f && g) {
-          // Prefer FS for file-location fields (e.g., path), but prefer Global for metadata/defaults
-          const combined = { ...f, ...g };
-          merged.push(combined);
-        } else if (f) {
-          merged.push({ ...f });
-        } else if (g) {
-          merged.push({ ...g });
-        }
-      }
-
-      // Secondary reconciliation: if two entries share the same name+kind but differ in id,
-      // copy missing defaults (stampDefaults / naturalDefaults) from the one that has them.
-      const byNameKind = new Map();
-      for (const a of merged) {
-        const key = `${a.kind || ''}:${(a.name || '').toLowerCase()}`;
-        const cur = byNameKind.get(key);
-        if (!cur) byNameKind.set(key, a);
-        else {
-          // If either side has defaults the other lacks, copy them over (non-destructive)
-          if (!a.stampDefaults && cur.stampDefaults) a.stampDefaults = cur.stampDefaults;
-          if (!cur.stampDefaults && a.stampDefaults) cur.stampDefaults = a.stampDefaults;
-          if (!a.naturalDefaults && cur.naturalDefaults) a.naturalDefaults = cur.naturalDefaults;
-          if (!cur.naturalDefaults && a.naturalDefaults) cur.naturalDefaults = a.naturalDefaults;
-        }
-      }
-
-      globalAssetsRef.current = merged;
-      setAssets(merged);
-      if (merged[0]) setSelectedAssetId(merged[0].id);
-    })();
-    return () => {
-      if (persistTimerRef.current) { clearTimeout(persistTimerRef.current); persistTimerRef.current = null; }
-    };
-  }, []);
-
-  const promptChooseAssetsFolder = async () => {
-    const res = await chooseAssetsFolder();
-    if (res?.ok) {
-      setNeedsAssetsFolder(false);
-      const list = res.assets || [];
-      globalAssetsRef.current = list;
-      setAssets(list);
-      if (list[0]) setSelectedAssetId(list[0].id);
-    }
-  };
 
   // ====== Load Maps Modal ======
   const [loadModalOpen, setLoadModalOpen] = useState(false);
@@ -650,7 +502,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       });
       setAssets(hydrated);
       if (hydrated[0]) setSelectedAssetId(hydrated[0].id);
-      globalAssetsRef.current = hydrated;
     }
     projectNameRef.current = data.name || data.settings?.name || 'My Map';
     // canvases
@@ -681,13 +532,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     const items = await listMaps();
     setMapsList(items || []);
   };
-  useEffect(() => {
-    if (!assets) return;
-    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
-    persistTimerRef.current = setTimeout(() => { saveGlobalAssets(assets); }, 400);
-  }, [assets]);
-  // Note: canvasSmoothing now exposed via CanvasBrushControls and used in Grid EMA.
-
   // --- undo/redo ---
   // entries: { type:'tilemap'|'canvas'|'objects', layer, map? snapshot? objects? }
   const [undoStack, setUndoStack] = useState([]);
@@ -833,6 +677,35 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const removeTokenById = (id) => {
     setTokens((prev) => prev.filter((t) => t.id !== id));
   };
+
+  const {
+    regenerateLabelInstance,
+    saveSelectionAsAsset,
+    saveSelectedTokenAsAsset,
+    saveMultipleObjectsAsNaturalGroup,
+    saveMultipleObjectsAsMergedImage,
+    saveSelectedTokensAsGroup,
+    saveCurrentSelection,
+  } = useAssetExports({
+    assets,
+    setAssets,
+    setSelectedAssetId,
+    setAssetGroup,
+    setEngine,
+    selectedObj,
+    selectedObjsList,
+    selectedToken,
+    selectedTokensList,
+    updateObjectById,
+    currentLayer,
+    tileSize,
+    promptUser,
+    confirmUser,
+    showToast,
+    setUndoStack,
+    setRedoStack,
+    objects,
+  });
 
   // No-op: Do not track settings changes in undo/redo
   const snapshotSettings = () => {};
@@ -1142,7 +1015,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       // Refresh assets from the selected Assets folder
       const fsAssets = await loadAssetsFromStoredParent();
       if (Array.isArray(fsAssets) && fsAssets.length) {
-        globalAssetsRef.current = fsAssets;
         setAssets(fsAssets);
         if (fsAssets[0]) setSelectedAssetId(fsAssets[0].id);
       }
@@ -1213,7 +1085,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       showToast(res.message || "Project saved.", 'success');
       const fsAssets = await loadAssetsFromStoredParent();
       if (Array.isArray(fsAssets) && fsAssets.length) {
-        globalAssetsRef.current = fsAssets;
         setAssets(fsAssets);
         if (fsAssets[0]) setSelectedAssetId(fsAssets[0].id);
       }
@@ -1242,7 +1113,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       });
       setAssets(hydrated);
       if (hydrated[0]) setSelectedAssetId(hydrated[0].id);
-      globalAssetsRef.current = hydrated;
     }
 
     // Update project name reference
@@ -1284,127 +1154,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   // Project name remembered across saves; updated on load
   const projectNameRef = useRef('My Map');
 
-  // ====== upload image -> new asset ======
-  const handleUpload = async (file) => {
-    if (!file) return;
-    const src = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = async () => {
-      const aspectRatio = img.width / img.height || 1;
-      const defaultName = file.name.replace(/\.[^/.]+$/, "");
-      const nameInput = await promptUser('Name this asset', defaultName);
-      const name = (nameInput ?? defaultName) || defaultName;
-      const a = {
-        id: uid(),
-        name,
-        kind: "image",
-        src,
-        aspectRatio,
-        defaultEngine: "grid",
-        allowedEngines: ["grid", "canvas"],
-        defaults: { sizeTiles: 1, opacity: 1, snap: true },
-        img,
-      };
-      setAssets((prev) => [a, ...prev]);
-      setSelectedAssetId(a.id);
-      setEngine(a.defaultEngine);
-    };
-    img.src = src;
-  };
-
-  // ====== create Natural asset -> image variants ======
-  const handleCreateNatural = async (filesOrVariants, nameInput) => {
-    const name = (nameInput || 'Natural').trim() || 'Natural';
-    let variants = [];
-    if (!filesOrVariants) return;
-    if (filesOrVariants instanceof FileList || Array.isArray(filesOrVariants) && filesOrVariants[0] instanceof File) {
-      const fileArr = Array.from(filesOrVariants || []).slice(0, 16);
-      if (!fileArr.length) return;
-      const readOne = (file) =>
-        new Promise((resolve) => {
-          const src = URL.createObjectURL(file);
-          const img = new Image();
-          img.onload = () => {
-            resolve({ src, aspectRatio: (img.width && img.height) ? img.width / img.height : 1 });
-          };
-          img.src = src;
-        });
-      variants = await Promise.all(fileArr.map(readOne));
-    } else {
-      // assume precomputed variant list [{src, aspectRatio}]
-      variants = Array.isArray(filesOrVariants) ? filesOrVariants.slice(0, 16) : [];
-    }
-    const a = {
-      id: uid(),
-      name,
-      kind: 'natural',
-      variants,
-      defaultEngine: 'grid',
-      allowedEngines: [],
-      defaults: { sizeTiles: 1, opacity: 1, snap: true },
-    };
-    setAssets((prev) => [a, ...prev]);
-    setSelectedAssetId(a.id);
-    setAssetGroup('natural');
-    setEngine('grid');
-    // legacy panel closed; unified creator handles natural creation
-  };
-
-  // ====== create Text/Label -> new image asset ======
-  const createTextLabelAsset = () => {
-    const text = (newLabelText || "Label").trim();
-    const size = Math.max(8, Math.min(128, parseInt(newLabelSize) || 28));
-    const color = newLabelColor || "#ffffff";
-    const font = newLabelFont || "Arial";
-    const padding = Math.round(size * 0.35);
-
-    // measure
-    const measureCanvas = document.createElement('canvas');
-    const mctx = measureCanvas.getContext('2d');
-    mctx.font = `${size}px ${font}`;
-    const metrics = mctx.measureText(text);
-    const textW = Math.ceil(metrics.width);
-    const textH = Math.ceil(size * 1.2);
-    const w = Math.max(1, textW + padding * 2);
-    const h = Math.max(1, textH + padding * 2);
-
-    // draw
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, w, h);
-    ctx.font = `${size}px ${font}`;
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = color;
-    // subtle dark outline for legibility
-    ctx.shadowColor = 'rgba(0,0,0,0.7)';
-    ctx.shadowBlur = Math.max(2, Math.round(size * 0.08));
-    ctx.fillText(text, padding, padding);
-
-    const src = canvas.toDataURL('image/png');
-    const img = new Image();
-    img.onload = () => {
-      const aspectRatio = img.width / img.height || 1;
-      const a = {
-        id: uid(),
-        name: text,
-        kind: 'image', // treat labels like images for now
-        src,
-        aspectRatio,
-        defaultEngine: 'grid',
-        allowedEngines: ['grid','canvas'],
-        defaults: { sizeTiles: 1, opacity: 1, snap: true },
-        img,
-      };
-      setAssets((prev) => [a, ...prev]);
-      setSelectedAssetId(a.id);
-      setEngine(a.defaultEngine);
-      setNewLabelText("");
-    };
-    img.src = src;
-  };
-
   const handleSelectionChange = (objOrArr) => {
     const arr = Array.isArray(objOrArr) ? objOrArr : (objOrArr ? [objOrArr] : []);
     if (arr.length) {
@@ -1437,69 +1186,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   };
 
   // ====== Label asset update per-instance (clone asset, reassign object) ======
-  const regenerateLabelInstance = (assetId, meta) => {
-    const a = assets.find((x) => x.id === assetId);
-    if (!a || !selectedObj) return;
-    // Snapshot for undo (assets + current layer objects)
-    setUndoStack((prev) => [
-      ...prev,
-      {
-        type: 'bundle',
-        layer: currentLayer,
-        assets: assets.map((x) => ({ ...x })),
-        objects: deepCopyObjects(objects[currentLayer] || []),
-      },
-    ]);
-    setRedoStack([]);
-    const text = (meta?.text ?? a.labelMeta?.text ?? 'Label');
-    const size = Math.max(8, Math.min(128, parseInt(meta?.size ?? a.labelMeta?.size ?? 28) || 28));
-    const color = meta?.color ?? a.labelMeta?.color ?? '#ffffff';
-    const font = meta?.font ?? a.labelMeta?.font ?? 'Arial';
-    const padding = Math.round(size * 0.35);
-
-    const measureCanvas = document.createElement('canvas');
-    const mctx = measureCanvas.getContext('2d');
-    mctx.font = `${size}px ${font}`;
-    const metrics = mctx.measureText(text);
-    const textW = Math.ceil(metrics.width);
-    const textH = Math.ceil(size * 1.2);
-    const w = Math.max(1, textW + padding * 2);
-    const h = Math.max(1, textH + padding * 2);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, w, h);
-    ctx.font = `${size}px ${font}`;
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = color;
-    ctx.shadowColor = 'rgba(0,0,0,0.7)';
-    ctx.shadowBlur = Math.max(2, Math.round(size * 0.08));
-    ctx.fillText(text, padding, padding);
-
-    const src = canvas.toDataURL('image/png');
-    const img = new Image();
-    img.onload = () => {
-      const newAsset = {
-        id: uid(),
-        name: a.name || text,
-        kind: 'image',
-        src,
-        img,
-        aspectRatio: img.width && img.height ? img.width / img.height : (a.aspectRatio || 1),
-        defaultEngine: 'grid',
-        allowedEngines: ['grid','canvas'],
-        defaults: a.defaults || { sizeTiles: 1, opacity: 1, snap: true },
-        hiddenFromUI: true,
-        labelMeta: { text, color, font, size },
-      };
-      setAssets((prev) => [newAsset, ...prev]);
-      // reassign currently selected object to new asset id (per-instance update)
-      updateObjectById(currentLayer, selectedObj.id, { assetId: newAsset.id });
-    };
-    img.src = src;
-  };
-
   const handleTokenSelectionChange = (tokOrArr) => {
     const arr = Array.isArray(tokOrArr) ? tokOrArr : (tokOrArr ? [tokOrArr] : []);
     if (arr.length) {
@@ -1523,264 +1209,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   };
 
   // ====== Save current selection as a new image asset ======
-  const saveSelectionAsAsset = async () => {
-    const obj = selectedObj;
-    if (!obj) return;
-    const asset = assets.find((a) => a.id === obj.assetId);
-    if (!asset) return;
-    const wPx = Math.max(1, Math.round(obj.wTiles * tileSize));
-    const hPx = Math.max(1, Math.round(obj.hTiles * tileSize));
-
-    const renderAndSave = async (imgSrc) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = wPx; canvas.height = hPx;
-      const ctx = canvas.getContext('2d');
-      const baseImg = new Image();
-      baseImg.onload = async () => {
-        ctx.save();
-        ctx.translate(wPx / 2, hPx / 2);
-        const rot = ((obj.rotation || 0) * Math.PI) / 180;
-        ctx.rotate(rot);
-        ctx.scale(obj.flipX ? -1 : 1, obj.flipY ? -1 : 1);
-        ctx.globalAlpha = obj.opacity ?? 1;
-        ctx.drawImage(baseImg, -wPx / 2, -hPx / 2, wPx, hPx);
-        ctx.restore();
-        const dataUrl = canvas.toDataURL('image/png');
-        const nameDefault = `${asset.name}-variant`;
-      const nameInput = await promptUser('Name this saved asset', nameDefault);
-      const name = (nameInput ?? nameDefault) || nameDefault;
-        const newImg = new Image();
-        newImg.src = dataUrl;
-        const newAsset = {
-          id: uid(),
-          name,
-          kind: 'image',
-          src: dataUrl,
-          aspectRatio: wPx / hPx || 1,
-          defaultEngine: 'grid',
-          allowedEngines: ['grid', 'canvas'],
-          defaults: { sizeTiles: obj.wTiles || 1, opacity: obj.opacity ?? 1, snap: true },
-          img: newImg,
-        };
-        setAssets((prev) => [newAsset, ...prev]);
-        setSelectedAssetId(newAsset.id);
-        setEngine('grid');
-      };
-      baseImg.src = imgSrc;
-    };
-
-    if (asset.kind === 'image') {
-      renderAndSave(asset.img?.src || asset.src);
-    } else if (asset.kind === 'natural') {
-      const idx = obj.variantIndex || 0;
-      const src = Array.isArray(asset.variants) && asset.variants[idx] ? asset.variants[idx].src : null;
-      if (!src) return;
-      renderAndSave(src);
-      // Switch to Images group so the newly saved asset is visible
-      try { setAssetGroup('image'); } catch {}
-    } else {
-      // not supported
-      return;
-    }
-  };
-
-  // Save currently selected token as a new token asset
-  const saveSelectedTokenAsAsset = async () => {
-    const tok = selectedToken;
-    if (!tok) return;
-    const asset = assets.find((a) => a.id === tok.assetId);
-    if (!asset) return;
-    const wPx = Math.max(1, Math.round((tok.wTiles || 1) * tileSize));
-    const hPx = Math.max(1, Math.round((tok.hTiles || 1) * tileSize));
-    const canvas = document.createElement('canvas');
-    canvas.width = wPx; canvas.height = hPx;
-    const ctx = canvas.getContext('2d');
-    const baseImg = new Image();
-    baseImg.onload = async () => {
-      ctx.save();
-      ctx.translate(wPx / 2, hPx / 2);
-      const rot = ((tok.rotation || 0) * Math.PI) / 180;
-      ctx.rotate(rot);
-      ctx.scale(tok.flipX ? -1 : 1, tok.flipY ? -1 : 1);
-      ctx.globalAlpha = tok.opacity ?? 1;
-      ctx.drawImage(baseImg, -wPx / 2, -hPx / 2, wPx, hPx);
-      ctx.restore();
-      const dataUrl = canvas.toDataURL('image/png');
-      const nameDefault = `${asset.name}-variant`;
-      const nameInput = await promptUser('Name this saved token', nameDefault);
-      const name = (nameInput ?? nameDefault) || nameDefault;
-      const newAsset = {
-        id: uid(),
-        name,
-        kind: 'token',
-        src: dataUrl,
-        aspectRatio: wPx / hPx || 1,
-        defaultEngine: 'grid',
-        allowedEngines: [],
-        defaults: { sizeTiles: tok.wTiles || 1, opacity: tok.opacity ?? 1, snap: true },
-        glowDefault: tok.glowColor || asset.glowDefault || '#7dd3fc',
-      };
-      setAssets((prev) => [newAsset, ...prev]);
-      setSelectedAssetId(newAsset.id);
-      setAssetGroup('token');
-      setEngine('grid');
-    };
-    baseImg.src = asset.src;
-  };
-
-  const saveCurrentSelection = async () => {
-    if ((selectedTokensList?.length || 0) > 0 && (selectedObjsList?.length || 0) > 0) {
-      showToast('Mixed selection not supported. Select only images or only tokens.', 'warning', 3500);
-      return;
-    }
-    // Multi-token selection -> token group
-    if (selectedTokensList && selectedTokensList.length > 1) {
-      return saveSelectedTokensAsGroup(selectedTokensList);
-    }
-    // Multi-object selection -> prompt: natural variants or merged image
-    if (selectedObjsList && selectedObjsList.length > 1) {
-      const choice = await confirmUser('Save as Natural group?\nOK: Natural Group (each selection becomes a variant)\nCancel: Merge into single Image');
-      if (choice) return saveMultipleObjectsAsNaturalGroup(selectedObjsList);
-      return saveMultipleObjectsAsMergedImage(selectedObjsList);
-    }
-    if (selectedToken) return saveSelectedTokenAsAsset();
-    if (selectedObj) return saveSelectionAsAsset();
-  };
-
-  // Save multiple selected image/natural objects as a Natural asset (variants)
-  const saveMultipleObjectsAsNaturalGroup = async (objs) => {
-    const variants = [];
-    for (const obj of objs) {
-      const asset = assets.find((a) => a.id === obj.assetId);
-      if (!asset) continue;
-      let srcToUse = null;
-      if (asset.kind === 'image') srcToUse = asset.img?.src || asset.src;
-      else if (asset.kind === 'natural') {
-        const idx = obj.variantIndex || 0;
-        srcToUse = Array.isArray(asset.variants) && asset.variants[idx] ? asset.variants[idx].src : null;
-      }
-      if (!srcToUse) continue;
-      const wPx = Math.max(1, Math.round(obj.wTiles * tileSize));
-      const hPx = Math.max(1, Math.round(obj.hTiles * tileSize));
-      const canvas = document.createElement('canvas');
-      canvas.width = wPx; canvas.height = hPx;
-      const ctx = canvas.getContext('2d');
-      const baseImg = new Image();
-      await new Promise((res)=>{ baseImg.onload = res; baseImg.src = srcToUse; });
-      ctx.save();
-      ctx.translate(wPx / 2, hPx / 2);
-      const rot = ((obj.rotation || 0) * Math.PI) / 180;
-      ctx.rotate(rot);
-      ctx.scale(obj.flipX ? -1 : 1, obj.flipY ? -1 : 1);
-      ctx.globalAlpha = obj.opacity ?? 1;
-      ctx.drawImage(baseImg, -wPx / 2, -hPx / 2, wPx, hPx);
-      ctx.restore();
-      const dataUrl = canvas.toDataURL('image/png');
-      variants.push({ src: dataUrl, aspectRatio: wPx / hPx || 1 });
-    }
-    if (!variants.length) return;
-    const nameDefault = 'Natural Group';
-    const nameInput = await promptUser('Name this Natural group', nameDefault);
-    const name = (nameInput ?? nameDefault) || nameDefault;
-    const newAsset = {
-      id: uid(),
-      name,
-      kind: 'natural',
-      variants,
-      defaultEngine: 'grid',
-      allowedEngines: [],
-      defaults: { sizeTiles: 1, opacity: 1, snap: true },
-    };
-    setAssets((prev) => [newAsset, ...prev]);
-    setSelectedAssetId(newAsset.id);
-    setAssetGroup('natural');
-    setEngine('grid');
-  };
-
-  // Save multiple selected image/natural objects as a merged image asset
-  const saveMultipleObjectsAsMergedImage = async (objs) => {
-    if (!objs?.length) return;
-    const minRow = Math.min(...objs.map((o)=> o.row));
-    const minCol = Math.min(...objs.map((o)=> o.col));
-    const maxRow = Math.max(...objs.map((o)=> o.row + o.hTiles));
-    const maxCol = Math.max(...objs.map((o)=> o.col + o.wTiles));
-    const wPx = Math.max(1, Math.round((maxCol - minCol) * tileSize));
-    const hPx = Math.max(1, Math.round((maxRow - minRow) * tileSize));
-    const canvas = document.createElement('canvas');
-    canvas.width = wPx; canvas.height = hPx;
-    const ctx = canvas.getContext('2d');
-    for (const obj of objs) {
-      const asset = assets.find((a) => a.id === obj.assetId);
-      if (!asset) continue;
-      let srcToUse = null;
-      if (asset.kind === 'image') srcToUse = asset.img?.src || asset.src;
-      else if (asset.kind === 'natural') {
-        const idx = obj.variantIndex || 0;
-        srcToUse = Array.isArray(asset.variants) && asset.variants[idx] ? asset.variants[idx].src : null;
-      }
-      if (!srcToUse) continue;
-      const baseImg = new Image();
-      await new Promise((res)=>{ baseImg.onload = res; baseImg.src = srcToUse; });
-      const wObj = Math.max(1, Math.round(obj.wTiles * tileSize));
-      const hObj = Math.max(1, Math.round(obj.hTiles * tileSize));
-      const cx = Math.round((obj.col - minCol) * tileSize + wObj / 2);
-      const cy = Math.round((obj.row - minRow) * tileSize + hObj / 2);
-      ctx.save();
-      ctx.translate(cx, cy);
-      const rot = ((obj.rotation || 0) * Math.PI) / 180;
-      ctx.rotate(rot);
-      ctx.scale(obj.flipX ? -1 : 1, obj.flipY ? -1 : 1);
-      ctx.globalAlpha = obj.opacity ?? 1;
-      ctx.drawImage(baseImg, -wObj / 2, -hObj / 2, wObj, hObj);
-      ctx.restore();
-    }
-    const dataUrl = canvas.toDataURL('image/png');
-    const nameDefault = 'Merged Image';
-    const nameInput = await promptUser('Name this merged image', nameDefault);
-    const name = (nameInput ?? nameDefault) || nameDefault;
-    const newImg = new Image();
-    newImg.src = dataUrl;
-    const newAsset = {
-      id: uid(),
-      name,
-      kind: 'image',
-      src: dataUrl,
-      aspectRatio: wPx / hPx || 1,
-      defaultEngine: 'grid',
-      allowedEngines: ['grid','canvas'],
-      defaults: { sizeTiles: 1, opacity: 1, snap: true },
-      img: newImg,
-    };
-    setAssets((prev) => [newAsset, ...prev]);
-    setSelectedAssetId(newAsset.id);
-    setAssetGroup('image');
-    setEngine('grid');
-  };
-
-  // Save a group of selected tokens as a tokenGroup asset
-  const saveSelectedTokensAsGroup = async (toks) => {
-    if (!toks?.length) return;
-    // Sort left-to-right for default order
-    const ordered = [...toks].sort((a,b)=> (a.col - b.col) || (a.row - b.row));
-    const members = ordered.map((t)=> ({ assetId: t.assetId }));
-    const nameDefault = 'Token Group';
-    const nameInput = await promptUser('Name this token group', nameDefault);
-    const name = (nameInput ?? nameDefault) || nameDefault;
-    const newAsset = {
-      id: uid(),
-      name,
-      kind: 'tokenGroup',
-      members,
-      defaultEngine: 'grid',
-      allowedEngines: [],
-      defaults: { sizeTiles: 1, opacity: 1, snap: true },
-    };
-    setAssets((prev) => [newAsset, ...prev]);
-    setSelectedAssetId(newAsset.id);
-    setAssetGroup('token');
-    setEngine('grid');
-  };
-
   // ====== layer visibility toggles ======
   const toggleLayerVisibility = (l) =>
     setLayerVisibility((v) => ({ ...v, [l]: !v[l] }));
