@@ -1,7 +1,7 @@
 import MapStatus from "./MapStatus";
 import React, { useRef, useState, useEffect } from "react";
 import Grid from "../canvas/Grid/Grid.jsx";
-import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "./saveLoadManager";
+import { saveProject as saveProjectManager, saveProjectAs as saveProjectAsManager, loadProjectFromDirectory, listMaps, deleteMap, loadGlobalAssets, saveGlobalAssets, loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured, hasCurrentProjectDir, clearCurrentProjectDir } from "../../application/save-load/index.js";
 
 import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
 import BrushSettings from "./BrushSettings";
