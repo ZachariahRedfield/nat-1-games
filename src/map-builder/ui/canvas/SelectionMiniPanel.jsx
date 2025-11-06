@@ -1,7 +1,5 @@
 import React from "react";
-import NumericInput from "../common/NumericInput";
-import RotationWheel from "../common/RotationWheel";
-import AlphaSlider from "../common/AlphaSlider";
+import { NumericInput, RotationWheel, AlphaSlider } from "../../../shared/index.js";
 
 export default function SelectionMiniPanel({
   obj,

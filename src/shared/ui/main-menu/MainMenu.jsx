@@ -1,5 +1,5 @@
 import React from "react";
-import SiteHeader from "../../common/SiteHeader";
+import SiteHeader from "../SiteHeader.jsx";
 
 export default function MainMenu({ setScreen, session, onLogout }) {
   return (

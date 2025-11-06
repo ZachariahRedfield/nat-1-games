@@ -1,5 +1,5 @@
 import React from "react";
-import NumericInput from "../../common/NumericInput";
+import { NumericInput } from "../../../shared/index.js";
 
 export default function CanvasBrushControls({
   brushSize,
