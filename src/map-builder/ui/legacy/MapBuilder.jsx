@@ -14,6 +14,8 @@ import AssetCreator from "./AssetCreator";
 import VerticalToolStrip from "./VerticalToolStrip";
 import { useOverlayLayout } from "./modules/layout/useOverlayLayout.js";
 import { useZoomControls } from "./modules/interaction/useZoomControls.js";
+import FeedbackLayer from "./modules/feedback/FeedbackLayer.jsx";
+import { useFeedbackState } from "./modules/feedback/useFeedbackState.js";
 
 // Compact tool icons for Interaction area
 const BrushIcon = ({ className = "w-4 h-4" }) => (
@@ -106,25 +108,22 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
 
   // Toggle showing words under Save/Save As/Load in header center
   const [mapsMenuOpen, setMapsMenuOpen] = useState(false);
-  // ====== App notifications (custom UI instead of browser dialogs)
-  const [toasts, setToasts] = useState([]); // [{id, text, kind}]
-  const toastIdRef = useRef(1);
-  const showToast = (text, kind = 'info', ttl = 2500) => {
-    const id = toastIdRef.current++;
-    setToasts((prev) => [...prev, { id, text, kind }]);
-    window.setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, ttl);
-  };
+  const {
+    toasts,
+    showToast,
+    promptState,
+    promptInputRef,
+    requestPrompt,
+    submitPrompt,
+    cancelPrompt,
+    confirmState,
+    requestConfirm,
+    approveConfirm,
+    cancelConfirm,
+  } = useFeedbackState();
 
-  const [promptState, setPromptState] = useState(null); // { title, defaultValue, resolve }
-  const promptInputRef = useRef(null);
-  const promptUser = (title, defaultValue = '') =>
-    new Promise((resolve) => setPromptState({ title, defaultValue: defaultValue ?? '', resolve }));
-
-  const [confirmState, setConfirmState] = useState(null); // { title, message, okText, cancelText, resolve }
-  const confirmUser = (message, { title = 'Confirm', okText = 'OK', cancelText = 'Cancel' } = {}) =>
-    new Promise((resolve) => setConfirmState({ title, message, okText, cancelText, resolve }));
+  const promptUser = requestPrompt;
+  const confirmUser = requestConfirm;
 
   // Manage Map: Map Size modal
   const [mapSizeModalOpen, setMapSizeModalOpen] = useState(false);
@@ -1818,56 +1817,16 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       )}
 
       <main className="flex flex-1 overflow-hidden min-h-0">
-        {/* TOASTS */}
-        <div className="fixed top-3 right-3 z-[10050] space-y-2">
-          {toasts.map((t) => (
-            <div key={t.id} className={`px-3 py-2 rounded shadow text-sm border ${t.kind==='error'?'bg-red-800/90 border-red-600 text-red-50': t.kind==='success'?'bg-emerald-800/90 border-emerald-600 text-emerald-50': t.kind==='warning'?'bg-amber-800/90 border-amber-600 text-amber-50':'bg-gray-800/90 border-gray-600 text-gray-50'}`}>
-              {t.text}
-            </div>
-          ))}
-        </div>
-
-        {/* PROMPT MODAL */}
-        {promptState && (
-          <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60">
-            <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100">
-              <div className="font-semibold mb-2">{promptState.title || 'Input'}</div>
-              <input
-                autoFocus
-                defaultValue={promptState.defaultValue || ''}
-                ref={promptInputRef}
-                className="w-full p-2 rounded text-black mb-3"
-                onKeyDown={(e)=> { if (e.key === 'Enter') {
-                  const val = e.currentTarget.value;
-                  promptState.resolve(val);
-                  setPromptState(null);
-                }}}
-              />
-              <div className="flex justify-end gap-2">
-                <button className="px-3 py-1 bg-gray-700 rounded" onClick={()=> { promptState.resolve(null); setPromptState(null); }}>Cancel</button>
-                <button className="px-3 py-1 bg-blue-600 rounded" onClick={()=> {
-                  const val = promptInputRef && promptInputRef.current ? promptInputRef.current.value : (promptState.defaultValue || '');
-                  promptState.resolve(val);
-                  setPromptState(null);
-                }}>OK</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CONFIRM MODAL */}
-        {confirmState && (
-          <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60">
-            <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100">
-              <div className="font-semibold mb-2">{confirmState.title || 'Confirm'}</div>
-              <div className="whitespace-pre-wrap text-sm mb-3">{confirmState.message || ''}</div>
-              <div className="flex justify-end gap-2">
-                <button className="px-3 py-1 bg-gray-700 rounded" onClick={()=> { confirmState.resolve(false); setConfirmState(null); }}>{confirmState.cancelText || 'Cancel'}</button>
-                <button className="px-3 py-1 bg-blue-600 rounded" onClick={()=> { confirmState.resolve(true); setConfirmState(null); }}>{confirmState.okText || 'OK'}</button>
-              </div>
-            </div>
-          </div>
-        )}
+        <FeedbackLayer
+          toasts={toasts}
+          promptState={promptState}
+          confirmState={confirmState}
+          promptInputRef={promptInputRef}
+          onPromptSubmit={submitPrompt}
+          onPromptCancel={cancelPrompt}
+          onConfirmApprove={approveConfirm}
+          onConfirmCancel={cancelConfirm}
+        />
 
         {/* ASSET CREATOR MODAL */}
         {creatorOpen && (
