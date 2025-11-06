@@ -12,6 +12,8 @@ import LayerBar from "./LayerBar";
 import BottomAssetsDrawer from "./BottomAssetsDrawer";
 import AssetCreator from "./AssetCreator";
 import VerticalToolStrip from "./VerticalToolStrip";
+import { useOverlayLayout } from "./modules/layout/useOverlayLayout.js";
+import { useZoomControls } from "./modules/interaction/useZoomControls.js";
 
 // Compact tool icons for Interaction area
 const BrushIcon = ({ className = "w-4 h-4" }) => (
@@ -140,152 +142,29 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const scrollRef = useRef(null);
   const gridContentRef = useRef(null);
   const layerBarWrapRef = useRef(null);
-  const [overlayTop, setOverlayTop] = useState(40);
-  const [overlayLeft, setOverlayLeft] = useState(0);
-  const [overlayCenter, setOverlayCenter] = useState(0);
-  const [overlayWidth, setOverlayWidth] = useState(0);
-  const [layerBarHeight, setLayerBarHeight] = useState(0);
-  const [fixedBarTop, setFixedBarTop] = useState(0);
-  const [fixedBarLeft, setFixedBarLeft] = useState(0);
-  const [fixedBarWidth, setFixedBarWidth] = useState(0);
-  useEffect(() => {
-    const measure = () => {
-      const el = layerBarWrapRef.current;
-      if (!el) return;
-      const h = el.getBoundingClientRect().height || 0;
-      setLayerBarHeight(Math.max(0, Math.round(h)));
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [mapsMenuOpen]);
 
-  // Keep overlays anchored to the top-left of the MAP area (tan scroll container)
-  useEffect(() => {
-    const measure = () => {
-      const container = scrollRef.current;
-      if (!container) return;
-      const cr = container.getBoundingClientRect();
-      // Position just beneath the LAYERS bar by a small gap
-      const insetTop = 2;
-      const insetLeft = 8;
-      setOverlayTop(Math.round(cr.top + (layerBarHeight || 0) + insetTop));
-      setOverlayLeft(Math.round(cr.left + insetLeft));
-      // Center undo/redo across the map area width
-      setOverlayCenter(Math.round(cr.left + cr.width / 2));
-    };
-    // Measure now and again on next frames to catch late layout
-    measure();
-    const raf1 = requestAnimationFrame(() => requestAnimationFrame(measure));
-    const on = () => measure();
-    const sc = scrollRef.current;
-    sc?.addEventListener('scroll', on);
-    window.addEventListener('resize', on);
-    return () => {
-      sc?.removeEventListener('scroll', on);
-      window.removeEventListener('resize', on);
-      cancelAnimationFrame(raf1);
-    };
-  }, [tileSize, rows, cols, layerBarHeight, mapsMenuOpen]);
+  const {
+    layerBarHeight,
+    overlayPosition: { top: overlayTop, left: overlayLeft, center: overlayCenter },
+    fixedLayerBar: { top: fixedBarTop, left: fixedBarLeft, width: fixedBarWidth },
+  } = useOverlayLayout({
+    scrollRef,
+    layerBarWrapRef,
+    tileSize,
+    rows,
+    cols,
+    menuOpen: mapsMenuOpen,
+  });
 
-  // Fixed LayerBar positioning (under header, aligned to scroll container)
-  useEffect(() => {
-    const measureBarPos = () => {
-      const sc = scrollRef.current;
-      if (!sc) return;
-      const cr = sc.getBoundingClientRect();
-      const offsetW = sc.offsetWidth || cr.width;
-      const clientW = sc.clientWidth || cr.width;
-      const innerW = Math.max(0, Math.min(offsetW, clientW));
-      // Align fixed LAYERS bar to the top of the tan area
-      setFixedBarTop(Math.round(cr.top));
-      setFixedBarLeft(Math.round(cr.left));
-      // Use inner (client) width so the fixed bar does not cover the vertical scrollbar area
-      setFixedBarWidth(Math.round(innerW));
-    };
-    measureBarPos();
-    window.addEventListener('resize', measureBarPos);
-    const id = requestAnimationFrame(measureBarPos);
-    return () => {
-      window.removeEventListener('resize', measureBarPos);
-      cancelAnimationFrame(id);
-    };
-  }, [mapsMenuOpen]);
-  const [zoomToolActive, setZoomToolActive] = useState(false);
-  const [panToolActive, setPanToolActive] = useState(false);
-  // Zoom scrubber (stationary slider)
-  const zoomScrubRef = useRef(null);
-  const zoomScrubStartX = useRef(0);
-  const zoomScrubLastX = useRef(0);
-  const zoomScrubTimerRef = useRef(null);
-  const zoomScrubPosRef = useRef(0);
-  const [zoomScrubPos, setZoomScrubPos] = useState(0); // -1..1 for visual offset
-  React.useEffect(() => { zoomScrubPosRef.current = zoomScrubPos; }, [zoomScrubPos]);
-  const handleZoomScrubStart = (e) => {
-    e.preventDefault();
-    const clientY = e.clientY ?? (e.touches && e.touches[0]?.clientY) ?? 0;
-    zoomScrubStartX.current = clientY;
-    zoomScrubLastX.current = clientY;
-
-    const updateVisualPos = (cy) => {
-      const rect = zoomScrubRef.current?.getBoundingClientRect();
-      if (!rect) return 0;
-      const centerY = rect.top + rect.height / 2;
-      const half = Math.max(1, rect.height / 2);
-      const n = (cy - centerY) / half;
-      const clamped = Math.max(-1, Math.min(1, n));
-      setZoomScrubPos(clamped);
-      zoomScrubPosRef.current = clamped;
-      return clamped;
-    };
-
-    updateVisualPos(clientY);
-    // Start continuous zoom interval (constant rate) while displaced
-    const startInterval = () => {
-      if (zoomScrubTimerRef.current) return;
-      zoomScrubTimerRef.current = window.setInterval(() => {
-        const pos = zoomScrubPosRef.current || 0;
-        if (pos > 0) {
-          // Zoom in at constant step
-          setTileSize((s) => {
-            let next = s + 2; // smaller increment
-            next = Math.max(8, Math.min(128, next));
-            return Math.round(next / 2) * 2;
-          });
-        } else if (pos < 0) {
-          // Zoom out at constant step
-          setTileSize((s) => {
-            let next = s - 2; // smaller increment
-            next = Math.max(8, Math.min(128, next));
-            return Math.round(next / 2) * 2;
-          });
-        }
-      }, 300);
-    };
-    const stopInterval = () => {
-      if (zoomScrubTimerRef.current) {
-        clearInterval(zoomScrubTimerRef.current);
-        zoomScrubTimerRef.current = null;
-      }
-    };
-
-    startInterval();
-
-    const onMove = (ev) => {
-      const cy = ev.clientY ?? (ev.touches && ev.touches[0]?.clientY) ?? zoomScrubLastX.current;
-      zoomScrubLastX.current = cy;
-      updateVisualPos(cy);
-    };
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-       stopInterval();
-      setZoomScrubPos(0);
-      zoomScrubPosRef.current = 0;
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  };
+  const {
+    zoomToolActive,
+    setZoomToolActive,
+    panToolActive,
+    setPanToolActive,
+    zoomScrubRef,
+    zoomScrubPos,
+    handleZoomScrubStart,
+  } = useZoomControls({ setTileSize });
 
   // --- draw mode + eraser ---
   // Unified flow: choose asset (what), then engine (how)
@@ -308,7 +187,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const [assetGroup, setAssetGroup] = useState("image"); // 'image' | 'token' | 'material' | 'natural'
   const [showAssetKindMenu, setShowAssetKindMenu] = useState(true);
 
-    // ====== Zoom Tool (rectangle zoom) ======
+  // ====== Zoom Tool (rectangle zoom) ======
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const snap = (v, step = 4) => Math.round(v / step) * step;
   const handleZoomToRect = ({ left, top, width, height }) => {
