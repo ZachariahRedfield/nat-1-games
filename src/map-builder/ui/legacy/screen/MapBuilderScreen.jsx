@@ -12,8 +12,6 @@ import {
   hasCurrentProjectDir,
   clearCurrentProjectDir,
 } from "../../../application/save-load/index.js";
-
-import { LAYERS, deepCopyGrid, deepCopyObjects } from "../utils.js";
 import { useLegacySceneState } from "../modules/editor/useLegacySceneState.js";
 import { SiteHeader } from "../../../../shared/index.js";
 import SaveSelectionDialog from "../SaveSelectionDialog.jsx";
@@ -25,11 +23,8 @@ import { useOverlayLayout } from "../modules/layout/useOverlayLayout.js";
 import { useZoomControls } from "../modules/interaction/useZoomControls.js";
 import FeedbackLayer from "../modules/feedback/FeedbackLayer.jsx";
 import { useFeedbackState } from "../modules/feedback/useFeedbackState.js";
-import { useAssetLibrary } from "../modules/assets/useAssetLibrary.js";
-import { useAssetExports } from "../modules/assets/useAssetExports.js";
 import { useLegacyProjectSaving } from "../modules/save-load/useLegacyProjectSaving.js";
 import { useLegacyProjectLoading } from "../modules/save-load/useLegacyProjectLoading.js";
-import { useTokenState } from "../modules/tokens/index.js";
 import {
   BrushIcon,
   CanvasIcon,
@@ -45,6 +40,11 @@ import LoadMapsModal from "./components/LoadMapsModal.jsx";
 import MapSizeModal from "./components/MapSizeModal.jsx";
 import AssetsFolderBanner from "./components/AssetsFolderBanner.jsx";
 import LegacySettingsPanel from "./components/LegacySettingsPanel.jsx";
+import { useGridSelectionState } from "./state/useGridSelectionState.js";
+import { useTokenSelectionState } from "./state/useTokenSelectionState.js";
+import { useLayerVisibilityState } from "./state/useLayerVisibilityState.js";
+import { useLegacyAssetWorkflow } from "./state/useLegacyAssetWorkflow.js";
+import { useLegacyHistory } from "./state/useLegacyHistory.js";
 
 export default function MapBuilder({ goBack, session, onLogout, onNavigate, currentScreen }) {
   // --- layers ---
@@ -80,14 +80,28 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     getCanvasColor: useCallback(() => canvasColor, [canvasColor]),
   });
 
-  // Remember user's own grid controls to restore after selection
-  const gridDefaultsRef = useRef(null);
-  const [hasSelection, setHasSelection] = useState(false);
-  const [selectedObj, setSelectedObj] = useState(null);
-  const [selectedObjsList, setSelectedObjsList] = useState([]);
+  const [gridSettings, setGridSettings] = useState({
+    sizeTiles: 1,
+    sizeCols: 1,
+    sizeRows: 1,
+    linkXY: false,
+    rotation: 0,
+    flipX: false,
+    flipY: false,
+    opacity: 1,
+    snapToGrid: true,
+    snapStep: 1,
+    smartAdjacency: true,
+  });
 
-  // --- tokens (characters / interactables) ---
-  // token: { id, assetId, row, col, wTiles, hTiles, rotation, opacity, meta?:{ name, hp, initiative } }
+  const {
+    hasSelection,
+    selectedObj,
+    selectedObjsList,
+    handleSelectionChange,
+    clearObjectSelection,
+  } = useGridSelectionState({ gridSettings, setGridSettings });
+
   const {
     tokens,
     setTokens,
@@ -105,11 +119,13 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     moveToken,
     updateTokenById,
     removeTokenById,
-  } = useTokenState();
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+    handleTokenSelectionChange,
+    clearTokenSelection,
+  } = useTokenSelectionState({ setGridSettings });
 
-  // Toggle showing words under Save/Save As/Load in header center
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [mapsMenuOpen, setMapsMenuOpen] = useState(false);
+
   const {
     toasts,
     showToast,
@@ -127,18 +143,14 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const promptUser = requestPrompt;
   const confirmUser = requestConfirm;
 
-  // Manage Map: Map Size modal
   const [mapSizeModalOpen, setMapSizeModalOpen] = useState(false);
 
-  // --- canvas refs (per layer) ---
   const canvasRefs = {
     background: useRef(null),
     base: useRef(null),
     sky: useRef(null),
   };
 
-  // --- view / scroll ---
-  // Default zoom ~75% (32 is 100%)
   const [tileSize, setTileSize] = useState(24);
   const scrollRef = useRef(null);
   const gridContentRef = useRef(null);
@@ -167,79 +179,13 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     handleZoomScrubStart,
   } = useZoomControls({ setTileSize });
 
-  const [layerVisibility, setLayerVisibility] = useState({
-    background: true,
-    base: true,
-    sky: true, // sky visible by default
-  });
-  // Visual grid line toggle
+  const { layerVisibility, toggleLayerVisibility, showAllLayers, hideAllLayers } =
+    useLayerVisibilityState();
   const [showGridLines, setShowGridLines] = useState(true);
 
   const [engine, setEngine] = useState("grid");
-  const {
-    assets,
-    setAssets,
-    getAsset,
-    selectedAsset,
-    selectedAssetId,
-    setSelectedAssetId,
-    selectAsset,
-    assetGroup,
-    setAssetGroup,
-    showAssetKindMenu,
-    setShowAssetKindMenu,
-    showAssetPreviews,
-    setShowAssetPreviews,
-    creatorOpen,
-    setCreatorOpen,
-    creatorKind,
-    setCreatorKind,
-    editingAsset,
-    setEditingAsset,
-    openCreator,
-    openEditAsset,
-    handleCreatorCreate,
-    addColorMode,
-    setAddColorMode,
-    newColorName,
-    setNewColorName,
-    newColorHex,
-    setNewColorHex,
-    newLabelText,
-    setNewLabelText,
-    newLabelColor,
-    setNewLabelColor,
-    newLabelSize,
-    setNewLabelSize,
-    newLabelFont,
-    setNewLabelFont,
-    flowHue,
-    setFlowHue,
-    flowSat,
-    setFlowSat,
-    flowLight,
-    setFlowLight,
-    assetStamp,
-    setAssetStamp,
-    naturalSettings,
-    setNaturalSettings,
-    updateAssetById,
-    mapAssetToCreatorKind,
-    handleUpload,
-    handleCreateNatural,
-    createTextLabelAsset,
-    needsAssetsFolder,
-    setNeedsAssetsFolder,
-    promptChooseAssetsFolder,
-    normalizeStamp,
-    normalizeNaturalSettings,
-  } = useAssetLibrary({
-    setEngine,
-    setInteractionMode,
-    setZoomToolActive,
-    setPanToolActive,
-    setCanvasColor,
-  });
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
 
   // ====== Zoom Tool (rectangle zoom) ======
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -303,215 +249,73 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  // ====== SETTINGS (contextual) ======
-  // Grid engine (snap)
-  const [gridSettings, setGridSettings] = useState({
-    sizeTiles: 1,
-    sizeCols: 1,
-    sizeRows: 1,
-    linkXY: false,
-    rotation: 0,
-    flipX: false,
-    flipY: false,
-    opacity: 1,
-    snapToGrid: true, // engine toggle essentially
-    snapStep: 1,
-    smartAdjacency: true, // neighbor-aware alignment for grid stamps
-  });
-
-  // Flags to avoid persisting while we're initializing defaults
-  const loadingGridDefaultsRef = useRef(false);
-  const loadingAssetStampDefaultsRef = useRef(false);
-  const loadingNaturalDefaultsRef = useRef(false);
-
-  // Sync gridSettings from the selected asset's saved stampDefaults
-  useEffect(() => {
-    if (!selectedAsset) return;
-    const d = selectedAsset.stampDefaults || selectedAsset.defaults || {};
-    loadingGridDefaultsRef.current = true;
-    setGridSettings((s) => ({
-      ...s,
-      sizeTiles: Number.isFinite(d.sizeTiles) ? d.sizeTiles : (s.sizeTiles ?? 1),
-      sizeCols: Number.isFinite(d.sizeCols) ? d.sizeCols : (Number.isFinite(d.sizeTiles) ? d.sizeTiles : (s.sizeCols ?? 1)),
-      sizeRows: Number.isFinite(d.sizeRows) ? d.sizeRows : (Number.isFinite(d.sizeTiles) ? d.sizeTiles : (s.sizeRows ?? 1)),
-      rotation: Number.isFinite(d.rotation) ? d.rotation : (s.rotation ?? 0),
-      flipX: d.flipX ?? (s.flipX ?? false),
-      flipY: d.flipY ?? (s.flipY ?? false),
-      opacity: Number.isFinite(d.opacity) ? d.opacity : (s.opacity ?? 1),
-      snapToGrid: d.snapToGrid ?? (s.snapToGrid ?? true),
-      snapStep: Number.isFinite(d.snapStep) ? d.snapStep : (s.snapStep ?? 1),
-      linkXY: d.linkXY ?? (s.linkXY ?? false),
-    }));
-    // Defer clearing flag until after React applies state and effects run
-    setTimeout(() => { loadingGridDefaultsRef.current = false; }, 0);
-  }, [selectedAssetId]);
-
-  // Load drawer settings from the selected asset defaults (Assets tab only)
-  useEffect(() => {
-    const d = (selectedAsset?.stampDefaults || selectedAsset?.defaults || {});
-    loadingAssetStampDefaultsRef.current = true;
-    setAssetStamp(normalizeStamp(d));
-    setTimeout(() => { loadingAssetStampDefaultsRef.current = false; }, 0);
-  }, [selectedAssetId]);
-
-  // Load Natural defaults into UI when selecting a Natural asset
-  useEffect(() => {
-    const a = getAsset(selectedAssetId);
-    if (!a || a.kind !== 'natural') return;
-    const d = a.naturalDefaults || {};
-    loadingNaturalDefaultsRef.current = true;
-    setNaturalSettings((cur) => ({ ...cur, ...normalizeNaturalSettings(d) }));
-    setTimeout(() => { loadingNaturalDefaultsRef.current = false; }, 0);
-  }, [selectedAssetId]);
-
-  // Persist drawer settings into the selected asset (assets tab only)
-  useEffect(() => {
-    if (!selectedAssetId || !assetStamp) return;
-    if (loadingAssetStampDefaultsRef.current) return; // skip initial load
-    const cur = getAsset(selectedAssetId);
-    const prev = cur?.stampDefaults || {};
-    const stamp = normalizeStamp(assetStamp);
-    const same = prev &&
-      prev.sizeTiles === stamp.sizeTiles &&
-      prev.sizeCols === stamp.sizeCols &&
-      prev.sizeRows === stamp.sizeRows &&
-      prev.rotation === stamp.rotation &&
-      !!prev.flipX === stamp.flipX &&
-      !!prev.flipY === stamp.flipY &&
-      Math.abs((prev.opacity ?? 1) - (stamp.opacity ?? 1)) < 0.0001 &&
-      !!prev.snapToGrid === stamp.snapToGrid &&
-      (prev.snapStep ?? 1) === stamp.snapStep &&
-      !!prev.linkXY === stamp.linkXY;
-    if (!same) updateAssetById(selectedAssetId, { stampDefaults: stamp });
-  }, [selectedAssetId, assetStamp]);
-
-  // Also persist changes made via the main Settings panel when no selection is active
-  // This saves the current gridSettings as the selected asset's defaults so they persist across sessions.
-  useEffect(() => {
-    if (!selectedAssetId) return;
-    if (hasSelection) return; // avoid overwriting defaults while editing an existing selection
-    if (loadingGridDefaultsRef.current) return; // skip initial apply
-    const cur = getAsset(selectedAssetId);
-    if (!cur) return;
-    const stamp = normalizeStamp(gridSettings || {});
-    const prev = cur.stampDefaults || {};
-    const same = prev &&
-      prev.sizeTiles === stamp.sizeTiles &&
-      prev.sizeCols === stamp.sizeCols &&
-      prev.sizeRows === stamp.sizeRows &&
-      prev.rotation === stamp.rotation &&
-      !!prev.flipX === stamp.flipX &&
-      !!prev.flipY === stamp.flipY &&
-      Math.abs((prev.opacity ?? 1) - (stamp.opacity ?? 1)) < 0.0001 &&
-      !!prev.snapToGrid === stamp.snapToGrid &&
-      (prev.snapStep ?? 1) === stamp.snapStep &&
-      !!prev.linkXY === stamp.linkXY;
-    if (!same) {
-      updateAssetById(selectedAssetId, { stampDefaults: stamp });
-      // Keep Assets drawer preview/settings in sync
-      setAssetStamp(stamp);
-    }
-  }, [selectedAssetId, hasSelection, gridSettings]);
-
-  
-
-  // When asset group changes, auto-select a matching asset and force Grid engine for Token/Natural groups
-  // Canvas engine (free brush)
-  const [brushSize, setBrushSize] = useState(2); // in tiles
-  const [canvasOpacity, setCanvasOpacity] = useState(0.35);
-  const [canvasSpacing, setCanvasSpacing] = useState(0.27); // fraction of radius
-  const [canvasBlendMode, setCanvasBlendMode] = useState("source-over");
-  const [canvasSmoothing, setCanvasSmoothing] = useState(0.55); // EMA smoothing factor (0..1)
-  // Preserve token selection in Select mode even if Assets tab changes
-  React.useEffect(() => {
-    if (assetGroup !== 'token' && interactionMode !== 'select' && selectedToken) setSelectedToken(null);
-  }, [assetGroup, interactionMode, selectedToken]);
-
-  // Persist Natural settings as per-asset defaults when editing a Natural asset
-  useEffect(() => {
-    if (!selectedAssetId) return;
-    if (hasSelection) return;
-    if (loadingNaturalDefaultsRef.current) return;
-    const cur = getAsset(selectedAssetId);
-    if (!cur || cur.kind !== 'natural') return;
-    const next = normalizeNaturalSettings(naturalSettings);
-    const prev = cur.naturalDefaults || {};
-    const same = !!prev &&
-      !!prev.randomRotation === next.randomRotation &&
-      !!prev.randomFlipX === next.randomFlipX &&
-      !!prev.randomFlipY === next.randomFlipY &&
-      !!(prev.randomSize?.enabled) === next.randomSize.enabled &&
-      (prev.randomSize?.min ?? 1) === next.randomSize.min &&
-      (prev.randomSize?.max ?? 1) === next.randomSize.max &&
-      !!(prev.randomOpacity?.enabled) === next.randomOpacity.enabled &&
-      (prev.randomOpacity?.min ?? 1) === next.randomOpacity.min &&
-      (prev.randomOpacity?.max ?? 1) === next.randomOpacity.max &&
-      (prev.randomVariant ?? true) === next.randomVariant;
-    if (!same) updateAssetById(selectedAssetId, { naturalDefaults: next });
-  }, [selectedAssetId, hasSelection, naturalSettings]);
-
-  // ====== Load Maps Modal ======
-  // --- undo/redo ---
-  // entries: { type:'tilemap'|'canvas'|'objects', layer, map? snapshot? objects? }
-  const [undoStack, setUndoStack] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
-
-  // ====== stroke lifecycle hooks (for Grid) ======
-  const onBeginTileStroke = (layer) => {
-    setUndoStack((prev) => [
-      ...prev,
-      { type: "tilemap", layer, map: deepCopyGrid(maps[layer]) },
-    ]);
-    setRedoStack([]);
-  };
-
-  const onBeginCanvasStroke = (layer) => {
-    const canvas = canvasRefs[layer]?.current;
-    if (!canvas) return;
-    const snapshot = canvas.toDataURL();
-    setUndoStack((prev) => [...prev, { type: "canvas", layer, snapshot }]);
-    setRedoStack([]);
-  };
-
-  const onBeginObjectStroke = (layer) => {
-    setUndoStack((prev) => [
-      ...prev,
-      { type: "objects", layer, objects: deepCopyObjects(objects[layer]) },
-    ]);
-    setRedoStack([]);
-  };
-
-  const onBeginTokenStroke = () => {
-    setUndoStack((prev) => [
-      ...prev,
-      { type: "tokens", tokens: deepCopyObjects(tokens) },
-    ]);
-    setRedoStack([]);
-  };
-
-  // Delete current selection (objects or tokens)
-  const deleteCurrentSelection = () => {
-    const hasObjs = (selectedObjsList?.length || 0) > 0;
-    const hasToks = (selectedTokensList?.length || 0) > 0;
-    if (!hasObjs && !hasToks) return;
-    if (hasToks) {
-      onBeginTokenStroke?.();
-      for (const t of selectedTokensList) removeTokenById?.(t.id);
-      setSelectedToken(null);
-      setSelectedTokensList([]);
-      showToast('Deleted selected token(s).', 'success');
-      return;
-    }
-    if (hasObjs) {
-      onBeginObjectStroke?.(currentLayer);
-      for (const o of selectedObjsList) removeObjectById(currentLayer, o.id);
-      setSelectedObj(null);
-      setSelectedObjsList([]);
-      showToast('Deleted selected object(s).', 'success');
-    }
-  };
-
   const {
+    assets,
+    setAssets,
+    getAsset,
+    selectedAsset,
+    selectedAssetId,
+    setSelectedAssetId,
+    selectAsset,
+    assetGroup,
+    setAssetGroup,
+    showAssetKindMenu,
+    setShowAssetKindMenu,
+    showAssetPreviews,
+    setShowAssetPreviews,
+    creatorOpen,
+    setCreatorOpen,
+    creatorKind,
+    setCreatorKind,
+    editingAsset,
+    setEditingAsset,
+    openCreator,
+    openEditAsset,
+    handleCreatorCreate,
+    addColorMode,
+    setAddColorMode,
+    newColorName,
+    setNewColorName,
+    newColorHex,
+    setNewColorHex,
+    newLabelText,
+    setNewLabelText,
+    newLabelColor,
+    setNewLabelColor,
+    newLabelSize,
+    setNewLabelSize,
+    newLabelFont,
+    setNewLabelFont,
+    flowHue,
+    setFlowHue,
+    flowSat,
+    setFlowSat,
+    flowLight,
+    setFlowLight,
+    assetStamp,
+    setAssetStamp,
+    naturalSettings,
+    setNaturalSettings,
+    updateAssetById,
+    mapAssetToCreatorKind,
+    handleUpload,
+    handleCreateNatural,
+    createTextLabelAsset,
+    needsAssetsFolder,
+    setNeedsAssetsFolder,
+    promptChooseAssetsFolder,
+    normalizeStamp,
+    normalizeNaturalSettings,
+    brushSize,
+    setBrushSize,
+    canvasOpacity,
+    setCanvasOpacity,
+    canvasSpacing,
+    setCanvasSpacing,
+    canvasBlendMode,
+    setCanvasBlendMode,
+    canvasSmoothing,
+    setCanvasSmoothing,
     regenerateLabelInstance,
     saveSelectionAsAsset,
     saveSelectedTokenAsAsset,
@@ -519,232 +323,84 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     saveMultipleObjectsAsMergedImage,
     saveSelectedTokensAsGroup,
     saveCurrentSelection,
-  } = useAssetExports({
-    assets,
-    setAssets,
-    setSelectedAssetId,
-    setAssetGroup,
+  } = useLegacyAssetWorkflow({
     setEngine,
+    setInteractionMode,
+    setZoomToolActive,
+    setPanToolActive,
+    setCanvasColor,
+    interactionMode,
+    gridSettings,
+    setGridSettings,
+    hasSelection,
+    showToast,
+    promptUser,
+    confirmUser,
+    setUndoStack,
+    setRedoStack,
+    updateObjectById,
+    currentLayer,
+    tileSize,
+    objects,
     selectedObj,
     selectedObjsList,
     selectedToken,
     selectedTokensList,
-    updateObjectById,
-    currentLayer,
-    tileSize,
-    promptUser,
-    confirmUser,
-    showToast,
-    setUndoStack,
-    setRedoStack,
-    objects,
+    setSelectedToken,
   });
 
-  // No-op: Do not track settings changes in undo/redo
+  const {
+    onBeginTileStroke,
+    onBeginCanvasStroke,
+    onBeginObjectStroke,
+    onBeginTokenStroke,
+    deleteCurrentSelection,
+    undo,
+    redo,
+  } = useLegacyHistory({
+    undoStack,
+    setUndoStack,
+    redoStack,
+    setRedoStack,
+    maps,
+    setMaps,
+    objects,
+    setObjects,
+    tokens,
+    setTokens,
+    assets,
+    setAssets,
+    gridSettings,
+    setGridSettings,
+    brushSize,
+    setBrushSize,
+    canvasOpacity,
+    setCanvasOpacity,
+    canvasSpacing,
+    setCanvasSpacing,
+    canvasBlendMode,
+    setCanvasBlendMode,
+    canvasSmoothing,
+    setCanvasSmoothing,
+    naturalSettings,
+    setNaturalSettings,
+    tileSize,
+    setTileSize,
+    scrollRef,
+    canvasRefs,
+    currentLayer,
+    showToast,
+    selectedObjsList,
+    selectedTokensList,
+    removeObjectById,
+    removeTokenById,
+    clearObjectSelection,
+    clearTokenSelection,
+  });
+
   const snapshotSettings = () => {};
 
-  // ====== undo / redo ======
-  const undo = () => {
-    if (!undoStack.length) return;
-    const entry = undoStack[undoStack.length - 1];
-    setUndoStack((p) => p.slice(0, -1));
-
-    if (entry.type === "tilemap") {
-      setRedoStack((r) => [
-        ...r,
-        {
-          type: "tilemap",
-          layer: entry.layer,
-          map: deepCopyGrid(maps[entry.layer]),
-        },
-      ]);
-      setMaps((prev) => ({ ...prev, [entry.layer]: entry.map }));
-    } else if (entry.type === "canvas") {
-      const canvas = canvasRefs[entry.layer]?.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      const currentSnapshot = canvas.toDataURL();
-      setRedoStack((r) => [
-        ...r,
-        { type: "canvas", layer: entry.layer, snapshot: currentSnapshot },
-      ]);
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      };
-      img.src = entry.snapshot;
-    } else if (entry.type === "objects") {
-      setRedoStack((r) => [
-        ...r,
-        {
-          type: "objects",
-          layer: entry.layer,
-          objects: deepCopyObjects(objects[entry.layer]),
-        },
-      ]);
-      setObjects((prev) => ({ ...prev, [entry.layer]: entry.objects }));
-    } else if (entry.type === "tokens") {
-      setRedoStack((r) => [
-        ...r,
-        { type: "tokens", tokens: deepCopyObjects(tokens) },
-      ]);
-      setTokens(entry.tokens || []);
-    } else if (entry.type === "settings") {
-      setRedoStack((r) => [
-        ...r,
-        {
-          type: "settings",
-          settings: {
-            gridSettings: { ...gridSettings },
-            brushSize,
-            canvasOpacity,
-            canvasSpacing,
-            canvasBlendMode,
-            canvasSmoothing,
-            naturalSettings: { ...naturalSettings },
-          },
-        },
-      ]);
-      setGridSettings(entry.settings.gridSettings);
-      setBrushSize(entry.settings.brushSize);
-      setCanvasOpacity(entry.settings.canvasOpacity);
-      setCanvasSpacing(entry.settings.canvasSpacing);
-      if (entry.settings.canvasBlendMode)
-        setCanvasBlendMode(entry.settings.canvasBlendMode);
-      if (typeof entry.settings.canvasSmoothing === 'number')
-        setCanvasSmoothing(entry.settings.canvasSmoothing);
-      if (entry.settings.naturalSettings)
-        setNaturalSettings(entry.settings.naturalSettings);
-    
-} else if (entry.type === 'view') {
-      const c = scrollRef.current;
-      setUndoStack((u) => [
-        ...u,
-        { type: 'view', tileSize, scrollLeft: c ? c.scrollLeft : 0, scrollTop: c ? c.scrollTop : 0 },
-      ]);
-      setTileSize(entry.tileSize);
-      requestAnimationFrame(() => {
-        const cc = scrollRef.current;
-        if (!cc) return;
-        cc.scrollTo({ left: entry.scrollLeft || 0, top: entry.scrollTop || 0 });
-      });
-    } else if (entry.type === 'bundle') {
-      // undo combined assets + objects change
-      setRedoStack((r) => [
-        ...r,
-        {
-          type: 'bundle',
-          layer: entry.layer,
-          assets: assets.map((a) => ({ ...a })),
-          objects: deepCopyObjects(objects[entry.layer] || []),
-        },
-      ]);
-      if (entry.assets) setAssets(entry.assets.map((a) => ({ ...a })));
-      if (entry.objects) setObjects((prev) => ({ ...prev, [entry.layer]: deepCopyObjects(entry.objects) }));
-    }
-  };
-
-  const redo = () => {
-    if (!redoStack.length) return;
-    const entry = redoStack[redoStack.length - 1];
-    setRedoStack((p) => p.slice(0, -1));
-
-    if (entry.type === "tilemap") {
-      setUndoStack((u) => [
-        ...u,
-        {
-          type: "tilemap",
-          layer: entry.layer,
-          map: deepCopyGrid(maps[entry.layer]),
-        },
-      ]);
-      setMaps((prev) => ({ ...prev, [entry.layer]: entry.map }));
-    } else if (entry.type === "canvas") {
-      const canvas = canvasRefs[entry.layer]?.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      const currentSnapshot = canvas.toDataURL();
-      setUndoStack((u) => [
-        ...u,
-        { type: "canvas", layer: entry.layer, snapshot: currentSnapshot },
-      ]);
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      };
-      img.src = entry.snapshot;
-    } else if (entry.type === "objects") {
-      setUndoStack((u) => [
-        ...u,
-        {
-          type: "objects",
-          layer: entry.layer,
-          objects: deepCopyObjects(objects[entry.layer]),
-        },
-      ]);
-      setObjects((prev) => ({ ...prev, [entry.layer]: entry.objects }));
-    } else if (entry.type === "tokens") {
-      setUndoStack((u) => [
-        ...u,
-        { type: "tokens", tokens: deepCopyObjects(tokens) },
-      ]);
-      setTokens(entry.tokens || []);
-    } else if (entry.type === "settings") {
-      setUndoStack((u) => [
-        ...u,
-        {
-          type: "settings",
-          settings: {
-            gridSettings: { ...gridSettings },
-            brushSize,
-            canvasOpacity,
-            canvasSpacing,
-            canvasBlendMode,
-            canvasSmoothing,
-            naturalSettings: { ...naturalSettings },
-          },
-        },
-      ]);
-      setGridSettings(entry.settings.gridSettings);
-      setBrushSize(entry.settings.brushSize);
-      setCanvasOpacity(entry.settings.canvasOpacity);
-      setCanvasSpacing(entry.settings.canvasSpacing);
-      if (entry.settings.canvasBlendMode)
-        setCanvasBlendMode(entry.settings.canvasBlendMode);
-      if (typeof entry.settings.canvasSmoothing === 'number')
-        setCanvasSmoothing(entry.settings.canvasSmoothing);
-      if (entry.settings.naturalSettings)
-        setNaturalSettings(entry.settings.naturalSettings);
-    
-} else if (entry.type === 'view') {
-      const c = scrollRef.current;
-      setUndoStack((u) => [
-        ...u,
-        { type: 'view', tileSize, scrollLeft: c ? c.scrollLeft : 0, scrollTop: c ? c.scrollTop : 0 },
-      ]);
-      setTileSize(entry.tileSize);
-      requestAnimationFrame(() => {
-        const cc = scrollRef.current;
-        if (!cc) return;
-        cc.scrollTo({ left: entry.scrollLeft || 0, top: entry.scrollTop || 0 });
-      });
-    } else if (entry.type === 'bundle') {
-      setUndoStack((u) => [
-        ...u,
-        {
-          type: 'bundle',
-          layer: entry.layer,
-          assets: assets.map((a) => ({ ...a })),
-          objects: deepCopyObjects(objects[entry.layer] || []),
-        },
-      ]);
-      if (entry.assets) setAssets(entry.assets.map((a) => ({ ...a })));
-      if (entry.objects) setObjects((prev) => ({ ...prev, [entry.layer]: deepCopyObjects(entry.objects) }));
-    }
-  };
-
+  // ====== Load Maps Modal ======
   // ====== save / load (desktop FS API + mobile bundle fallback) ======
 
   const loadProject = async () => {
@@ -875,68 +531,7 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     naturalSettings,
   });
 
-  const handleSelectionChange = (objOrArr) => {
-    const arr = Array.isArray(objOrArr) ? objOrArr : (objOrArr ? [objOrArr] : []);
-    if (arr.length) {
-      // We just selected something: remember user's current controls ONCE
-      if (!hasSelection) gridDefaultsRef.current = { ...gridSettings };
-      setHasSelection(true);
-      setSelectedObjsList(arr);
-      const obj = arr[arr.length - 1];
-      setSelectedObj(obj);
-
-      // Sync controls to the selected object's properties
-      setGridSettings((s) => ({
-        ...s,
-        sizeTiles: Math.max(1, Math.round(obj.wTiles || 1)),
-        sizeCols: Math.max(1, Math.round(obj.wTiles || 1)),
-        sizeRows: Math.max(1, Math.round(obj.hTiles || 1)),
-        rotation: obj.rotation || 0,
-        flipX: !!obj.flipX,
-        flipY: !!obj.flipY,
-        opacity: obj.opacity ?? 1,
-      }));
-    } else {
-      // Selection cleared: restore user's controls
-      const d = gridDefaultsRef.current;
-      if (d) setGridSettings((s) => ({ ...s, ...d }));
-      setHasSelection(false);
-      setSelectedObj(null);
-      setSelectedObjsList([]);
-    }
-  };
-
-  // ====== Label asset update per-instance (clone asset, reassign object) ======
-  const handleTokenSelectionChange = (tokOrArr) => {
-    const arr = Array.isArray(tokOrArr) ? tokOrArr : (tokOrArr ? [tokOrArr] : []);
-    if (arr.length) {
-      setSelectedTokensList(arr);
-      const tok = arr[arr.length - 1];
-      setSelectedToken(tok);
-      setGridSettings((s) => ({
-        ...s,
-        sizeTiles: Math.max(1, Math.round(tok.wTiles || 1)),
-        sizeCols: Math.max(1, Math.round(tok.wTiles || 1)),
-        sizeRows: Math.max(1, Math.round(tok.hTiles || 1)),
-        rotation: tok.rotation || 0,
-        flipX: false,
-        flipY: false,
-        opacity: tok.opacity ?? 1,
-      }));
-    } else {
-      setSelectedToken(null);
-      setSelectedTokensList([]);
-    }
-  };
-
   // ====== Save current selection as a new image asset ======
-  // ====== layer visibility toggles ======
-  const toggleLayerVisibility = (l) =>
-    setLayerVisibility((v) => ({ ...v, [l]: !v[l] }));
-  const showAllLayers = () =>
-    setLayerVisibility({ background: true, base: true, sky: true });
-  const hideAllLayers = () =>
-    setLayerVisibility({ background: false, base: false, sky: false });
   // ====== header button order ======
   const onBackClick = () => { try { clearCurrentProjectDir(); } catch {} ; goBack?.(); };
   return (
