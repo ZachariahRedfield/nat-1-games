@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Grid from "../../canvas/Grid/Grid.jsx";
 import {
   saveProject as saveProjectManager,
@@ -13,7 +13,8 @@ import {
   clearCurrentProjectDir,
 } from "../../../application/save-load/index.js";
 
-import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "../utils.js";
+import { LAYERS, deepCopyGrid, deepCopyObjects } from "../utils.js";
+import { useLegacySceneState } from "../modules/editor/useLegacySceneState.js";
 import { SiteHeader } from "../../../../shared/index.js";
 import SaveSelectionDialog from "../SaveSelectionDialog.jsx";
 import Header from "../Header.jsx";
@@ -46,35 +47,44 @@ import AssetsFolderBanner from "./components/AssetsFolderBanner.jsx";
 import LegacySettingsPanel from "./components/LegacySettingsPanel.jsx";
 
 export default function MapBuilder({ goBack, session, onLogout, onNavigate, currentScreen }) {
-  // --- dimensions ---
-  const [rowsInput, setRowsInput] = useState("30");
-  const [colsInput, setColsInput] = useState("30");
-  const rows = Math.max(1, Math.min(200, parseInt(rowsInput) || 30));
-  const cols = Math.max(1, Math.min(200, parseInt(colsInput) || 30));
-
-  // --- per-layer tile grids (for color / legacy tiles) ---
-  const [maps, setMaps] = useState({
-    background: makeGrid(rows, cols),
-    base: makeGrid(rows, cols),
-    sky: makeGrid(rows, cols),
-  });
+  // --- layers ---
+  const [currentLayer, setCurrentLayer] = useState("base");
 
   // Edit mode: 'draw' | 'select'
   const [interactionMode, setInteractionMode] = useState("draw");
+
+  const [isErasing, setIsErasing] = useState(false);
+  const [canvasColor, setCanvasColor] = useState(null);
+
+  const {
+    rowsInput,
+    setRowsInput,
+    colsInput,
+    setColsInput,
+    rows,
+    cols,
+    maps,
+    setMaps,
+    objects,
+    setObjects,
+    updateGridSizes,
+    placeTiles,
+    addObject,
+    eraseObjectAt,
+    moveObject,
+    updateObjectById,
+    removeObjectById,
+  } = useLegacySceneState({
+    getCurrentLayer: useCallback(() => currentLayer, [currentLayer]),
+    getIsErasing: useCallback(() => isErasing, [isErasing]),
+    getCanvasColor: useCallback(() => canvasColor, [canvasColor]),
+  });
 
   // Remember user's own grid controls to restore after selection
   const gridDefaultsRef = useRef(null);
   const [hasSelection, setHasSelection] = useState(false);
   const [selectedObj, setSelectedObj] = useState(null);
   const [selectedObjsList, setSelectedObjsList] = useState([]);
-
-  // --- per-layer placed OBJECTS (image stamps) ---
-  // object: { id, assetId, row, col, wTiles, hTiles, rotation, flipX, flipY, opacity }
-  const [objects, setObjects] = useState({
-    background: [],
-    base: [],
-    sky: [],
-  });
 
   // --- tokens (characters / interactables) ---
   // token: { id, assetId, row, col, wTiles, hTiles, rotation, opacity, meta?:{ name, hp, initiative } }
@@ -157,12 +167,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     handleZoomScrubStart,
   } = useZoomControls({ setTileSize });
 
-  // --- draw mode + eraser ---
-  // Unified flow: choose asset (what), then engine (how)
-  const [isErasing, setIsErasing] = useState(false);
-
-  // --- layers ---
-  const [currentLayer, setCurrentLayer] = useState("base");
   const [layerVisibility, setLayerVisibility] = useState({
     background: true,
     base: true,
@@ -170,8 +174,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   });
   // Visual grid line toggle
   const [showGridLines, setShowGridLines] = useState(true);
-
-  const [canvasColor, setCanvasColor] = useState(null);
 
   const [engine, setEngine] = useState("grid");
   const {
@@ -454,33 +456,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
 
-  // ====== size update ======
-  const resizeLayer = (grid, r, c) =>
-    Array.from({ length: r }, (_, ri) =>
-      Array.from({ length: c }, (_, ci) => grid[ri]?.[ci] ?? null)
-    );
-
-  const updateGridSizes = () => {
-    const r = Math.max(1, Math.min(200, parseInt(rowsInput) || 30));
-    const c = Math.max(1, Math.min(200, parseInt(colsInput) || 30));
-    setMaps((prev) => ({
-      background: resizeLayer(prev.background, r, c),
-      base: resizeLayer(prev.base, r, c),
-      sky: resizeLayer(prev.sky, r, c),
-    }));
-
-    // objects keep their positions; optional: clip objects that go out of bounds
-    setObjects((prev) => {
-      const clip = (arr) =>
-        arr.filter((o) => o.row >= 0 && o.col >= 0 && o.row < r && o.col < c);
-      return {
-        background: clip(prev.background),
-        base: clip(prev.base),
-        sky: clip(prev.sky),
-      };
-    });
-  };
-
   // ====== stroke lifecycle hooks (for Grid) ======
   const onBeginTileStroke = (layer) => {
     setUndoStack((prev) => [
@@ -536,48 +511,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
     }
   };
 
-  // ====== apply tile updates (grid color) ======
-  const placeTiles = (updates, colorHex = canvasColor) => {
-    setMaps((prev) => {
-      const src = prev[currentLayer];
-      let changed = false;
-      const nextLayer = src.map((row, ri) =>
-        row.map((tile, ci) => {
-          const hit = updates.some((u) => u.row === ri && u.col === ci);
-          if (!hit) return tile;
-          const newVal = isErasing ? null : colorHex;
-          if (newVal !== tile) changed = true;
-          return newVal;
-        })
-      );
-      if (!changed) return prev;
-      return { ...prev, [currentLayer]: nextLayer };
-    });
-  };
-
-  // Move an object by id
-  const moveObject = (layer, id, row, col) => {
-    setObjects((prev) => ({
-      ...prev,
-      [layer]: prev[layer].map((o) => (o.id === id ? { ...o, row, col } : o)),
-    }));
-  };
-
-  const updateObjectById = (layer, id, patch) => {
-    setObjects((prev) => ({
-      ...prev,
-      [layer]: prev[layer].map((o) => (o.id === id ? { ...o, ...patch } : o)),
-    }));
-  };
-
-  // Remove an object by id
-  const removeObjectById = (layer, id) => {
-    setObjects((prev) => ({
-      ...prev,
-      [layer]: prev[layer].filter((o) => o.id !== id),
-    }));
-  };
-
   const {
     regenerateLabelInstance,
     saveSelectionAsAsset,
@@ -609,34 +542,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
 
   // No-op: Do not track settings changes in undo/redo
   const snapshotSettings = () => {};
-
-  // ====== object add/remove ======
-  const addObject = (layer, obj) => {
-    setObjects((prev) => ({
-      ...prev,
-      [layer]: [...prev[layer], { ...obj, id: uid() }],
-    }));
-  };
-
-  const eraseObjectAt = (layer, row, col) => {
-    setObjects((prev) => {
-      const arr = [...prev[layer]];
-      // remove the top-most object whose footprint covers (row,col)
-      for (let i = arr.length - 1; i >= 0; i--) {
-        const o = arr[i];
-        const within =
-          row >= o.row &&
-          row < o.row + o.hTiles &&
-          col >= o.col &&
-          col < o.col + o.wTiles;
-        if (within) {
-          arr.splice(i, 1);
-          break;
-        }
-      }
-      return { ...prev, [layer]: arr };
-    });
-  };
 
   // ====== undo / redo ======
   const undo = () => {
