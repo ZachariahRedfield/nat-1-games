@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import AssetPanel from './AssetPanel';
+import AssetPanel from '../asset-library/AssetPanel.jsx';
 import BrushSettings from "./BrushSettings";
 
 function AssetPreview({ selectedAsset, gridSettings }) {
