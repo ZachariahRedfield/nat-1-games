@@ -1,6 +1,5 @@
-import MapStatus from "./MapStatus";
 import React, { useRef, useState, useEffect } from "react";
-import Grid from "../canvas/Grid/Grid.jsx";
+import Grid from "../../canvas/Grid/Grid.jsx";
 import {
   saveProject as saveProjectManager,
   saveProjectAs as saveProjectAsManager,
@@ -12,74 +11,39 @@ import {
   isAssetsFolderConfigured,
   hasCurrentProjectDir,
   clearCurrentProjectDir,
-} from "../../application/save-load/index.js";
+} from "../../../application/save-load/index.js";
 
-import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "./utils";
-import BrushSettings from "./BrushSettings";
-import { NumericInput, RotationWheel, TextCommitInput, SiteHeader } from "../../../shared/index.js";
-import SaveSelectionDialog from "./SaveSelectionDialog";
-import Header from "./Header";
-import LayerBar from "./LayerBar";
-import BottomAssetsDrawer from "./BottomAssetsDrawer";
-import AssetCreator from "./AssetCreator";
-import VerticalToolStrip from "./VerticalToolStrip";
-import { useOverlayLayout } from "./modules/layout/useOverlayLayout.js";
-import { useZoomControls } from "./modules/interaction/useZoomControls.js";
-import FeedbackLayer from "./modules/feedback/FeedbackLayer.jsx";
-import { useFeedbackState } from "./modules/feedback/useFeedbackState.js";
-import { useAssetLibrary } from "./modules/assets/useAssetLibrary.js";
-import { useAssetExports } from "./modules/assets/useAssetExports.js";
-import { useLegacyProjectSaving } from "./modules/save-load/useLegacyProjectSaving.js";
-import { useLegacyProjectLoading } from "./modules/save-load/useLegacyProjectLoading.js";
-import { useTokenState } from "./modules/tokens/index.js";
-
-// Compact tool icons for Interaction area
-const BrushIcon = ({ className = "w-4 h-4" }) => (
-  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M2 12c2 0 3-.8 3-2l5.2-5.2 2 2L7 12c-.8.8-2 .9-3 .9H2z" />
-    <path d="M10 2l4 4 1-1c.6-.6.6-1.4 0-2l-2-2c-.6-.6-1.4-.6-2 0l-1 1z" />
-  </svg>
-);
-const CursorIcon = ({ className = "w-4 h-4" }) => (
-  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M3 2l8 6-4 1 1 4-2 1-1-4-4-1z" />
-  </svg>
-);
-const EraserIcon = ({ className = "w-4 h-4" }) => (
-  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M3 10l5-5 4 4-5 5H3l-2-2 4-4z" />
-    <path d="M7 14h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-  </svg>
-);
-const GridIcon = ({ className = "w-4 h-4" }) => (
-  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" />
-  </svg>
-);
-const CanvasIcon = ({ className = "w-4 h-4" }) => (
-  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M8 2c1.2 2 4 4 4 7a4 4 0 11-8 0c0-3 2.8-5 4-7z" />
-  </svg>
-);
-const SaveIcon = ({ className = "w-4 h-4" }) => (
-  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M2 2h9l3 3v9H2z" />
-    <path d="M4 2h6v4H4zM4 11h8v2H4z" fill="currentColor" />
-  </svg>
-);
-const ZoomIcon = ({ className = "w-4 h-4" }) => (
-  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
-    <circle cx="7" cy="7" r="4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-    <path d="M10.5 10.5l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-  </svg>
-);
-
-// Simple hand/grab icon for Pan tool
-const PanIcon = ({ className = "w-4 h-4" }) => (
-  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
-    <path d="M6 2c.6 0 1 .4 1 1v3h1V2c0-.6.4-1 1-1s1 .4 1 1v4h1V3c0-.6.4-1 1-1s1 .4 1 1v5h1V5c0-.6.4-1 1-1s1 .4 1 1v6c0 2.2-1.8 4-4 4H7c-2.8 0-5-2.2-5-5V9c0-1.1.9-2 2-2h1V3c0-.6.4-1 1-1z" />
-  </svg>
-);
+import { LAYERS, uid, deepCopyGrid, deepCopyObjects, makeGrid } from "../utils.js";
+import { SiteHeader } from "../../../../shared/index.js";
+import SaveSelectionDialog from "../SaveSelectionDialog.jsx";
+import Header from "../Header.jsx";
+import LayerBar from "../LayerBar.jsx";
+import BottomAssetsDrawer from "../BottomAssetsDrawer.jsx";
+import VerticalToolStrip from "../VerticalToolStrip.jsx";
+import { useOverlayLayout } from "../modules/layout/useOverlayLayout.js";
+import { useZoomControls } from "../modules/interaction/useZoomControls.js";
+import FeedbackLayer from "../modules/feedback/FeedbackLayer.jsx";
+import { useFeedbackState } from "../modules/feedback/useFeedbackState.js";
+import { useAssetLibrary } from "../modules/assets/useAssetLibrary.js";
+import { useAssetExports } from "../modules/assets/useAssetExports.js";
+import { useLegacyProjectSaving } from "../modules/save-load/useLegacyProjectSaving.js";
+import { useLegacyProjectLoading } from "../modules/save-load/useLegacyProjectLoading.js";
+import { useTokenState } from "../modules/tokens/index.js";
+import {
+  BrushIcon,
+  CanvasIcon,
+  CursorIcon,
+  EraserIcon,
+  GridIcon,
+  PanIcon,
+  SaveIcon,
+  ZoomIcon,
+} from "./components/ToolIcons.jsx";
+import AssetCreatorModal from "./components/AssetCreatorModal.jsx";
+import LoadMapsModal from "./components/LoadMapsModal.jsx";
+import MapSizeModal from "./components/MapSizeModal.jsx";
+import AssetsFolderBanner from "./components/AssetsFolderBanner.jsx";
+import LegacySettingsPanel from "./components/LegacySettingsPanel.jsx";
 
 export default function MapBuilder({ goBack, session, onLogout, onNavigate, currentScreen }) {
   // --- dimensions ---
@@ -1089,12 +1053,10 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       />
 
 
-      {needsAssetsFolder && (
-        <div className="bg-amber-800 text-amber-100 border-b border-amber-600 px-4 py-2 flex items-center justify-between">
-          <div className="text-sm">Select an Assets folder to enable saving/loading assets across projects.</div>
-          <button className="px-2 py-1 bg-amber-600 hover:bg-amber-500 rounded text-xs" onClick={promptChooseAssetsFolder}>Choose Assets Folder</button>
-        </div>
-      )}
+      <AssetsFolderBanner
+        needsAssetsFolder={needsAssetsFolder}
+        onChooseFolder={promptChooseAssetsFolder}
+      />
 
       <main className="flex flex-1 overflow-hidden min-h-0">
         <FeedbackLayer
@@ -1108,302 +1070,66 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
           onConfirmCancel={cancelConfirm}
         />
 
-        {/* ASSET CREATOR MODAL */}
-        {creatorOpen && (
-          <div className="fixed inset-0 z-[10057] flex items-center justify-center bg-black/60">
-            <div className="w-[96%] max-w-2xl max-h-[86vh] overflow-auto bg-gray-900 border border-gray-700 rounded text-gray-100">
-              <div className="p-3 border-b border-gray-700 flex items-center justify-between">
-                <div className="font-semibold">{editingAsset ? 'Edit Asset' : 'Create Asset'}</div>
-                <button className="px-2 py-1 text-xs bg-gray-700 rounded" onClick={()=> { setCreatorOpen(false); setEditingAsset(null); }}>Close</button>
-              </div>
-              <div className="p-3">
-                <AssetCreator
-                  kind={creatorKind}
-                  onClose={() => { setCreatorOpen(false); setEditingAsset(null); }}
-                  onCreate={handleCreatorCreate}
-                  onUpdate={(updated)=> {
-                    if (!editingAsset) return;
-                    updateAssetById(editingAsset.id, updated);
-                  }}
-                  initialAsset={editingAsset}
-                  selectedImageSrc={selectedAsset?.kind==='image' ? selectedAsset?.src : null}
-                  mode={editingAsset ? 'edit' : 'create'}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+        <AssetCreatorModal
+          open={creatorOpen}
+          editingAsset={editingAsset}
+          creatorKind={creatorKind}
+          selectedAsset={selectedAsset}
+          onClose={() => {
+            setCreatorOpen(false);
+            setEditingAsset(null);
+          }}
+          onCreate={handleCreatorCreate}
+          onUpdate={(updated) => {
+            if (!editingAsset) return;
+            updateAssetById(editingAsset.id, updated);
+          }}
+        />
 
-        {/* LOAD MAPS MODAL */}
-        {loadModalOpen && (
-          <div className="fixed inset-0 z-[10055] flex items-center justify-center bg-black/60">
-            <div className="w-[96%] max-w-2xl max-h-[80vh] overflow-hidden bg-gray-900 border border-gray-700 rounded text-gray-100">
-              <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-                <div className="font-semibold">Load Map</div>
-                <button className="px-2 py-1 text-xs bg-gray-700 rounded" onClick={closeLoadModal}>Close</button>
-              </div>
-              <div className="p-3 overflow-auto" style={{ maxHeight: '64vh' }}>
-                {mapsList.length === 0 ? (
-                  <div className="text-sm text-gray-300">No maps found. Use Save or Save As to create one.</div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {mapsList.map((m, idx) => (
-                      <div key={idx} className="text-left px-3 py-2 border border-gray-700 rounded bg-gray-800">
-                        <div className="font-medium truncate">{m.name || m.folderName}</div>
-                        <div className="text-xs text-gray-300 truncate">Folder: {m.folderName}</div>
-                        {m.mtime ? (<div className="text-[10px] text-gray-400">Updated: {new Date(m.mtime).toLocaleString()}</div>) : null}
-                        <div className="mt-2 flex gap-2">
-                          <button className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded" onClick={()=> handleLoadMapFromList(m)}>Open</button>
-                          <button className="px-2 py-1 text-xs bg-red-700 hover:bg-red-600 rounded" onClick={()=> handleDeleteMapFromList(m)}>Delete</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        {/* TOOLBAR removed from layout (hidden) */}
-        <div className="hidden">
-            <div className="p-4 space-y-5 overflow-y-auto">
-              {/* Assets panel removed from toolbar; lives in bottom drawer */}
-
-              {/* Map Size controls moved to Manage Map modal */}
-              {/* Interaction section removed; tool controls live on the vertical strip */}
-
-              {/* SETTINGS (Brush) or Token */}
-              {!panToolActive && !zoomToolActive && (engine === "grid" || interactionMode === "select") && (
-                <div>
-                  {!selectedToken ? (
-                    <>
-                      {interactionMode === 'select' && (selectedObjsList?.length || 0) > 1 ? (
-                        <div className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700 rounded px-2 py-1">
-                          Multiple selected â€” settings locked. Save as a group to edit parent settings later.
-                        </div>
-                      ) : (
-                        <BrushSettings
-                          kind={interactionMode === 'select' ? 'grid' : (assetGroup === 'natural' ? 'natural' : 'grid')}
-                          titleOverride={interactionMode === 'select' ? 'Settings' : undefined}
-                          gridSettings={gridSettings}
-                          setGridSettings={setGridSettings}
-                          naturalSettings={naturalSettings}
-                          setNaturalSettings={setNaturalSettings}
-                          brushSize={brushSize}
-                          setBrushSize={setBrushSize}
-                          canvasOpacity={canvasOpacity}
-                          setCanvasOpacity={setCanvasOpacity}
-                          canvasSpacing={canvasSpacing}
-                          setCanvasSpacing={setCanvasSpacing}
-                          canvasBlendMode={canvasBlendMode}
-                          setCanvasBlendMode={setCanvasBlendMode}
-                          canvasSmoothing={canvasSmoothing}
-                          setCanvasSmoothing={setCanvasSmoothing}
-                          tileSize={tileSize}
-                          snapshotSettings={snapshotSettings}
-                        />
-                      )}
-
-                      {/* Label Settings when selecting a label/text object */}
-                      {selectedObj && ((selectedObjsList?.length || 0) <= 1) && (() => {
-                        const a = assets.find((x) => x.id === selectedObj.assetId);
-                        return a && a.kind === 'image' && a.labelMeta;
-                      })() && (
-                        <div className="mt-3">
-                          <h3 className="font-bold text-sm mb-2">Label Settings</h3>
-                          {(() => { const a = assets.find((x)=> x.id === selectedObj.assetId) || {}; const lm = a.labelMeta || {}; return (
-                            <div className="grid gap-2">
-                              <label className="text-xs">Text
-                                <TextCommitInput className="w-full p-1 text-black rounded" value={lm.text || ''} onCommit={(v)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, text: v }); }} />
-                              </label>
-                              <div className="grid grid-cols-2 gap-2">
-                                <label className="text-xs">Color
-                                  <input type="color" className="w-full h-8 p-0 border border-gray-500 rounded" value={lm.color || '#ffffff'} onChange={(e)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, color: e.target.value }); }} />
-                                </label>
-                                <label className="text-xs">Font Size
-                                  <NumericInput
-                                    value={lm.size || 28}
-                                    min={8}
-                                    max={128}
-                                    step={1}
-                                    onCommit={(v)=> { snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, size: v }); }}
-                                    className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                                  />
-                                </label>
-                                <label className="text-xs col-span-2">Font Family
-                                  <TextCommitInput className="w-full p-1 text-black rounded" value={lm.font || 'Arial'} onCommit={(v)=>{ snapshotSettings(); regenerateLabelInstance(selectedObj.assetId, { ...lm, font: v }); }} />
-                                </label>
-                              </div>
-                            </div>
-                          ); })()}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {(selectedTokensList?.length || 0) > 1 ? (
-                        <div className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700 rounded px-2 py-1">
-                          Multiple tokens selected â€” settings locked. Save as a Token Group to manage as a set.
-                        </div>
-                      ) : (
-                        <>
-                        <h3 className="font-bold text-sm mb-2">Token Settings</h3>
-                        <div className="grid gap-2">
-                        <div className="flex items-end gap-3 mb-1">
-                          <span className="text-xs">Size</span>
-                          <div className="inline-flex items-center">
-                            <div className="relative">
-                              <NumericInput
-                                value={gridSettings.sizeCols ?? gridSettings.sizeTiles}
-                                min={1}
-                                max={100}
-                                step={1}
-                                className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
-                                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, sizeCols: n })); }}
-                              />
-                              <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">X</span>
-                            </div>
-                          </div>
-                          <div className="inline-flex items-center">
-                            <div className="relative">
-                              <NumericInput
-                                value={gridSettings.sizeRows ?? gridSettings.sizeTiles}
-                                min={1}
-                                max={100}
-                                step={1}
-                                className="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
-                                onCommit={(v) => { const n = Math.max(1, Math.min(100, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, sizeRows: n })); }}
-                              />
-                              <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Y</span>
-                            </div>
-                          </div>
-                        </div>
-                        <label className="block text-xs">Rotation</label>
-                        <div className="flex items-center gap-3 mb-1">
-                          <NumericInput
-                            value={gridSettings.rotation}
-                            min={0}
-                            max={359}
-                            step={1}
-                            className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                            onCommit={(v) => { const n = Math.max(0, Math.min(359, Math.round(v))); snapshotSettings(); setGridSettings((s) => ({ ...s, rotation: n })); }}
-                          />
-                          <RotationWheel
-                            value={gridSettings.rotation}
-                            onChange={(n) => { const d = Math.max(0, Math.min(359, Math.round(n))); snapshotSettings(); setGridSettings((s) => ({ ...s, rotation: d })); }}
-                            size={72}
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <label className="text-xs"><input type="checkbox" checked={gridSettings.flipX} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, flipX: e.target.checked })); }} />{" "}Flip X</label>
-                          <label className="text-xs"><input type="checkbox" checked={gridSettings.flipY} onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, flipY: e.target.checked })); }} />{" "}Flip Y</label>
-                        </div>
-                        <label className="block text-xs">Opacity</label>
-                        <div className="w-full">
-                          <style>{`.alpha-range{ -webkit-appearance:none; appearance:none; width:100%; background:transparent; height:24px; margin:0; }
-                          .alpha-range:focus{ outline:none; }
-                          .alpha-range::-webkit-slider-runnable-track{ height:12px; border-radius:2px; background-color:#e5e7eb; background-image: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1)), linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%); background-size:auto,8px 8px,8px 8px,8px 8px,8px 8px; background-position:0 0,0 0,0 4px,4px -4px,-4px 0px; }
-                          .alpha-range::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:4px; margin-top:-2px; background:#ffffff; border:2px solid #374151; box-shadow:0 0 0 1px rgba(0,0,0,0.1); }
-                          .alpha-range::-moz-range-track{ height:12px; border-radius:2px; background-color:#e5e7eb; background-image: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1)), linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%); background-size:auto,8px 8px,8px 8px,8px 8px,8px 8px; background-position:0 0,0 0,0 4px,4px -4px,-4px 0px; }
-                          .alpha-range::-moz-range-thumb{ width:16px; height:16px; border-radius:4px; background:#ffffff; border:2px solid #374151; }`}</style>
-                          <input
-                            type="range"
-                            min="0.05"
-                            max="1"
-                            step="0.05"
-                            value={gridSettings.opacity}
-                            onChange={(e) => { snapshotSettings(); setGridSettings((s) => ({ ...s, opacity: parseFloat(e.target.value) })); }}
-                            className="alpha-range"
-                            aria-label="Opacity"
-                          />
-                        </div>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        <label className="text-xs">Name
-                          <TextCommitInput className="w-full p-1 text-black rounded" value={selectedToken?.meta?.name || ''} onCommit={(v) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, name: v } })} />
-                        </label>
-                        <label className="text-xs">HP
-                          <NumericInput
-                            value={selectedToken?.meta?.hp ?? 0}
-                            min={-9999}
-                            max={999999}
-                            step={1}
-                            onCommit={(v) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, hp: Math.round(v) } })}
-                            className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                          />
-                        </label>
-                        <label className="text-xs">Initiative
-                          <NumericInput
-                            value={selectedToken?.meta?.initiative ?? 0}
-                            min={-99}
-                            max={999}
-                            step={1}
-                            onCommit={(v) => updateTokenById(selectedToken.id, { meta: { ...selectedToken.meta, initiative: Math.round(v) } })}
-                            className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                          />
-                        </label>
-                        <label className="text-xs inline-flex items-center gap-2">
-                          <input type="checkbox" checked={tokenHUDVisible} onChange={(e)=> setTokenHUDVisible(e.target.checked)} /> Show Token HUD
-                        </label>
-                        <label className="text-xs inline-flex items-center gap-2">
-                          <input type="checkbox" checked={tokenHUDShowInitiative} onChange={(e)=> setTokenHUDShowInitiative(e.target.checked)} /> Show Initiative in HUD
-                        </label>
-                      </div>
-                        {/* Glow color */}
-                        <div className="mt-2">
-                          <label className="text-xs">Glow Color</label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <input
-                              type="color"
-                              value={selectedToken.glowColor || '#7dd3fc'}
-                              onChange={(e) => updateTokenById(selectedToken.id, { glowColor: e.target.value })}
-                              className="w-10 h-6 p-0 border border-gray-500 rounded"
-                              title="Token glow color"
-                            />
-                            <input
-                              type="text"
-                              className="flex-1 p-1 text-black rounded"
-                              value={selectedToken.glowColor || '#7dd3fc'}
-                              onChange={(e) => updateTokenById(selectedToken.id, { glowColor: e.target.value })}
-                              placeholder="#7dd3fc"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      </>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* CANVAS BRUSH SETTINGS */}
-              {!panToolActive && !zoomToolActive && assetGroup !== 'token' && engine === "canvas" && interactionMode !== 'select' && (
-                <BrushSettings
-                  kind="canvas"
-                  gridSettings={gridSettings}
-                  setGridSettings={setGridSettings}
-                  naturalSettings={naturalSettings}
-                  setNaturalSettings={setNaturalSettings}
-                  brushSize={brushSize}
-                  setBrushSize={setBrushSize}
-                  canvasOpacity={canvasOpacity}
-                  setCanvasOpacity={setCanvasOpacity}
-                  canvasSpacing={canvasSpacing}
-                  setCanvasSpacing={setCanvasSpacing}
-                  canvasBlendMode={canvasBlendMode}
-                  setCanvasBlendMode={setCanvasBlendMode}
-                  canvasSmoothing={canvasSmoothing}
-                  setCanvasSmoothing={setCanvasSmoothing}
-                  tileSize={tileSize}
-                  snapshotSettings={snapshotSettings}
-                />
-              )}
-
-
-              {/* STATUS */}
-              <MapStatus selectedAsset={selectedAsset} engine={engine} currentLayer={currentLayer} layerVisibility={layerVisibility} />
-            </div>
-          </div>
+        <LoadMapsModal
+          open={loadModalOpen}
+          mapsList={mapsList}
+          onClose={closeLoadModal}
+          onOpenMap={handleLoadMapFromList}
+          onDeleteMap={handleDeleteMapFromList}
+        />
+        <LegacySettingsPanel
+          panToolActive={panToolActive}
+          zoomToolActive={zoomToolActive}
+          engine={engine}
+          interactionMode={interactionMode}
+          assetGroup={assetGroup}
+          selectedAsset={selectedAsset}
+          currentLayer={currentLayer}
+          layerVisibility={layerVisibility}
+          selectedObj={selectedObj}
+          selectedObjsList={selectedObjsList}
+          selectedToken={selectedToken}
+          selectedTokensList={selectedTokensList}
+          assets={assets}
+          gridSettings={gridSettings}
+          setGridSettings={setGridSettings}
+          naturalSettings={naturalSettings}
+          setNaturalSettings={setNaturalSettings}
+          brushSize={brushSize}
+          setBrushSize={setBrushSize}
+          canvasOpacity={canvasOpacity}
+          setCanvasOpacity={setCanvasOpacity}
+          canvasSpacing={canvasSpacing}
+          setCanvasSpacing={setCanvasSpacing}
+          canvasBlendMode={canvasBlendMode}
+          setCanvasBlendMode={setCanvasBlendMode}
+          canvasSmoothing={canvasSmoothing}
+          setCanvasSmoothing={setCanvasSmoothing}
+          tileSize={tileSize}
+          snapshotSettings={snapshotSettings}
+          regenerateLabelInstance={regenerateLabelInstance}
+          updateTokenById={updateTokenById}
+          tokenHUDVisible={tokenHUDVisible}
+          setTokenHUDVisible={setTokenHUDVisible}
+          tokenHUDShowInitiative={tokenHUDShowInitiative}
+          setTokenHUDShowInitiative={setTokenHUDShowInitiative}
+        />
 
         {/* CENTERED DRAW AREA */}
         <div className="flex-1 overflow-hidden">
@@ -1551,46 +1277,18 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       </main>
 
       {/* MAP SIZE MODAL */}
-      {mapSizeModalOpen && (
-        <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60">
-          <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100">
-            <div className="font-semibold mb-2">Map Size</div>
-            <div className="grid grid-cols-2 gap-3 mb-3 items-end">
-              <label className="text-xs">Rows
-                <input
-                  type="number"
-                  value={rowsInput}
-                  min={1}
-                  max={200}
-                  step={1}
-                  onChange={(e)=> setRowsInput(e.target.value)}
-                  className="box-border w-full px-1 py-0.5 text-xs text-black rounded"
-                />
-              </label>
-              <label className="text-xs">Cols
-                <input
-                  type="number"
-                  value={colsInput}
-                  min={1}
-                  max={200}
-                  step={1}
-                  onChange={(e)=> setColsInput(e.target.value)}
-                  className="box-border w-full px-1 py-0.5 text-xs text-black rounded"
-                />
-              </label>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="px-2 py-1 text-xs bg-gray-700 rounded" onClick={()=> setMapSizeModalOpen(false)}>Cancel</button>
-              <button
-                className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded"
-                onClick={() => { updateGridSizes(); setMapSizeModalOpen(false); }}
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <MapSizeModal
+        open={mapSizeModalOpen}
+        rowsValue={rowsInput}
+        colsValue={colsInput}
+        onChangeRows={(event) => setRowsInput(event.target.value)}
+        onChangeCols={(event) => setColsInput(event.target.value)}
+        onCancel={() => setMapSizeModalOpen(false)}
+        onApply={() => {
+          updateGridSizes();
+          setMapSizeModalOpen(false);
+        }}
+      />
 
       {/* Bottom Assets drawer overlay (resizable, overlaps content) */}
       <BottomAssetsDrawer
