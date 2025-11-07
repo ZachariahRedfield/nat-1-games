@@ -31,6 +31,7 @@ import { useAssetLibrary } from "./modules/assets/useAssetLibrary.js";
 import { useAssetExports } from "./modules/assets/useAssetExports.js";
 import { useLegacyProjectSaving } from "./modules/save-load/useLegacyProjectSaving.js";
 import { useLegacyProjectLoading } from "./modules/save-load/useLegacyProjectLoading.js";
+import { useTokenState } from "./modules/tokens/index.js";
 
 // Compact tool icons for Interaction area
 const BrushIcon = ({ className = "w-4 h-4" }) => (
@@ -113,12 +114,24 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
 
   // --- tokens (characters / interactables) ---
   // token: { id, assetId, row, col, wTiles, hTiles, rotation, opacity, meta?:{ name, hp, initiative } }
-  const [tokens, setTokens] = useState([]);
-  const [tokensVisible, setTokensVisible] = useState(true);
-  const [selectedToken, setSelectedToken] = useState(null);
-  const [selectedTokensList, setSelectedTokensList] = useState([]);
-  const [tokenHUDVisible, setTokenHUDVisible] = useState(true);
-  const [tokenHUDShowInitiative, setTokenHUDShowInitiative] = useState(false);
+  const {
+    tokens,
+    setTokens,
+    tokensVisible,
+    setTokensVisible,
+    selectedToken,
+    setSelectedToken,
+    selectedTokensList,
+    setSelectedTokensList,
+    tokenHUDVisible,
+    setTokenHUDVisible,
+    tokenHUDShowInitiative,
+    setTokenHUDShowInitiative,
+    addToken,
+    moveToken,
+    updateTokenById,
+    removeTokenById,
+  } = useTokenState();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   // Toggle showing words under Save/Save As/Load in header center
@@ -599,23 +612,6 @@ export default function MapBuilder({ goBack, session, onLogout, onNavigate, curr
       ...prev,
       [layer]: prev[layer].filter((o) => o.id !== id),
     }));
-  };
-
-  // ====== tokens API ======
-  const addToken = (tok) => {
-    setTokens((prev) => [...prev, { ...tok, id: uid() }]);
-  };
-  const moveToken = (id, row, col) => {
-    setTokens((prev) => prev.map((t) => (t.id === id ? { ...t, row, col } : t)));
-  };
-  const updateTokenById = (id, patch) => {
-    // Update tokens array
-    setTokens((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-    // Keep the selectedToken in sync so controlled inputs don't reset while typing
-    setSelectedToken((cur) => (cur && cur.id === id ? { ...cur, ...patch } : cur));
-  };
-  const removeTokenById = (id) => {
-    setTokens((prev) => prev.filter((t) => t.id !== id));
   };
 
   const {
