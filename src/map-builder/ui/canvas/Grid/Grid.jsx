@@ -10,8 +10,12 @@ import SelectionOverlay from "./SelectionOverlay";
 import TokenLayer from "./TokenLayer";
 import CanvasLayers from "./CanvasLayers";
 import BrushPreview from "./BrushPreview";
-import SelectionMiniPanel from "../SelectionMiniPanel";
 import PointerOverlay from "./PointerOverlay";
+import useGridSelection from "./selection/useGridSelection.js";
+import TokenSelectionOverlay from "./overlays/TokenSelectionOverlay.jsx";
+import ActiveSelectionMiniPanel from "./overlays/ActiveSelectionMiniPanel.jsx";
+import MarqueeOverlay from "./overlays/MarqueeOverlay.jsx";
+import ZoomToolOverlay from "./overlays/ZoomToolOverlay.jsx";
 
 export default function Grid({
   // ===== Props: data (what to render)
@@ -129,11 +133,41 @@ export default function Grid({
   // dist / lerp come from utils
 
   // Selection & dragging
-  const [selectedObjId, setSelectedObjId] = useState(null);
-  const [selectedTokenId, setSelectedTokenId] = useState(null);
-  const [selectedObjIds, setSelectedObjIds] = useState([]);
-  const [selectedTokenIds, setSelectedTokenIds] = useState([]);
   const dragRef = useRef(null); // { kind:'object'|'token', id, offsetRow, offsetCol }
+
+  const {
+    selectedObjId,
+    selectedObjIds,
+    selectedTokenId,
+    selectedTokenIds,
+    setSelectedObjId,
+    setSelectedObjIds,
+    setSelectedTokenId,
+    setSelectedTokenIds,
+    getSelectedObject,
+    getSelectedToken,
+    getObjectById,
+    getTokenById,
+  } = useGridSelection({
+    objects,
+    tokens,
+    assets,
+    currentLayer,
+    gridSettings,
+    rows,
+    cols,
+    dragRef,
+    assetGroup,
+    interactionMode,
+    onSelectionChange,
+    onTokenSelectionChange,
+    onBeginObjectStroke,
+    onBeginTokenStroke,
+    removeObjectById,
+    removeTokenById,
+    updateObjectById,
+    updateTokenById,
+  });
 
   // clamp comes from utils
 
@@ -200,9 +234,6 @@ export default function Grid({
     return null;
   };
 
-  const getObjectById = (layer, id) =>
-    (objects[layer] || []).find((o) => o.id === id);
-
   const getTopMostTokenAt = (r, c) => {
     for (let i = tokens.length - 1; i >= 0; i--) {
       const t = tokens[i];
@@ -213,20 +244,8 @@ export default function Grid({
     }
     return null;
   };
-  const getTokenById = (id) => tokens.find((t) => t.id === id);
-  const getSelectedToken = () => {
-    if (selectedTokenId) return getTokenById(selectedTokenId);
-    if (selectedTokenIds && selectedTokenIds.length === 1) return getTokenById(selectedTokenIds[0]);
-    return null;
-  };
 
   // ===== Resize handle hit-test (single-object only)
-  const getSelectedObject = () => {
-    if (selectedObjId) return getObjectById(currentLayer, selectedObjId);
-    if (selectedObjIds && selectedObjIds.length === 1) return getObjectById(currentLayer, selectedObjIds[0]);
-    return null;
-  };
-
   const hitResizeHandle = (xCss, yCss) => {
     const sel = getSelectedObject();
     if (!sel) return null;
@@ -585,145 +604,6 @@ export default function Grid({
     window.addEventListener("pointerup", up);
     return () => window.removeEventListener("pointerup", up);
   }, []);
-
-  useEffect(() => {
-    const onKey = (e) => {
-      const t = e.target;
-      if (t && (t.isContentEditable === true || (t.tagName && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')))) {
-        return; // ignore deletion hotkeys while typing in form fields
-      }
-      // Delete/Escape for tokens
-      if (selectedTokenIds.length || selectedTokenId) {
-        if (e.key === "Delete" || e.key === "Backspace") {
-          onBeginTokenStroke?.();
-          const ids = selectedTokenIds.length ? selectedTokenIds : (selectedTokenId ? [selectedTokenId] : []);
-          ids.forEach((id) => removeTokenById?.(id));
-          setSelectedTokenId(null);
-          setSelectedTokenIds([]);
-          onTokenSelectionChange?.([]);
-        } else if (e.key === "Escape") {
-          setSelectedTokenId(null);
-          setSelectedTokenIds([]);
-          dragRef.current = null;
-          onTokenSelectionChange?.([]);
-        }
-        return;
-      }
-      // Delete/Escape for objects
-      if (!(selectedObjIds.length || selectedObjId)) return;
-      if (e.key === "Delete" || e.key === "Backspace") {
-        onBeginObjectStroke?.(currentLayer);
-        const ids = selectedObjIds.length ? selectedObjIds : (selectedObjId ? [selectedObjId] : []);
-        ids.forEach((id) => removeObjectById(currentLayer, id));
-        setSelectedObjId(null);
-        setSelectedObjIds([]);
-        onSelectionChange?.([]);
-      } else if (e.key === "Escape") {
-        setSelectedObjId(null);
-        setSelectedObjIds([]);
-        dragRef.current = null;
-        onSelectionChange?.([]);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [selectedObjId, selectedTokenId, selectedObjIds, selectedTokenIds, currentLayer]);
-
-  // When switching asset group, clear opposite selections so controls don't update both
-  useEffect(() => {
-    if (assetGroup === 'token') {
-      if (selectedObjId) {
-        setSelectedObjId(null);
-        setSelectedObjIds([]);
-        onSelectionChange?.([]);
-      }
-    } else {
-      if (selectedTokenId) {
-        setSelectedTokenId(null);
-        setSelectedTokenIds([]);
-        onTokenSelectionChange?.([]);
-      }
-    }
-  }, [assetGroup]);
-
-  // When controls (gridSettings) change and an object is selected, live-update it
-  useEffect(() => {
-    if (!selectedObjId) return;
-    const obj = getObjectById(currentLayer, selectedObjId);
-    if (!obj) return;
-
-    // Compute new size from Size (tiles wide) while preserving aspect
-    const a = getAssetById(obj.assetId);
-    const aspect = a?.aspectRatio || 1;
-    let nextW = obj.wTiles;
-    let nextH = obj.hTiles;
-    const sc = gridSettings.sizeCols;
-    const sr = gridSettings.sizeRows;
-    const st = gridSettings.sizeTiles;
-    if (typeof sc === 'number' && sc >= 1) nextW = Math.max(1, Math.round(sc));
-    if (typeof sr === 'number' && sr >= 1) nextH = Math.max(1, Math.round(sr));
-    if ((typeof sc !== 'number' || sc < 1) && (typeof sr !== 'number' || sr < 1) && typeof st === 'number' && st >= 1) {
-      nextW = Math.max(1, Math.round(st));
-      nextH = Math.max(1, Math.round(nextW / aspect));
-    }
-
-    // Keep the object's center stable as you resize
-    const centerRow = obj.row + obj.hTiles / 2;
-    const centerCol = obj.col + obj.wTiles / 2;
-    const step = gridSettings?.snapStep ?? 1;
-    const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-    let newRow = snapLike ? Math.round(centerRow - nextH / 2) : (centerRow - nextH / 2);
-    let newCol = snapLike ? Math.round(centerCol - nextW / 2) : (centerCol - nextW / 2);
-    newRow = clamp(newRow, 0, Math.max(0, rows - nextH));
-    newCol = clamp(newCol, 0, Math.max(0, cols - nextW));
-
-    updateObjectById(currentLayer, obj.id, {
-      wTiles: nextW,
-      hTiles: nextH,
-      row: newRow,
-      col: newCol,
-      rotation: gridSettings.rotation || 0,
-      flipX: !!gridSettings.flipX,
-      flipY: !!gridSettings.flipY,
-      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
-    });
-  }, [gridSettings, selectedObjId, currentLayer, rows, cols]);
-
-  // Live-update selected token when gridSettings change (size/rotation/opacity)
-  useEffect(() => {
-    if (!selectedTokenId) return;
-    const tok = getTokenById(selectedTokenId);
-    if (!tok) return;
-    let wTiles = tok.wTiles || 1;
-    let hTiles = tok.hTiles || 1;
-    const sc2 = gridSettings.sizeCols;
-    const sr2 = gridSettings.sizeRows;
-    const st2 = gridSettings.sizeTiles;
-    if (typeof sc2 === 'number' && sc2 >= 1) wTiles = Math.max(1, Math.round(sc2));
-    if (typeof sr2 === 'number' && sr2 >= 1) hTiles = Math.max(1, Math.round(sr2));
-    if ((typeof sc2 !== 'number' || sc2 < 1) && (typeof sr2 !== 'number' || sr2 < 1) && typeof st2 === 'number' && st2 >= 1) {
-      wTiles = Math.max(1, Math.round(st2));
-      hTiles = Math.max(1, Math.round(wTiles));
-    }
-    const centerRow = tok.row + (tok.hTiles || 1) / 2;
-    const centerCol = tok.col + (tok.wTiles || 1) / 2;
-    const step = gridSettings?.snapStep ?? 1;
-    const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-    let newRow = snapLike ? Math.round(centerRow - hTiles / 2) : (centerRow - hTiles / 2);
-    let newCol = snapLike ? Math.round(centerCol - wTiles / 2) : (centerCol - wTiles / 2);
-    newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
-    newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
-    updateTokenById?.(selectedTokenId, {
-      wTiles,
-      hTiles,
-      row: newRow,
-      col: newCol,
-      rotation: gridSettings.rotation || 0,
-      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
-      flipX: !!gridSettings.flipX,
-      flipY: !!gridSettings.flipY,
-    });
-  }, [gridSettings, selectedTokenId, rows, cols]);
 
   const [panHotkey, setPanHotkey] = useState(false); // spacebar held?
 
@@ -1303,8 +1183,6 @@ export default function Grid({
       : "transparent";
   };
 
-  // find asset by id (cheap enough for now)
-  const getAssetById = (id) => assets.find((a) => a.id === id);
   // Decide cursor based on pan/select/visibility
   let cursorStyle = "default";
   if (isPanning || panHotkey || (dragRef.current && (dragRef.current.kind === 'rotate-obj' || dragRef.current.kind === 'rotate-token'))) cursorStyle = "grabbing";
@@ -1332,17 +1210,6 @@ export default function Grid({
       else cursorStyle = 'default';
     }
   }
-
-  // When switching interaction mode away from select, clear any selections
-  useEffect(() => {
-    if (interactionMode === 'select') return;
-    setSelectedObjId(null);
-    setSelectedObjIds([]);
-    onSelectionChange?.([]);
-    setSelectedTokenId(null);
-    setSelectedTokenIds([]);
-    onTokenSelectionChange?.([]);
-  }, [interactionMode]);
 
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>
@@ -1395,64 +1262,13 @@ export default function Grid({
         />
 
         {/* 4b) Token selection overlay */}
-        {tokensVisible && (selectedTokenIds.length || selectedTokenId) && (
-          (() => {
-            const ids = selectedTokenIds.length ? selectedTokenIds : (selectedTokenId ? [selectedTokenId] : []);
-            return (
-              <>
-                {ids.map((id) => {
-                  const t = getTokenById(id);
-                  if (!t) return null;
-                  const left = t.col * tileSize;
-                  const top = t.row * tileSize;
-                  const w = (t.wTiles || 1) * tileSize;
-                  const h = (t.hTiles || 1) * tileSize;
-                  return (
-                    <div
-                      key={`tsel-${id}`}
-                      className="absolute pointer-events-none"
-                      style={{
-                        left,
-                        top,
-                        width: w,
-                        height: h,
-                        zIndex: 9998,
-                        border: "2px dashed #22d3ee",
-                        boxShadow: "0 0 0 2px rgba(34,211,238,0.25) inset",
-                      }}
-                    />
-                  );
-                })}
-                {/* token corner handles */}
-                {ids.map((id) => {
-                  const t = getTokenById(id);
-                  if (!t) return null;
-                  const left = t.col * tileSize;
-                  const top = t.row * tileSize;
-                  const w = (t.wTiles || 1) * tileSize;
-                  const h = (t.hTiles || 1) * tileSize;
-                  const sz = 8; const half = Math.floor(sz/2);
-                  const corners = [
-                    { k:'nw', x:left, y:top },
-                    { k:'ne', x:left+w, y:top },
-                    { k:'sw', x:left, y:top+h },
-                    { k:'se', x:left+w, y:top+h },
-                  ];
-                  return corners.map((c)=> (
-                    <div
-                      key={`thdl-${id}-${c.k}`}
-                      className="absolute bg-cyan-300 shadow pointer-events-none"
-                      style={{ left: c.x - half, top: c.y - half, width: sz, height: sz, zIndex: 9999, borderRadius: 2 }}
-                    />
-                  ));
-                })}
-                {/* token rotation ring (single selection) */}
-                {(() => { if (ids.length !== 1) return null; const t = getTokenById(ids[0]); if (!t) return null; const cx=(t.col + (t.wTiles||1)/2)*tileSize; const cy=(t.row + (t.hTiles||1)/2)*tileSize; const rx=((t.wTiles||1)*tileSize)/2; const ry=((t.hTiles||1)*tileSize)/2; const r=Math.sqrt(rx*rx+ry*ry)+8; const d=r*2; return (
-                  <div key={`trot-${ids[0]}`} className="absolute pointer-events-none" style={{ left: cx - r, top: cy - r, width: d, height: d, zIndex: 10000, borderRadius: '50%', boxShadow: '0 0 0 2px rgba(34,211,238,0.55) inset' }} />
-                ); })()}
-              </>
-            );
-          })()
+        {tokensVisible && (
+          <TokenSelectionOverlay
+            selectedTokenId={selectedTokenId}
+            selectedTokenIds={selectedTokenIds}
+            getTokenById={getTokenById}
+            tileSize={tileSize}
+          />
         )}
 
         {/* 5) Per-layer CANVASES (VFX) - on top */}
@@ -1486,141 +1302,25 @@ export default function Grid({
           onPointerUp={handlePointerUp}
         />
 
-        {(() => {
-          const obj = getSelectedObject();
-          if (obj) {
-            return (
-              <SelectionMiniPanel
-                key={`obj-${obj.id}`}
-                obj={obj}
-                tileSize={tileSize}
-                containerSize={{ w: cssWidth, h: cssHeight }}
-                onChangeSize={(newW, newH) => {
-                  const centerRow = obj.row + obj.hTiles / 2;
-                  const centerCol = obj.col + obj.wTiles / 2;
-                  const wTiles = Math.max(1, Math.round(newW));
-                  const hTiles = Math.max(1, Math.round(newH));
-                  let newRow = Math.round(centerRow - hTiles / 2);
-                  let newCol = Math.round(centerCol - wTiles / 2);
-                  newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
-                  newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
-                  updateObjectById(currentLayer, obj.id, { wTiles, hTiles, row: newRow, col: newCol });
-                  setGridSettings?.((s) => ({ ...s, sizeCols: wTiles, sizeRows: hTiles }));
-                }}
-                onRotate={(delta) => {
-                  const r0 = obj.rotation || 0;
-                  let next = (r0 + delta) % 360;
-                  if (next < 0) next += 360;
-                  const rot = Math.round(next);
-                  updateObjectById(currentLayer, obj.id, { rotation: rot });
-                  setGridSettings?.((s) => ({ ...s, rotation: rot }));
-                }}
-                onFlipX={() => { updateObjectById(currentLayer, obj.id, { flipX: !obj.flipX }); setGridSettings?.((s)=> ({ ...s, flipX: !obj.flipX })); }}
-                onFlipY={() => { updateObjectById(currentLayer, obj.id, { flipY: !obj.flipY }); setGridSettings?.((s)=> ({ ...s, flipY: !obj.flipY })); }}
-                opacity={Math.max(0.05, Math.min(1, obj.opacity ?? (gridSettings.opacity ?? 1)))}
-                onChangeOpacity={(val) => {
-                  const v = Math.max(0.05, Math.min(1, val || 0));
-                  updateObjectById(currentLayer, obj.id, { opacity: v });
-                  setGridSettings?.((s) => ({ ...s, opacity: v }));
-                }}
-                snapToGrid={!!gridSettings.snapToGrid}
-                onToggleSnap={() => {
-                  setGridSettings?.((s) => ({ ...s, snapToGrid: !s?.snapToGrid }));
-                }}
-                linkXY={!!gridSettings.linkXY}
-                onToggleLink={() => setGridSettings?.((s) => ({ ...s, linkXY: !s?.linkXY }))}
-              />
-            );
-          }
-          const tok = getSelectedToken();
-          if (tok) {
-            return (
-              <SelectionMiniPanel
-                key={`tok-${tok.id}`}
-                obj={tok}
-                tileSize={tileSize}
-                containerSize={{ w: cssWidth, h: cssHeight }}
-                onChangeSize={(newW, newH) => {
-                  const centerRow = tok.row + (tok.hTiles || 1) / 2;
-                  const centerCol = tok.col + (tok.wTiles || 1) / 2;
-                  const wTiles = Math.max(1, Math.round(newW));
-                  const hTiles = Math.max(1, Math.round(newH));
-                  let newRow = Math.round(centerRow - hTiles / 2);
-                  let newCol = Math.round(centerCol - wTiles / 2);
-                  newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
-                  newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
-                  updateTokenById?.(tok.id, { wTiles, hTiles, row: newRow, col: newCol });
-                  setGridSettings?.((s) => ({ ...s, sizeCols: wTiles, sizeRows: hTiles }));
-                }}
-                onRotate={(delta) => {
-                  const r0 = tok.rotation || 0;
-                  let next = (r0 + delta) % 360;
-                  if (next < 0) next += 360;
-                  const rot = Math.round(next);
-                  updateTokenById?.(tok.id, { rotation: rot });
-                  setGridSettings?.((s) => ({ ...s, rotation: rot }));
-                }}
-                onFlipX={() => { updateTokenById?.(tok.id, { flipX: !tok.flipX }); setGridSettings?.((s)=> ({ ...s, flipX: !tok.flipX })); }}
-                onFlipY={() => { updateTokenById?.(tok.id, { flipY: !tok.flipY }); setGridSettings?.((s)=> ({ ...s, flipY: !tok.flipY })); }}
-                opacity={Math.max(0.05, Math.min(1, tok.opacity ?? (gridSettings.opacity ?? 1)))}
-                onChangeOpacity={(val) => {
-                  const v = Math.max(0.05, Math.min(1, val || 0));
-                  updateTokenById?.(tok.id, { opacity: v });
-                  setGridSettings?.((s) => ({ ...s, opacity: v }));
-                }}
-                snapToGrid={!!gridSettings.snapToGrid}
-                onToggleSnap={() => {
-                  setGridSettings?.((s) => ({ ...s, snapToGrid: !s?.snapToGrid }));
-                }}
-                linkXY={!!gridSettings.linkXY}
-                onToggleLink={() => setGridSettings?.((s) => ({ ...s, linkXY: !s?.linkXY }))}
-                highlightColor={tok.glowColor || '#7dd3fc'}
-                onChangeHighlightColor={(hex) => {
-                  const val = typeof hex === 'string' && hex.trim() ? hex.trim() : '#7dd3fc';
-                  updateTokenById?.(tok.id, { glowColor: val });
-                }}
-              />
-            );
-          }
-          return null;
-        })()}
+        <ActiveSelectionMiniPanel
+          selectedObject={getSelectedObject()}
+          selectedToken={getSelectedToken()}
+          tileSize={tileSize}
+          containerSize={{ w: cssWidth, h: cssHeight }}
+          currentLayer={currentLayer}
+          rows={rows}
+          cols={cols}
+          gridSettings={gridSettings}
+          setGridSettings={setGridSettings}
+          updateObjectById={updateObjectById}
+          updateTokenById={updateTokenById}
+        />
 
         {/* 8) Marquee overlay */}
-        {dragRef.current && (dragRef.current.kind === 'marquee-obj' || dragRef.current.kind === 'marquee-token') && (
-          (() => {
-            const { startRow, startCol, curRow, curCol } = dragRef.current;
-            const left = Math.min(startCol, curCol) * tileSize;
-            const top = Math.min(startRow, curRow) * tileSize;
-            const w = Math.abs(curCol - startCol) * tileSize;
-            const h = Math.abs(curRow - startRow) * tileSize;
-            return (
-              <div
-                className="absolute pointer-events-none border border-blue-400/70 bg-blue-400/10"
-                style={{ left, top, width: w, height: h, zIndex: 9999 }}
-              />
-            );
-          })()
-        )}
+        <MarqueeOverlay dragState={dragRef.current} tileSize={tileSize} />
 
         {/* 9) Zoom Tool overlays */}
-        {zoomToolActive && zoomDragRef.current && zoomDragRef.current.kind === 'marquee' && (() => {
-          const z = zoomDragRef.current;
-          const left = Math.min(z.startCss.x, z.curCss.x);
-          const top = Math.min(z.startCss.y, z.curCss.y);
-          const w = Math.abs(z.curCss.x - z.startCss.x);
-          const h = Math.abs(z.curCss.y - z.startCss.y);
-          return (
-            <div
-              className="absolute pointer-events-none border border-emerald-400/80 bg-emerald-400/10"
-              style={{ left, top, width: w, height: h, zIndex: 10000 }}
-            />
-          );
-        })()}
-        {zoomToolActive && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[10001] px-3 py-1 rounded bg-emerald-800/80 text-emerald-100 text-[11px] border border-emerald-600">
-            Zoom Tool: Drag a rectangle to zoom. Esc to exit.
-          </div>
-        )}
+        <ZoomToolOverlay active={zoomToolActive} dragState={zoomDragRef.current} />
 
 
         
