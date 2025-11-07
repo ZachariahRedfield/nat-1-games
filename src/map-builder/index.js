@@ -1,4 +1,4 @@
-export { default as MapBuilderScreen } from "./ui/legacy/MapBuilder.jsx";
+export { default as MapBuilderScreen } from "./ui/legacy/screen/MapBuilderScreen.jsx";
 export {
   clearCurrentProjectDir,
   hasCurrentProjectDir,
