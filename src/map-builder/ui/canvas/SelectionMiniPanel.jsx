@@ -20,56 +20,86 @@ export default function SelectionMiniPanel({
   highlightColor,
   onChangeHighlightColor,
 }) {
-  if (!obj) return null;
-
   const panelW = 280;
-  const showHighlight = (typeof highlightColor === 'string' && typeof onChangeHighlightColor === 'function');
+  const showHighlight = typeof highlightColor === "string" && typeof onChangeHighlightColor === "function";
+  const safeTileSize = Number.isFinite(tileSize) ? tileSize : 0;
+  const containerW = containerSize?.w ?? 0;
+  const containerH = containerSize?.h ?? 0;
   const panelH = showHighlight ? 196 : 156; // extra space to avoid overlap with opacity group
-  const left = obj.col * tileSize;
-  const top = obj.row * tileSize;
-  const w = (obj.wTiles || 1) * tileSize;
-  const h = (obj.hTiles || 1) * tileSize;
+  const left = (obj?.col ?? 0) * safeTileSize;
+  const top = (obj?.row ?? 0) * safeTileSize;
+  const w = (obj?.wTiles ?? 1) * safeTileSize;
+  const h = (obj?.hTiles ?? 1) * safeTileSize;
 
   // Try to place panel left of the object; fallback to right; clamp vertically
   let defX = left - panelW - 8;
   if (defX < 0) defX = left + w + 8;
   let defY = top + h / 2 - panelH / 2;
   const minY = 4;
-  const maxY = Math.max(minY, containerSize.h - panelH - 4);
+  const maxY = Math.max(minY, containerH - panelH - 4);
   defY = Math.max(minY, Math.min(maxY, defY));
+  const defaultPos = { x: defX, y: defY };
 
-  const [pos, setPos] = React.useState({ x: defX, y: defY });
+  const [pos, setPos] = React.useState(() => defaultPos);
   const movedRef = React.useRef(false);
-  React.useEffect(() => {
-    if (movedRef.current) return; // preserve manual position
-    setPos({ x: defX, y: defY });
-  }, [obj?.id, tileSize, containerSize.w, containerSize.h]);
-
-  // Dragging
+  const prevObjIdRef = React.useRef(obj?.id ?? null);
   const dragStartRef = React.useRef(null); // {x,y,px,py}
-  const onDragStart = (e) => {
-    const clientX = e.touches ? e.touches[0]?.clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0]?.clientY : e.clientY;
-    dragStartRef.current = { x: clientX, y: clientY, px: pos.x, py: pos.y };
-    movedRef.current = true;
-    window.addEventListener("pointermove", onDragMove);
-    window.addEventListener("pointerup", onDragEnd);
-  };
-  const onDragMove = (e) => {
-    const st = dragStartRef.current; if (!st) return;
-    const clientX = e.touches ? e.touches[0]?.clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0]?.clientY : e.clientY;
-    const dx = clientX - st.x;
-    const dy = clientY - st.y;
-    const nx = Math.max(4, Math.min(containerSize.w - panelW - 4, st.px + dx));
-    const ny = Math.max(4, Math.min(containerSize.h - panelH - 4, st.py + dy));
-    setPos({ x: nx, y: ny });
-  };
-  const onDragEnd = () => {
+
+  React.useEffect(() => {
+    const currentId = obj?.id ?? null;
+    if (prevObjIdRef.current !== currentId) {
+      prevObjIdRef.current = currentId;
+      movedRef.current = false;
+    }
+    if (!obj) {
+      setPos({ x: defaultPos.x, y: defaultPos.y });
+      return;
+    }
+    if (movedRef.current) return; // preserve manual position for same selection
+    setPos({ x: defaultPos.x, y: defaultPos.y });
+  }, [obj?.id, defaultPos.x, defaultPos.y, containerW, containerH, panelH]);
+
+  const onDragMove = React.useCallback(
+    (e) => {
+      const st = dragStartRef.current;
+      if (!st) return;
+      const point = e.touches ? e.touches[0] : e;
+      if (!point) return;
+      const dx = point.clientX - st.x;
+      const dy = point.clientY - st.y;
+      const nx = Math.max(4, Math.min(containerW - panelW - 4, st.px + dx));
+      const ny = Math.max(4, Math.min(containerH - panelH - 4, st.py + dy));
+      setPos({ x: nx, y: ny });
+    },
+    [containerW, containerH, panelH]
+  );
+
+  const onDragEnd = React.useCallback(() => {
     dragStartRef.current = null;
     window.removeEventListener("pointermove", onDragMove);
     window.removeEventListener("pointerup", onDragEnd);
-  };
+  }, [onDragMove]);
+
+  const onDragStart = React.useCallback(
+    (e) => {
+      const point = e.touches ? e.touches[0] : e;
+      if (!point) return;
+      dragStartRef.current = { x: point.clientX, y: point.clientY, px: pos.x, py: pos.y };
+      movedRef.current = true;
+      window.addEventListener("pointermove", onDragMove);
+      window.addEventListener("pointerup", onDragEnd);
+    },
+    [onDragEnd, onDragMove, pos.x, pos.y]
+  );
+
+  React.useEffect(() => {
+    return () => {
+      window.removeEventListener("pointermove", onDragMove);
+      window.removeEventListener("pointerup", onDragEnd);
+    };
+  }, [onDragMove, onDragEnd]);
+
+  if (!obj) return null;
 
   const handleSizeCommit = (newW, newH) => {
     const W = Math.max(1, Math.round(newW));

@@ -6,55 +6,86 @@ export default function TokenMiniPanel({
   containerSize, // { w, h }
   onChangeGlow, // (hex) => void
 }) {
-  if (!token) return null;
+  const safeTileSize = Number.isFinite(tileSize) ? tileSize : 0;
+  const containerW = containerSize?.w ?? 0;
+  const containerH = containerSize?.h ?? 0;
 
   const panelW = 220;
   const panelH = 86;
-  const left = token.col * tileSize;
-  const top = token.row * tileSize;
-  const w = (token.wTiles || 1) * tileSize;
-  const h = (token.hTiles || 1) * tileSize;
+  const left = (token?.col ?? 0) * safeTileSize;
+  const top = (token?.row ?? 0) * safeTileSize;
+  const w = (token?.wTiles ?? 1) * safeTileSize;
+  const h = (token?.hTiles ?? 1) * safeTileSize;
 
   // Prefer placing to the left; fallback to right; clamp vertically
   let defX = left - panelW - 8;
   if (defX < 0) defX = left + w + 8;
-  let defY = top + h / 2 - panelH / 2;
   const minY = 4;
-  const maxY = Math.max(minY, containerSize.h - panelH - 4);
+  const maxY = Math.max(minY, containerH - panelH - 4);
+  let defY = top + h / 2 - panelH / 2;
   defY = Math.max(minY, Math.min(maxY, defY));
+  const defaultPos = { x: defX, y: defY };
 
-  const [pos, setPos] = React.useState({ x: defX, y: defY });
+  const [pos, setPos] = React.useState(() => defaultPos);
   const movedRef = React.useRef(false);
-  React.useEffect(() => {
-    if (movedRef.current) return; // preserve manual position
-    setPos({ x: defX, y: defY });
-  }, [token?.id, tileSize, containerSize.w, containerSize.h]);
-
-  // drag
+  const prevTokenIdRef = React.useRef(token?.id ?? null);
   const dragRef = React.useRef(null);
-  const onDragStart = (e) => {
-    const clientX = e.touches ? e.touches[0]?.clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0]?.clientY : e.clientY;
-    dragRef.current = { x: clientX, y: clientY, px: pos.x, py: pos.y };
-    movedRef.current = true;
-    window.addEventListener('pointermove', onDragMove);
-    window.addEventListener('pointerup', onDragEnd);
-  };
-  const onDragMove = (e) => {
-    const st = dragRef.current; if (!st) return;
-    const clientX = e.touches ? e.touches[0]?.clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0]?.clientY : e.clientY;
-    const dx = clientX - st.x;
-    const dy = clientY - st.y;
-    const nx = Math.max(4, Math.min(containerSize.w - panelW - 4, st.px + dx));
-    const ny = Math.max(4, Math.min(containerSize.h - panelH - 4, st.py + dy));
-    setPos({ x: nx, y: ny });
-  };
-  const onDragEnd = () => {
+
+  React.useEffect(() => {
+    const currentId = token?.id ?? null;
+    if (prevTokenIdRef.current !== currentId) {
+      prevTokenIdRef.current = currentId;
+      movedRef.current = false;
+    }
+    if (!token) {
+      setPos({ x: defaultPos.x, y: defaultPos.y });
+      return;
+    }
+    if (movedRef.current) return; // preserve manual position for same token
+    setPos({ x: defaultPos.x, y: defaultPos.y });
+  }, [token?.id, defaultPos.x, defaultPos.y, containerW, containerH]);
+
+  const onDragMove = React.useCallback(
+    (e) => {
+      const st = dragRef.current;
+      if (!st) return;
+      const point = e.touches ? e.touches[0] : e;
+      if (!point) return;
+      const dx = point.clientX - st.x;
+      const dy = point.clientY - st.y;
+      const nx = Math.max(4, Math.min(containerW - panelW - 4, st.px + dx));
+      const ny = Math.max(4, Math.min(containerH - panelH - 4, st.py + dy));
+      setPos({ x: nx, y: ny });
+    },
+    [containerW, containerH]
+  );
+
+  const onDragEnd = React.useCallback(() => {
     dragRef.current = null;
     window.removeEventListener('pointermove', onDragMove);
     window.removeEventListener('pointerup', onDragEnd);
-  };
+  }, [onDragMove]);
+
+  const onDragStart = React.useCallback(
+    (e) => {
+      const point = e.touches ? e.touches[0] : e;
+      if (!point) return;
+      dragRef.current = { x: point.clientX, y: point.clientY, px: pos.x, py: pos.y };
+      movedRef.current = true;
+      window.addEventListener('pointermove', onDragMove);
+      window.addEventListener('pointerup', onDragEnd);
+    },
+    [onDragEnd, onDragMove, pos.x, pos.y]
+  );
+
+  React.useEffect(() => {
+    return () => {
+      window.removeEventListener('pointermove', onDragMove);
+      window.removeEventListener('pointerup', onDragEnd);
+    };
+  }, [onDragMove, onDragEnd]);
+
+  if (!token) return null;
 
   const glow = token.glowColor || '#7dd3fc';
 
