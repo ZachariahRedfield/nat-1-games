@@ -302,7 +302,6 @@ export function useLegacyMapBuilderController() {
     saveSelectedTokensAsGroup,
     saveCurrentSelection,
   } = useLegacyAssetWorkflow({
-    getAsset,
     hasSelection,
     selectedObj,
     selectedObjsList,
@@ -342,11 +341,7 @@ export function useLegacyMapBuilderController() {
     removeTokenById,
     addToken,
     moveToken,
-    selectAsset,
-    assetGroup,
-    setAssetGroup,
     projectName: () => projectNameRef.current,
-    saveCurrentSelection,
   });
 
   const {
