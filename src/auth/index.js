@@ -9,3 +9,4 @@ export {
   login,
   signup,
 } from "./services/authService.js";
+export { useLoginController } from "./application/useLoginController.js";
