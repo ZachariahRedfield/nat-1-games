@@ -116,13 +116,16 @@ export function useLegacyMapBuilderController() {
 
   const [mapSizeModalOpen, setMapSizeModalOpen] = useState(false);
 
+  const backgroundCanvasRef = useRef(null);
+  const baseCanvasRef = useRef(null);
+  const skyCanvasRef = useRef(null);
   const canvasRefs = useMemo(
     () => ({
-      background: useRef(null),
-      base: useRef(null),
-      sky: useRef(null),
+      background: backgroundCanvasRef,
+      base: baseCanvasRef,
+      sky: skyCanvasRef,
     }),
-    []
+    [backgroundCanvasRef, baseCanvasRef, skyCanvasRef]
   );
 
   const [tileSize, setTileSize] = useState(24);
