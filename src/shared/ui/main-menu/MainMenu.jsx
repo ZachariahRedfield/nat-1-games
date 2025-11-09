@@ -1,7 +1,7 @@
 import React from "react";
 import { useAppNavigation, useAppSession } from "../../../app/AppContext.jsx";
 import { SCREENS } from "../../../app/screens.js";
-import SiteHeader from "../SiteHeader.jsx";
+import SiteHeader from "../site-header/SiteHeader.jsx";
 
 export default function MainMenu({ setScreen, session, onLogout }) {
   const { navigate, logout, screen: activeScreen } = useAppNavigation();
