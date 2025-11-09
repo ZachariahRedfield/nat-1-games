@@ -129,12 +129,14 @@ export function createLegacyMapBuilderViewModel(state) {
     rows,
     cols,
     layerBarHeight,
-    fixedBarTop,
-    fixedBarLeft,
-    fixedBarWidth,
-    overlayTop,
-    overlayLeft,
-    overlayCenter,
+    overlayPosition,
+    fixedLayerBar,
+    overlayTop: providedOverlayTop,
+    overlayLeft: providedOverlayLeft,
+    overlayCenter: providedOverlayCenter,
+    fixedBarTop: providedFixedBarTop,
+    fixedBarLeft: providedFixedBarLeft,
+    fixedBarWidth: providedFixedBarWidth,
     layerBarWrapRef,
     showToast,
     confirmUser,
@@ -146,6 +148,14 @@ export function createLegacyMapBuilderViewModel(state) {
     canvasColor,
     openCreator,
   } = state;
+
+  const overlayTop = providedOverlayTop ?? overlayPosition?.top ?? 0;
+  const overlayLeft = providedOverlayLeft ?? overlayPosition?.left ?? 0;
+  const overlayCenter = providedOverlayCenter ?? overlayPosition?.center ?? 0;
+
+  const fixedBarTop = providedFixedBarTop ?? fixedLayerBar?.top ?? 0;
+  const fixedBarLeft = providedFixedBarLeft ?? fixedLayerBar?.left ?? 0;
+  const fixedBarWidth = providedFixedBarWidth ?? fixedLayerBar?.width ?? 0;
 
   const assetsFolderBannerProps = {
     needsAssetsFolder,

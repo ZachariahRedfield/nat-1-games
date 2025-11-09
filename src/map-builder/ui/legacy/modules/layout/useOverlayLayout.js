@@ -104,12 +104,36 @@ export function useOverlayLayout({
     };
   }, [scrollRef, menuOpen]);
 
+  const overlayTop = overlayPosition?.top ?? 0;
+  const overlayLeft = overlayPosition?.left ?? 0;
+  const overlayCenter = overlayPosition?.center ?? 0;
+
+  const fixedBarTop = fixedLayerBar?.top ?? 0;
+  const fixedBarLeft = fixedLayerBar?.left ?? 0;
+  const fixedBarWidth = fixedLayerBar?.width ?? 0;
+
   return useMemo(
     () => ({
       layerBarHeight,
       overlayPosition,
+      overlayTop,
+      overlayLeft,
+      overlayCenter,
       fixedLayerBar,
+      fixedBarTop,
+      fixedBarLeft,
+      fixedBarWidth,
     }),
-    [layerBarHeight, overlayPosition, fixedLayerBar]
+    [
+      layerBarHeight,
+      overlayPosition,
+      overlayTop,
+      overlayLeft,
+      overlayCenter,
+      fixedLayerBar,
+      fixedBarTop,
+      fixedBarLeft,
+      fixedBarWidth,
+    ]
   );
 }
