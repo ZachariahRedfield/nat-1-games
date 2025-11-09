@@ -1,6 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { BASE_TILE, clamp, hexToRgba, dist, lerp } from "./utils";
+import { BASE_TILE, clamp } from "./utils.js";
 import useGridSelection from "./selection/useGridSelection.js";
+import {
+  hitObjectResizeHandle as baseHitObjectResizeHandle,
+  hitObjectRotateRing as baseHitObjectRotateRing,
+  hitTokenResizeHandle as baseHitTokenResizeHandle,
+  hitTokenRotateRing as baseHitTokenRotateRing,
+} from "./controller/selectionHitTests.js";
+import {
+  paintBrushTip as renderBrushTip,
+  stampBetweenCanvas as connectBrushPoints,
+} from "./controller/brushPreview.js";
+import {
+  eraseGridStampAt as eraseGridStamp,
+  placeGridImageAt as placeGridImage,
+  placeGridColorStampAt as placeGridColorStamp,
+  placeTokenAt as placeToken,
+} from "./controller/gridPlacement.js";
 
 const DEFAULT_LAYER_VISIBILITY = { background: true, base: true, sky: true };
 const DEFAULT_NATURAL_SETTINGS = {
@@ -121,6 +137,18 @@ export function useGridController({
     updateTokenById,
   });
 
+  const hitResizeHandle = (xCss, yCss) =>
+    baseHitObjectResizeHandle(xCss, yCss, { getSelectedObject, tileSize });
+
+  const hitRotateRing = (xCss, yCss) =>
+    baseHitObjectRotateRing(xCss, yCss, { getSelectedObject, tileSize });
+
+  const hitTokenResizeHandle = (xCss, yCss) =>
+    baseHitTokenResizeHandle(xCss, yCss, { getSelectedToken, tileSize });
+
+  const hitTokenRotateRing = (xCss, yCss) =>
+    baseHitTokenRotateRing(xCss, yCss, { getSelectedToken, tileSize });
+
   const quantize = (v, step) => {
     if (!step || step <= 0) return v;
     if (step === 1) return Math.floor(v);
@@ -138,52 +166,23 @@ export function useGridController({
     return canvas ? canvas.getContext("2d") : null;
   };
 
-  const eraseGridStampAt = (
-    centerRow,
-    centerCol,
-    {
-      rows,
-      cols,
-      gridSettings,
-      objects,
-      currentLayer,
-      placeTiles,
-      removeObjectById,
-    }
-  ) => {
-    const wTiles = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
-    const hTiles = Math.max(1, Math.round(gridSettings.sizeRows || gridSettings.sizeTiles || 1));
-
-    const r0 = clamp(
-      centerRow - Math.floor(hTiles / 2),
-      0,
-      Math.max(0, rows - hTiles)
-    );
-    const c0 = clamp(
-      centerCol - Math.floor(wTiles / 2),
-      0,
-      Math.max(0, cols - wTiles)
-    );
-
-    const updates = [];
-    for (let r = 0; r < hTiles; r++) {
-      for (let c = 0; c < wTiles; c++) {
-        updates.push({ row: r0 + r, col: c0 + c });
-      }
-    }
-    placeTiles(updates);
-
-    const arr = objects[currentLayer] || [];
-    for (const o of arr) {
-      const intersects = !(
-        o.row + o.hTiles <= r0 ||
-        r0 + hTiles <= o.row ||
-        o.col + o.wTiles <= c0 ||
-        c0 + wTiles <= o.col
-      );
-      if (intersects) removeObjectById(currentLayer, o.id);
-    }
+  const brushPreviewContext = {
+    getActiveCtx,
+    toCanvasCoords,
+    isErasing,
+    canvasBlendMode,
+    selectedAsset,
+    stamp,
+    gridSettings,
+    canvasOpacity,
+    brushSize,
+    canvasColor,
+    tileSize,
+    canvasSpacing,
   };
+
+  const paintTipAt = (cssPoint) => renderBrushTip(cssPoint, brushPreviewContext);
+  const stampBetweenCanvas = (a, b) => connectBrushPoints(a, b, brushPreviewContext);
 
   const getTopMostObjectAt = (layer, r, c) => {
     const arr = objects[layer] || [];
@@ -210,331 +209,27 @@ export function useGridController({
     return null;
   };
 
-  const hitResizeHandle = (xCss, yCss) => {
-    const sel = getSelectedObject();
-    if (!sel) return null;
-    const left = sel.col * tileSize;
-    const top = sel.row * tileSize;
-    const w = sel.wTiles * tileSize;
-    const h = sel.hTiles * tileSize;
-    const sz = 10;
-    const within = (cx, cy) => Math.abs(xCss - cx) <= sz && Math.abs(yCss - cy) <= sz;
-    const corners = [
-      { corner: "nw", x: left, y: top },
-      { corner: "ne", x: left + w, y: top },
-      { corner: "sw", x: left, y: top + h },
-      { corner: "se", x: left + w, y: top + h },
-    ];
-    for (const c of corners) {
-      if (within(c.x, c.y)) return { sel, corner: c.corner };
-    }
-    return null;
+  const placementContext = {
+    rows,
+    cols,
+    gridSettings,
+    objects,
+    currentLayer,
+    placeTiles,
+    removeObjectById,
+    selectedAsset,
+    naturalSettings,
+    stamp,
+    addObject,
+    canvasColor,
+    assets,
+    addToken,
   };
 
-  const hitRotateRing = (xCss, yCss) => {
-    const sel = getSelectedObject();
-    if (!sel) return null;
-    const cx = (sel.col + sel.wTiles / 2) * tileSize;
-    const cy = (sel.row + sel.hTiles / 2) * tileSize;
-    const rx = (sel.wTiles * tileSize) / 2;
-    const ry = (sel.hTiles * tileSize) / 2;
-    const r = Math.sqrt(rx * rx + ry * ry) + 8;
-    const dx = xCss - cx;
-    const dy = yCss - cy;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const tol = 8;
-    if (distance >= r - tol && distance <= r + tol) {
-      const angle = Math.atan2(dy, dx);
-      return { sel, cx, cy, startAngle: angle };
-    }
-    return null;
-  };
-
-  const hitTokenResizeHandle = (xCss, yCss) => {
-    const sel = getSelectedToken();
-    if (!sel) return null;
-    const left = sel.col * tileSize;
-    const top = sel.row * tileSize;
-    const w = (sel.wTiles || 1) * tileSize;
-    const h = (sel.hTiles || 1) * tileSize;
-    const sz = 10;
-    const within = (cx, cy) => Math.abs(xCss - cx) <= sz && Math.abs(yCss - cy) <= sz;
-    const corners = [
-      { corner: "nw", x: left, y: top },
-      { corner: "ne", x: left + w, y: top },
-      { corner: "sw", x: left, y: top + h },
-      { corner: "se", x: left + w, y: top + h },
-    ];
-    for (const c of corners) {
-      if (within(c.x, c.y)) return { sel, corner: c.corner };
-    }
-    return null;
-  };
-
-  const hitTokenRotateRing = (xCss, yCss) => {
-    const sel = getSelectedToken();
-    if (!sel) return null;
-    const cx = (sel.col + (sel.wTiles || 1) / 2) * tileSize;
-    const cy = (sel.row + (sel.hTiles || 1) / 2) * tileSize;
-    const rx = ((sel.wTiles || 1) * tileSize) / 2;
-    const ry = ((sel.hTiles || 1) * tileSize) / 2;
-    const r = Math.sqrt(rx * rx + ry * ry) + 8;
-    const dx = xCss - cx;
-    const dy = yCss - cy;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const tol = 8;
-    if (distance >= r - tol && distance <= r + tol) {
-      const angle = Math.atan2(dy, dx);
-      return { sel, cx, cy, startAngle: angle };
-    }
-    return null;
-  };
-
-  const paintTipAt = (cssPt) => {
-    const ctx = getActiveCtx();
-    if (!ctx || !cssPt) return;
-    const p = toCanvasCoords(cssPt.x, cssPt.y);
-
-    ctx.save();
-    ctx.globalCompositeOperation = isErasing
-      ? "destination-out"
-      : canvasBlendMode || "source-over";
-    ctx.globalAlpha = Math.max(
-      0.01,
-      selectedAsset?.kind === "image"
-        ? (stamp?.opacity ?? gridSettings?.opacity ?? 1)
-        : canvasOpacity
-    );
-
-    if (selectedAsset?.kind === "image" && selectedAsset.img) {
-      const img = selectedAsset.img;
-      const pxSize = brushSize * BASE_TILE;
-      ctx.translate(p.x, p.y);
-      const rot = (((stamp?.rotation ?? gridSettings?.rotation) || 0) * Math.PI) / 180;
-      ctx.rotate(rot);
-      ctx.scale((stamp?.flipX ?? gridSettings?.flipX) ? -1 : 1, (stamp?.flipY ?? gridSettings?.flipY) ? -1 : 1);
-      ctx.drawImage(img, -pxSize / 2, -pxSize / 2, pxSize, pxSize);
-    } else {
-      if (!canvasColor || selectedAsset?.kind !== "color") {
-        ctx.restore();
-        return;
-      }
-      ctx.fillStyle = hexToRgba(canvasColor, 1);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, (brushSize * BASE_TILE) / 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  };
-
-  const stampBetweenCanvas = (a, b) => {
-    const radiusCss = (brushSize * tileSize) / 2;
-    const spacing = Math.max(1, radiusCss * canvasSpacing);
-    const distance = dist(a, b);
-    if (distance <= spacing) {
-      paintTipAt(b);
-      return;
-    }
-    const steps = Math.ceil(distance / spacing);
-    for (let i = 1; i <= steps; i++) {
-      const t = i / steps;
-      paintTipAt(lerp(a, b, t));
-    }
-  };
-
-  const placeGridImageAt = (centerRow, centerCol) => {
-    if (!selectedAsset || (selectedAsset.kind !== "image" && selectedAsset.kind !== "natural")) return;
-
-    const isNatural = selectedAsset.kind === "natural";
-    const variants = isNatural ? selectedAsset.variants || [] : null;
-    const chooseVariantIndex = () => {
-      if (!isNatural) return undefined;
-      const n = variants?.length || 0;
-      if (n <= 0) return 0;
-      if (naturalSettings?.randomVariant) return Math.floor(Math.random() * n);
-      return 0;
-    };
-    const variantIndex = chooseVariantIndex();
-    const variantAspect = isNatural
-      ? variants?.[variantIndex || 0]?.aspectRatio || 1
-      : selectedAsset.aspectRatio || 1;
-
-    const aspect = variantAspect;
-    const wTiles = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
-    const hTiles = Math.max(1, Math.round((stamp.sizeRows ?? Math.round(wTiles / aspect))));
-
-    const step = gridSettings?.snapStep ?? 1;
-    const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-    const baseRow = snapLike ? Math.floor(centerRow) : centerRow;
-    const baseCol = snapLike ? Math.floor(centerCol) : centerCol;
-    const halfH = snapLike ? Math.floor(hTiles / 2) : hTiles / 2;
-    const halfW = snapLike ? Math.floor(wTiles / 2) : wTiles / 2;
-    const r0 = clamp(
-      baseRow - halfH,
-      0,
-      Math.max(0, rows - hTiles)
-    );
-    const c0 = clamp(
-      baseCol - halfW,
-      0,
-      Math.max(0, cols - wTiles)
-    );
-
-    const decideRotation = () => stamp.rotation ?? gridSettings.rotation ?? 0;
-
-    const autoRotation = naturalSettings?.randomRotation
-      ? [0, 90, 180, 270][Math.floor(Math.random() * 4)]
-      : decideRotation();
-
-    const flipX = naturalSettings?.randomFlipX ? Math.random() < 0.5 : !!(stamp.flipX ?? gridSettings.flipX);
-    const flipY = naturalSettings?.randomFlipY ? Math.random() < 0.5 : !!(stamp.flipY ?? gridSettings.flipY);
-    const opacity = naturalSettings?.randomOpacity?.enabled
-      ? Math.max(
-          0.05,
-          Math.min(
-            1,
-            (naturalSettings.randomOpacity.min ?? 0.05) +
-              Math.random() *
-                Math.max(0, (naturalSettings.randomOpacity.max ?? 1) - (naturalSettings.randomOpacity.min ?? 0.05))
-          )
-        )
-      : Math.max(0.05, Math.min(1, stamp.opacity ?? gridSettings.opacity ?? 1));
-
-    addObject(currentLayer, {
-      assetId: selectedAsset.id,
-      row: r0,
-      col: c0,
-      wTiles,
-      hTiles,
-      rotation: autoRotation,
-      flipX,
-      flipY,
-      opacity,
-      ...(isNatural ? { variantIndex: variantIndex || 0 } : {}),
-    });
-  };
-
-  const placeGridColorStampAt = (centerRow, centerCol) => {
-    const wTiles = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
-    const hTiles = Math.max(1, Math.round((stamp.sizeRows ?? stamp.sizeTiles ?? gridSettings.sizeRows ?? gridSettings.sizeTiles ?? 1)));
-
-    const step = gridSettings?.snapStep ?? 1;
-    const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-    const baseRow = snapLike ? Math.floor(centerRow) : centerRow;
-    const baseCol = snapLike ? Math.floor(centerCol) : centerCol;
-    const halfH = snapLike ? Math.floor(hTiles / 2) : hTiles / 2;
-    const halfW = snapLike ? Math.floor(wTiles / 2) : wTiles / 2;
-    let r0 = clamp(
-      baseRow - halfH,
-      0,
-      Math.max(0, rows - hTiles)
-    );
-    let c0 = clamp(
-      baseCol - halfW,
-      0,
-      Math.max(0, cols - wTiles)
-    );
-    if (!snapLike) {
-      r0 = clamp(Math.round(r0), 0, Math.max(0, rows - hTiles));
-      c0 = clamp(Math.round(c0), 0, Math.max(0, cols - wTiles));
-    }
-
-    const updates = [];
-    for (let r = 0; r < hTiles; r++) {
-      for (let c = 0; c < wTiles; c++) {
-        updates.push({ row: r0 + r, col: c0 + c });
-      }
-    }
-
-    if (!canvasColor || selectedAsset?.kind !== "color") return;
-    const a = Math.max(0.05, Math.min(1, stamp.opacity ?? gridSettings.opacity ?? 1));
-    const rgba = hexToRgba(canvasColor, a);
-    placeTiles(updates, rgba);
-  };
-
-  const eraseGridAt = (row, col) => {
-    const hit = getTopMostObjectAt(currentLayer, row, col);
-    if (hit) {
-      eraseObjectAt(currentLayer, row, col);
-    } else {
-      placeTiles([{ row, col }]);
-    }
-  };
-
-  const placeTokenAt = (centerRow, centerCol) => {
-    if (!selectedAsset) return;
-    const baseW = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
-    const baseH = Math.max(1, Math.round((stamp.sizeRows ?? stamp.sizeTiles ?? gridSettings.sizeRows ?? gridSettings.sizeTiles ?? 1)));
-    const snap = !!gridSettings?.snapToGrid;
-    if (selectedAsset.kind === "token") {
-      const wTiles = baseW;
-      const hTiles = baseH;
-      const r0 = clamp(
-        snap ? centerRow - Math.floor(hTiles / 2) : centerRow - hTiles / 2,
-        0,
-        Math.max(0, rows - hTiles)
-      );
-      const c0 = clamp(
-        snap ? centerCol - Math.floor(wTiles / 2) : centerCol - wTiles / 2,
-        0,
-        Math.max(0, cols - wTiles)
-      );
-      const glow = selectedAsset?.glowDefault || "#7dd3fc";
-      addToken?.({
-        assetId: selectedAsset.id,
-        row: r0,
-        col: c0,
-        wTiles,
-        hTiles,
-        rotation: stamp.rotation ?? gridSettings.rotation ?? 0,
-        flipX: !!(stamp.flipX ?? gridSettings.flipX),
-        flipY: !!(stamp.flipY ?? gridSettings.flipY),
-        opacity: Math.max(0.05, Math.min(1, stamp.opacity ?? gridSettings.opacity ?? 1)),
-        glowColor: glow,
-        meta: { name: selectedAsset?.name || "Token", hp: 0, initiative: 0 },
-      });
-      return;
-    }
-    if (selectedAsset.kind === "tokenGroup" && Array.isArray(selectedAsset.members)) {
-      let cursorCol = centerCol;
-      const placed = [];
-      for (const m of selectedAsset.members) {
-        const tokAsset = assets.find((a) => a.id === m.assetId);
-        if (!tokAsset) continue;
-        const wTiles = baseW;
-        const hTiles = baseH;
-        const r0 = clamp(
-          snap ? centerRow - Math.floor(hTiles / 2) : centerRow - hTiles / 2,
-          0,
-          Math.max(0, rows - hTiles)
-        );
-        const c0 = clamp(
-          snap ? cursorCol - Math.floor(wTiles / 2) : cursorCol - wTiles / 2,
-          0,
-          Math.max(0, cols - wTiles)
-        );
-        placed.push({ assetId: tokAsset.id, r0, c0, wTiles, hTiles, name: tokAsset.name });
-        cursorCol += wTiles;
-      }
-      for (const p of placed) {
-        const tokAsset = assets.find((a) => a.id === p.assetId);
-        const glow = tokAsset?.glowDefault || "#7dd3fc";
-        addToken?.({
-          assetId: p.assetId,
-          row: p.r0,
-          col: p.c0,
-          wTiles: p.wTiles,
-          hTiles: p.hTiles,
-          rotation: stamp.rotation ?? gridSettings.rotation ?? 0,
-          flipX: !!(stamp.flipX ?? gridSettings.flipX),
-          flipY: !!(stamp.flipY ?? gridSettings.flipY),
-          opacity: Math.max(0.05, Math.min(1, stamp.opacity ?? gridSettings.opacity ?? 1)),
-          glowColor: glow,
-          meta: { name: p.name || "Token", hp: 0, initiative: 0 },
-        });
-      }
-    }
-  };
+  const eraseGridStampAt = (row, col) => eraseGridStamp(row, col, placementContext);
+  const placeGridImageAt = (row, col) => placeGridImage(row, col, placementContext);
+  const placeGridColorStampAt = (row, col) => placeGridColorStamp(row, col, placementContext);
+  const placeTokenAt = (row, col) => placeToken(row, col, placementContext);
 
   useEffect(() => {
     const up = () => {
@@ -747,15 +442,7 @@ export function useGridController({
         if (hitObj) onBeginObjectStroke?.(currentLayer);
         else onBeginTileStroke?.(currentLayer);
 
-        eraseGridStampAt(Math.floor(row), Math.floor(col), {
-          rows,
-          cols,
-          gridSettings,
-          objects,
-          currentLayer,
-          placeTiles,
-          removeObjectById,
-        });
+        eraseGridStampAt(Math.floor(row), Math.floor(col));
       } else if (selectedAsset?.kind === "image" || selectedAsset?.kind === "natural") {
         onBeginObjectStroke?.(currentLayer);
         placeGridImageAt(row, col);
@@ -946,15 +633,7 @@ export function useGridController({
       if (selectedAsset?.kind === "token" || selectedAsset?.kind === "tokenGroup") return;
 
       if (isErasing) {
-        eraseGridStampAt(row, col, {
-          rows,
-          cols,
-          gridSettings,
-          objects,
-          currentLayer,
-          placeTiles,
-          removeObjectById,
-        });
+        eraseGridStampAt(row, col);
       } else if (selectedAsset?.kind === "image" || selectedAsset?.kind === "natural") {
         placeGridImageAt(row, col);
       } else {
