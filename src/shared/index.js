@@ -1,5 +1,5 @@
 export { MainMenu } from "./ui/main-menu/index.js";
-export { default as SiteHeader } from "./ui/SiteHeader.jsx";
+export { SiteHeader, SiteHeaderNavigation, SiteHeaderTitleButton, SiteHeaderUserMenu } from "./ui/site-header/index.js";
 export { default as AlphaSlider } from "./ui/inputs/AlphaSlider.jsx";
 export { default as NumericInput } from "./ui/inputs/NumericInput.jsx";
 export { default as RotationWheel } from "./ui/inputs/RotationWheel.jsx";
