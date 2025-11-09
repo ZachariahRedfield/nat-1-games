@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { BASE_TILE, clamp } from "./utils.js";
+import { useCallback, useRef, useState } from "react";
+import { BASE_TILE } from "./utils.js";
 import useGridSelection from "./selection/useGridSelection.js";
 import {
   hitObjectResizeHandle as baseHitObjectResizeHandle,
@@ -17,6 +17,11 @@ import {
   placeGridColorStampAt as placeGridColorStamp,
   placeTokenAt as placeToken,
 } from "./controller/gridPlacement.js";
+import usePanHotkey from "./controller/usePanHotkey.js";
+import useGlobalPointerRelease from "./controller/useGlobalPointerRelease.js";
+import { createGridPointerHandlers } from "./controller/createGridPointerHandlers.js";
+import { deriveCursorStyle } from "./controller/deriveCursorStyle.js";
+import { cellBackground } from "./controller/cellBackground.js";
 
 const DEFAULT_LAYER_VISIBILITY = { background: true, base: true, sky: true };
 const DEFAULT_NATURAL_SETTINGS = {
@@ -92,7 +97,7 @@ export function useGridController({
   const [lastPan, setLastPan] = useState(null);
   const [isBrushing, setIsBrushing] = useState(false);
   const [mousePos, setMousePos] = useState(null);
-  const [panHotkey, setPanHotkey] = useState(false);
+  const panHotkey = usePanHotkey();
 
   const mouseDownRef = useRef(false);
   const lastStampCssRef = useRef(null);
@@ -148,12 +153,6 @@ export function useGridController({
 
   const hitTokenRotateRing = (xCss, yCss) =>
     baseHitTokenRotateRing(xCss, yCss, { getSelectedToken, tileSize });
-
-  const quantize = (v, step) => {
-    if (!step || step <= 0) return v;
-    if (step === 1) return Math.floor(v);
-    return Math.round(v / step) * step;
-  };
 
   const toCanvasCoords = (xCss, yCss) => {
     const scaleX = bufferWidth / cssWidth;
@@ -231,536 +230,116 @@ export function useGridController({
   const placeGridColorStampAt = (row, col) => placeGridColorStamp(row, col, placementContext);
   const placeTokenAt = (row, col) => placeToken(row, col, placementContext);
 
-  useEffect(() => {
-    const up = () => {
-      mouseDownRef.current = false;
-      setIsBrushing(false);
-      setIsPanning(false);
-      setLastPan(null);
-      lastStampCssRef.current = null;
-      emaCssRef.current = null;
-      lastTileRef.current = { row: -1, col: -1 };
-    };
-    window.addEventListener("pointerup", up);
-    return () => window.removeEventListener("pointerup", up);
-  }, []);
+  const resetPointerState = useCallback(() => {
+    mouseDownRef.current = false;
+    setIsBrushing(false);
+    setIsPanning(false);
+    setLastPan(null);
+    lastStampCssRef.current = null;
+    emaCssRef.current = null;
+    lastTileRef.current = { row: -1, col: -1 };
+  }, [setIsBrushing, setIsPanning, setLastPan]);
 
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.code === "Space") {
-        setPanHotkey(true);
-        e.preventDefault();
-      }
-    };
-    const onKeyUp = (e) => {
-      if (e.code === "Space") setPanHotkey(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-    };
-  }, []);
+  useGlobalPointerRelease(resetPointerState);
 
-  const handlePointerDown = (e) => {
-    mouseDownRef.current = true;
+  const { handlePointerDown, handlePointerMove, handlePointerUp } =
+    createGridPointerHandlers({
+      geometry: { rows, cols, cssWidth, cssHeight },
+      refs: {
+        mouseDownRef,
+        zoomDragRef,
+        dragRef,
+        lastStampCssRef,
+        emaCssRef,
+        lastTileRef,
+        scrollRef,
+      },
+      selection: {
+        hitResizeHandle,
+        hitRotateRing,
+        hitTokenResizeHandle,
+        hitTokenRotateRing,
+        setSelectedObjId,
+        setSelectedObjIds,
+        setSelectedTokenId,
+        setSelectedTokenIds,
+        selectedObjId,
+        selectedObjIds,
+        selectedTokenId,
+        selectedTokenIds,
+        getObjectById,
+        getTokenById,
+        getTopMostObjectAt,
+        getTopMostTokenAt,
+      },
+      state: {
+        setMousePos,
+        setIsPanning,
+        setLastPan,
+        setIsBrushing,
+        isPanning,
+        lastPan,
+        panHotkey,
+      },
+      config: {
+        zoomToolActive,
+        panToolActive,
+        layerIsVisible,
+        interactionMode,
+        engine,
+        assetGroup,
+        selectedAsset,
+        isErasing,
+        canvasColor,
+        canvasSmoothing,
+        gridSettings,
+        setGridSettings,
+        currentLayer,
+      },
+      actions: {
+        placeGridImageAt,
+        placeGridColorStampAt,
+        eraseGridStampAt,
+        placeTokenAt,
+        moveObject,
+        moveToken,
+        updateObjectById,
+        updateTokenById,
+        onSelectionChange,
+        onTokenSelectionChange,
+      },
+      callbacks: {
+        onBeginTileStroke,
+        onBeginCanvasStroke,
+        onBeginObjectStroke,
+        onBeginTokenStroke,
+        onZoomToolRect,
+      },
+      data: {
+        tokens,
+        objects,
+        paintTipAt,
+        stampBetweenCanvas,
+      },
+    });
 
-    if (zoomToolActive) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const xCss = e.clientX - rect.left;
-      const yCss = e.clientY - rect.top;
-      setMousePos({ x: xCss, y: yCss });
-      const isLeft = e.button === 0 || (e.buttons & 1) === 1;
-      if (!isLeft) return;
-      zoomDragRef.current = {
-        kind: "marquee",
-        startCss: { x: xCss, y: yCss },
-        curCss: { x: xCss, y: yCss },
-        lastCss: { x: xCss, y: yCss },
-      };
-      e.preventDefault();
-      e.target.setPointerCapture?.(e.pointerId);
-      return;
-    }
+  const cursorStyle = deriveCursorStyle({
+    isPanning,
+    panHotkey,
+    panToolActive,
+    dragRef,
+    zoomToolActive,
+    layerIsVisible,
+    mousePos,
+    engine,
+    gridSettings,
+    hitResizeHandle,
+    hitTokenResizeHandle,
+    hitRotateRing,
+    hitTokenRotateRing,
+  });
 
-    const isMMB = e.button === 1 || (e.buttons & 4) === 4;
-    if (panToolActive || panHotkey || isMMB) {
-      setIsPanning(true);
-      setLastPan({ x: e.clientX, y: e.clientY });
-      e.target.setPointerCapture?.(e.pointerId);
-      return;
-    }
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const xCss = e.clientX - rect.left;
-    const yCss = e.clientY - rect.top;
-    setMousePos({ x: xCss, y: yCss });
-
-    const cornerHit = hitResizeHandle(xCss, yCss);
-    if (cornerHit) {
-      onBeginObjectStroke?.(currentLayer);
-      const o = cornerHit.sel;
-      const anchor = (() => {
-        if (cornerHit.corner === "nw") return { row: o.row + o.hTiles, col: o.col + o.wTiles };
-        if (cornerHit.corner === "ne") return { row: o.row + o.hTiles, col: o.col };
-        if (cornerHit.corner === "sw") return { row: o.row, col: o.col + o.wTiles };
-        return { row: o.row, col: o.col };
-      })();
-      dragRef.current = {
-        kind: "resize-obj",
-        id: o.id,
-        anchorRow: anchor.row,
-        anchorCol: anchor.col,
-        corner: cornerHit.corner,
-      };
-      e.target.setPointerCapture?.(e.pointerId);
-      return;
-    }
-
-    const tokenCorner = hitTokenResizeHandle(xCss, yCss);
-    if (tokenCorner) {
-      onBeginTokenStroke?.();
-      const t = tokenCorner.sel;
-      const anchorT = (() => {
-        if (tokenCorner.corner === "nw") return { row: t.row + (t.hTiles || 1), col: t.col + (t.wTiles || 1) };
-        if (tokenCorner.corner === "ne") return { row: t.row + (t.hTiles || 1), col: t.col };
-        if (tokenCorner.corner === "sw") return { row: t.row, col: t.col + (t.wTiles || 1) };
-        return { row: t.row, col: t.col };
-      })();
-      dragRef.current = { kind: "resize-token", id: t.id, anchorRow: anchorT.row, anchorCol: anchorT.col, corner: tokenCorner.corner };
-      e.target.setPointerCapture?.(e.pointerId);
-      return;
-    }
-
-    const rotHit = hitRotateRing(xCss, yCss);
-    if (rotHit) {
-      onBeginObjectStroke?.(currentLayer);
-      const o = rotHit.sel;
-      dragRef.current = {
-        kind: "rotate-obj",
-        id: o.id,
-        cx: rotHit.cx,
-        cy: rotHit.cy,
-        startAngle: rotHit.startAngle,
-        startRot: o.rotation || 0,
-      };
-      e.target.setPointerCapture?.(e.pointerId);
-      return;
-    }
-
-    const tokRot = hitTokenRotateRing(xCss, yCss);
-    if (tokRot) {
-      onBeginTokenStroke?.();
-      const t = tokRot.sel;
-      dragRef.current = { kind: "rotate-token", id: t.id, cx: tokRot.cx, cy: tokRot.cy, startAngle: tokRot.startAngle, startRot: t.rotation || 0 };
-      e.target.setPointerCapture?.(e.pointerId);
-      return;
-    }
-
-    let rowRaw = (yCss / cssHeight) * rows;
-    let colRaw = (xCss / cssWidth) * cols;
-    if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
-      rowRaw = quantize(rowRaw, gridSettings.snapStep);
-      colRaw = quantize(colRaw, gridSettings.snapStep);
-    }
-    const row = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
-    const col = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
-
-    if ((selectedAsset?.kind === "token" || selectedAsset?.kind === "tokenGroup") && assetGroup === "token" && interactionMode !== "select") {
-      onBeginTokenStroke?.();
-      placeTokenAt(row, col);
-      return;
-    }
-
-    if (!layerIsVisible) return;
-
-    if (interactionMode === "select") {
-      const hit = hitResizeHandle(xCss, yCss);
-      if (hit) {
-        onBeginObjectStroke?.(currentLayer);
-        const o = hit.sel;
-        const anchor = (() => {
-          if (hit.corner === "nw") return { row: o.row + o.hTiles, col: o.col + o.wTiles };
-          if (hit.corner === "ne") return { row: o.row + o.hTiles, col: o.col };
-          if (hit.corner === "sw") return { row: o.row, col: o.col + o.wTiles };
-          return { row: o.row, col: o.col };
-        })();
-        dragRef.current = {
-          kind: "resize-obj",
-          id: o.id,
-          anchorRow: anchor.row,
-          anchorCol: anchor.col,
-          corner: hit.corner,
-        };
-        e.target.setPointerCapture?.(e.pointerId);
-        return;
-      }
-      const hitTok = getTopMostTokenAt(Math.floor(row), Math.floor(col));
-      const hitObj = getTopMostObjectAt(currentLayer, Math.floor(row), Math.floor(col));
-
-      if (hitTok) {
-        setSelectedObjId(null);
-        setSelectedObjIds([]);
-        setSelectedTokenIds([hitTok.id]);
-        setSelectedTokenId(hitTok.id);
-        onTokenSelectionChange?.([hitTok]);
-        dragRef.current = { kind: "token", id: hitTok.id, offsetRow: row - hitTok.row, offsetCol: col - hitTok.col };
-        return;
-      }
-
-      if (hitObj) {
-        onBeginObjectStroke?.(currentLayer);
-        setSelectedTokenId(null);
-        setSelectedTokenIds([]);
-        setSelectedObjIds([hitObj.id]);
-        setSelectedObjId(hitObj.id);
-        onSelectionChange?.([hitObj]);
-        dragRef.current = { kind: "object", id: hitObj.id, offsetRow: row - hitObj.row, offsetCol: col - hitObj.col };
-        return;
-      }
-
-      setSelectedObjId(null);
-      setSelectedObjIds([]);
-      onSelectionChange?.([]);
-      setSelectedTokenId(null);
-      setSelectedTokenIds([]);
-      onTokenSelectionChange?.([]);
-      dragRef.current = null;
-      return;
-    }
-
-    if (engine === "grid" || (selectedAsset?.kind === "token" && assetGroup === "token")) {
-      setIsBrushing(true);
-      lastTileRef.current = { row: -1, col: -1 };
-
-      const hitObj = getTopMostObjectAt(currentLayer, row, col);
-      if ((selectedAsset?.kind === "token" || selectedAsset?.kind === "tokenGroup") && assetGroup === "token") {
-        onBeginTokenStroke?.();
-        placeTokenAt(row, col);
-      } else if (isErasing) {
-        if (hitObj) onBeginObjectStroke?.(currentLayer);
-        else onBeginTileStroke?.(currentLayer);
-
-        eraseGridStampAt(Math.floor(row), Math.floor(col));
-      } else if (selectedAsset?.kind === "image" || selectedAsset?.kind === "natural") {
-        onBeginObjectStroke?.(currentLayer);
-        placeGridImageAt(row, col);
-      } else if (selectedAsset?.kind === "color" && canvasColor) {
-        onBeginTileStroke?.(currentLayer);
-        placeGridColorStampAt(row, col);
-      }
-      return;
-    }
-
-    if (engine === "canvas") {
-      onBeginCanvasStroke?.(currentLayer);
-      setIsBrushing(true);
-
-      const start = { x: xCss, y: yCss };
-      emaCssRef.current = start;
-      lastStampCssRef.current = start;
-      paintTipAt(start);
-    }
-  };
-
-  const handlePointerMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const xCss = e.clientX - rect.left;
-    const yCss = e.clientY - rect.top;
-    setMousePos({ x: xCss, y: yCss });
-
-    if (zoomToolActive) {
-      if (!mouseDownRef.current) return;
-      const z = zoomDragRef.current;
-      if (!z) return;
-      z.curCss = { x: xCss, y: yCss };
-      return;
-    }
-
-    if (isPanning && lastPan && scrollRef?.current) {
-      const dx = e.clientX - lastPan.x;
-      const dy = e.clientY - lastPan.y;
-      scrollRef.current.scrollBy({ left: -dx, top: -dy });
-      setLastPan({ x: e.clientX, y: e.clientY });
-      return;
-    }
-
-    if (!mouseDownRef.current) return;
-    if (!layerIsVisible) return;
-
-    if (dragRef.current && dragRef.current.kind === "resize-obj") {
-      let rowRaw = (yCss / cssHeight) * rows;
-      let colRaw = (xCss / cssWidth) * cols;
-      if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
-        rowRaw = quantize(rowRaw, gridSettings.snapStep);
-        colRaw = quantize(colRaw, gridSettings.snapStep);
-      }
-      const pr = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
-      const pc = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
-
-      let topRow = Math.min(dragRef.current.anchorRow, pr);
-      let leftCol = Math.min(dragRef.current.anchorCol, pc);
-      let bottomRow = Math.max(dragRef.current.anchorRow, pr);
-      let rightCol = Math.max(dragRef.current.anchorCol, pc);
-      let newH = Math.max(1, Math.round(bottomRow - topRow));
-      let newW = Math.max(1, Math.round(rightCol - leftCol));
-
-      topRow = clamp(topRow, 0, Math.max(0, rows - newH));
-      leftCol = clamp(leftCol, 0, Math.max(0, cols - newW));
-
-      const o = getObjectById(currentLayer, dragRef.current.id);
-      if (o) {
-        updateObjectById(currentLayer, o.id, {
-          row: topRow,
-          col: leftCol,
-          wTiles: newW,
-          hTiles: newH,
-        });
-        setGridSettings?.((s) => ({ ...s, sizeCols: newW, sizeRows: newH }));
-      }
-      return;
-    }
-
-    if (dragRef.current && dragRef.current.kind === "resize-token") {
-      let rowRaw = (yCss / cssHeight) * rows;
-      let colRaw = (xCss / cssWidth) * cols;
-      if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
-        rowRaw = quantize(rowRaw, gridSettings.snapStep);
-        colRaw = quantize(colRaw, gridSettings.snapStep);
-      }
-      const pr = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
-      const pc = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
-
-      let topRow = Math.min(dragRef.current.anchorRow, pr);
-      let leftCol = Math.min(dragRef.current.anchorCol, pc);
-      let bottomRow = Math.max(dragRef.current.anchorRow, pr);
-      let rightCol = Math.max(dragRef.current.anchorCol, pc);
-      let newH = Math.max(1, Math.round(bottomRow - topRow));
-      let newW = Math.max(1, Math.round(rightCol - leftCol));
-
-      topRow = clamp(topRow, 0, Math.max(0, rows - newH));
-      leftCol = clamp(leftCol, 0, Math.max(0, cols - newW));
-
-      const t = getTokenById(dragRef.current.id);
-      if (t) {
-        updateTokenById?.(dragRef.current.id, { row: topRow, col: leftCol, wTiles: newW, hTiles: newH });
-      }
-      return;
-    }
-
-    if (dragRef.current && dragRef.current.kind === "rotate-obj") {
-      const angle = Math.atan2(yCss - dragRef.current.cy, xCss - dragRef.current.cx);
-      const deltaRad = angle - dragRef.current.startAngle;
-      const deltaDeg = (deltaRad * 180) / Math.PI;
-      const o = getObjectById(currentLayer, dragRef.current.id);
-      if (o) {
-        let next = (dragRef.current.startRot + deltaDeg) % 360;
-        if (next < 0) next += 360;
-        const rot = Math.round(next);
-        updateObjectById(currentLayer, o.id, { rotation: rot });
-        setGridSettings?.((s) => ({ ...s, rotation: rot }));
-      }
-      return;
-    }
-
-    if (dragRef.current && dragRef.current.kind === "rotate-token") {
-      const angle = Math.atan2(yCss - dragRef.current.cy, xCss - dragRef.current.cx);
-      const deltaRad = angle - dragRef.current.startAngle;
-      const deltaDeg = (deltaRad * 180) / Math.PI;
-      const t = getTokenById(dragRef.current.id);
-      if (t) {
-        let next = (dragRef.current.startRot + deltaDeg) % 360;
-        if (next < 0) next += 360;
-        updateTokenById?.(dragRef.current.id, { rotation: Math.round(next) });
-      }
-      return;
-    }
-
-    if (interactionMode === "select") {
-      let rowRaw = (yCss / cssHeight) * rows;
-      let colRaw = (xCss / cssWidth) * cols;
-      if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
-        rowRaw = quantize(rowRaw, gridSettings.snapStep);
-        colRaw = quantize(colRaw, gridSettings.snapStep);
-      }
-      const row = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
-      const col = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
-      if (dragRef.current && dragRef.current.kind === "object" && selectedObjId && selectedObjIds.length <= 1) {
-        const obj = getObjectById(currentLayer, selectedObjId);
-        if (obj) {
-          const { offsetRow, offsetCol } = dragRef.current;
-          const newRow = clamp(row - offsetRow, 0, Math.max(0, rows - obj.hTiles));
-          const newCol = clamp(col - offsetCol, 0, Math.max(0, cols - obj.wTiles));
-          moveObject(currentLayer, obj.id, newRow, newCol);
-        }
-      } else if (dragRef.current && dragRef.current.kind === "token" && selectedTokenId && selectedTokenIds.length <= 1) {
-        const tok = getTokenById(selectedTokenId);
-        if (tok) {
-          const { offsetRow, offsetCol } = dragRef.current;
-          const w = tok.wTiles || 1;
-          const h = tok.hTiles || 1;
-          const newRow = clamp(row - offsetRow, 0, Math.max(0, rows - h));
-          const newCol = clamp(col - offsetCol, 0, Math.max(0, cols - w));
-          moveToken?.(tok.id, newRow, newCol);
-        }
-      } else if (dragRef.current && (dragRef.current.kind === "marquee-obj" || dragRef.current.kind === "marquee-token")) {
-        dragRef.current.curRow = row;
-        dragRef.current.curCol = col;
-      }
-      return;
-    }
-
-    if (engine === "grid") {
-      let rowRaw = (yCss / cssHeight) * rows;
-      let colRaw = (xCss / cssWidth) * cols;
-      if (!gridSettings?.snapToGrid && gridSettings?.snapStep) {
-        rowRaw = quantize(rowRaw, gridSettings.snapStep);
-        colRaw = quantize(colRaw, gridSettings.snapStep);
-      }
-      const row = gridSettings?.snapToGrid ? Math.floor(rowRaw) : rowRaw;
-      const col = gridSettings?.snapToGrid ? Math.floor(colRaw) : colRaw;
-
-      const step = gridSettings?.snapStep ?? 1;
-      const dedupeLikeSnap = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-      if (dedupeLikeSnap) {
-        const keyRow = Math.floor(rowRaw);
-        const keyCol = Math.floor(colRaw);
-        if (keyRow === lastTileRef.current.row && keyCol === lastTileRef.current.col) return;
-        lastTileRef.current = { row: keyRow, col: keyCol };
-      }
-
-      if (selectedAsset?.kind === "token" || selectedAsset?.kind === "tokenGroup") return;
-
-      if (isErasing) {
-        eraseGridStampAt(row, col);
-      } else if (selectedAsset?.kind === "image" || selectedAsset?.kind === "natural") {
-        placeGridImageAt(row, col);
-      } else {
-        placeGridColorStampAt(row, col);
-      }
-      return;
-    }
-
-    if (engine === "canvas") {
-      const native = e.nativeEvent;
-      const events = typeof native.getCoalescedEvents === "function" ? native.getCoalescedEvents() : [native];
-
-      const alpha = clamp(canvasSmoothing ?? 0.55, 0.01, 0.99);
-
-      let last = lastStampCssRef.current;
-      let ema = emaCssRef.current || last;
-
-      for (const ev of events) {
-        const px = ev.clientX - rect.left;
-        const py = ev.clientY - rect.top;
-
-        if (!last || !ema) {
-          const init = { x: px, y: py };
-          lastStampCssRef.current = init;
-          emaCssRef.current = init;
-          paintTipAt(init);
-          continue;
-        }
-
-        ema = {
-          x: ema.x + (px - ema.x) * alpha,
-          y: ema.y + (py - ema.y) * alpha,
-        };
-        stampBetweenCanvas(last, ema);
-        last = ema;
-      }
-
-      lastStampCssRef.current = last;
-      emaCssRef.current = ema;
-    }
-  };
-
-  const handlePointerUp = (e) => {
-    e.target.releasePointerCapture?.(e.pointerId);
-    if (zoomToolActive) {
-      const z = zoomDragRef.current;
-      if (z && z.kind === "marquee") {
-        const left = Math.min(z.startCss.x, z.curCss.x);
-        const top = Math.min(z.startCss.y, z.curCss.y);
-        const width = Math.abs(z.curCss.x - z.startCss.x);
-        const height = Math.abs(z.curCss.y - z.startCss.y);
-        if (width > 8 && height > 8) onZoomToolRect?.({ left, top, width, height });
-      }
-      zoomDragRef.current = null;
-      return;
-    }
-    if (engine === "canvas") {
-      const end = emaCssRef.current || lastStampCssRef.current;
-      if (end) paintTipAt(end);
-    }
-    if (dragRef.current) {
-      if (dragRef.current.kind === "marquee-obj" || dragRef.current.kind === "marquee-token") {
-        const { startRow, startCol, curRow, curCol } = dragRef.current;
-        const r1 = Math.floor(Math.min(startRow, curRow));
-        const r2 = Math.ceil(Math.max(startRow, curRow));
-        const c1 = Math.floor(Math.min(startCol, curCol));
-        const c2 = Math.ceil(Math.max(startCol, curCol));
-        if (dragRef.current.kind === "marquee-obj") {
-          const arr = (objects[currentLayer] || [])
-            .filter((o) => !(o.row + o.hTiles <= r1 || r2 <= o.row || o.col + o.wTiles <= c1 || c2 <= o.col))
-            .map((o) => o.id);
-          setSelectedObjIds(arr);
-          setSelectedObjId(arr[0] || null);
-          onSelectionChange?.(arr.map((id) => getObjectById(currentLayer, id)).filter(Boolean));
-        } else {
-          const arr = (tokens || [])
-            .filter((t) => {
-              const h = t.hTiles || 1;
-              const w = t.wTiles || 1;
-              return !(t.row + h <= r1 || r2 <= t.row || t.col + w <= c1 || c2 <= t.col);
-            })
-            .map((t) => t.id);
-          setSelectedTokenIds(arr);
-          setSelectedTokenId(arr[0] || null);
-          onTokenSelectionChange?.(arr.map((id) => getTokenById(id)).filter(Boolean));
-        }
-      }
-      dragRef.current = null;
-    }
-  };
-
-  const cellBg = (v) => {
-    if (!v) return "transparent";
-    if (typeof v === "string") {
-      if (v.startsWith("rgba(") || v.startsWith("rgb(")) return v;
-      if (v.startsWith("#")) return v;
-    }
-    return v === "grass"
-      ? "green"
-      : v === "water"
-      ? "blue"
-      : v === "stone"
-      ? "gray"
-      : "transparent";
-  };
-
-  let cursorStyle = "default";
-  if (isPanning || panHotkey || (dragRef.current && (dragRef.current.kind === "rotate-obj" || dragRef.current.kind === "rotate-token"))) {
-    cursorStyle = "grabbing";
-  } else if (panToolActive) {
-    cursorStyle = "grab";
-  } else if (!layerIsVisible) {
-    cursorStyle = "not-allowed";
-  } else if (mousePos) {
-    const hit = hitResizeHandle(mousePos.x, mousePos.y) || hitTokenResizeHandle(mousePos.x, mousePos.y);
-    if (hit) {
-      cursorStyle = hit.corner === "nw" || hit.corner === "se" ? "nwse-resize" : "nesw-resize";
-    } else {
-      const ring = hitRotateRing(mousePos.x, mousePos.y) || hitTokenRotateRing(mousePos.x, mousePos.y);
-      if (ring) cursorStyle = "grab";
-      else if (zoomToolActive) cursorStyle = "zoom-in";
-      else cursorStyle = engine === "grid" ? (gridSettings?.snapToGrid ? "cell" : "crosshair") : "crosshair";
-    }
-  } else {
-    if (zoomToolActive) cursorStyle = "zoom-in";
-    else cursorStyle = engine === "grid" ? (gridSettings?.snapToGrid ? "cell" : "crosshair") : "crosshair";
-  }
+  const cellBg = cellBackground;
 
   return {
     rows,
