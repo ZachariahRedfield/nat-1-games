@@ -118,6 +118,7 @@ export function createLegacyMapBuilderViewModel(state) {
     setSelectedAssetId,
     assetStamp,
     setAssetStamp,
+    updateAssetById,
     saveDialogOpen,
     closeSaveSelectionDialog,
     saveSelectionAsAsset,
