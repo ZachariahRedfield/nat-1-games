@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   saveProject as saveProjectManager,
   saveProjectAs as saveProjectAsManager,
@@ -20,222 +20,20 @@ import { useTokenSelectionState } from "../state/useTokenSelectionState.js";
 import { useLayerVisibilityState } from "../state/useLayerVisibilityState.js";
 import { useLegacyAssetWorkflow } from "../state/useLegacyAssetWorkflow.js";
 import { useLegacyHistory } from "../state/useLegacyHistory.js";
-
-function useLayerAndInteractionState() {
-  const [currentLayer, setCurrentLayer] = useState("base");
-  const [interactionMode, setInteractionMode] = useState("draw");
-  const [isErasing, setIsErasing] = useState(false);
-  const [canvasColor, setCanvasColor] = useState(null);
-
-  return {
-    currentLayer,
-    setCurrentLayer,
-    interactionMode,
-    setInteractionMode,
-    isErasing,
-    setIsErasing,
-    canvasColor,
-    setCanvasColor,
-  };
-}
-
-function useGridSettingsState() {
-  const [gridSettings, setGridSettings] = useState({
-    sizeTiles: 1,
-    sizeCols: 1,
-    sizeRows: 1,
-    linkXY: false,
-    rotation: 0,
-    flipX: false,
-    flipY: false,
-    opacity: 1,
-    snapToGrid: true,
-    snapStep: 1,
-    smartAdjacency: true,
-  });
-
-  return { gridSettings, setGridSettings };
-}
-
-function useCanvasRefs() {
-  const backgroundCanvasRef = useRef(null);
-  const baseCanvasRef = useRef(null);
-  const skyCanvasRef = useRef(null);
-
-  const canvasRefs = useMemo(
-    () => ({
-      background: backgroundCanvasRef,
-      base: baseCanvasRef,
-      sky: skyCanvasRef,
-    }),
-    [backgroundCanvasRef, baseCanvasRef, skyCanvasRef]
-  );
-
-  return {
-    backgroundCanvasRef,
-    baseCanvasRef,
-    skyCanvasRef,
-    canvasRefs,
-  };
-}
-
-function useLayoutRefs() {
-  const scrollRef = useRef(null);
-  const gridContentRef = useRef(null);
-  const layerBarWrapRef = useRef(null);
-
-  return { scrollRef, gridContentRef, layerBarWrapRef };
-}
-
-function useTileState() {
-  const [tileSize, setTileSize] = useState(24);
-  return { tileSize, setTileSize };
-}
-
-function useUndoRedoState() {
-  const [undoStack, setUndoStack] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
-
-  return { undoStack, setUndoStack, redoStack, setRedoStack };
-}
-
-function useMenuState() {
-  const [mapsMenuOpen, setMapsMenuOpen] = useState(false);
-  const toggleMapsMenu = useCallback(() => {
-    setMapsMenuOpen((value) => !value);
-  }, []);
-
-  return { mapsMenuOpen, toggleMapsMenu, setMapsMenuOpen };
-}
-
-function useMapSizeDialogState() {
-  const [mapSizeModalOpen, setMapSizeModalOpen] = useState(false);
-  const openMapSizeModal = useCallback(() => {
-    setMapSizeModalOpen(true);
-  }, []);
-  const closeMapSizeModal = useCallback(() => {
-    setMapSizeModalOpen(false);
-  }, []);
-
-  return {
-    mapSizeModalOpen,
-    openMapSizeModal,
-    closeMapSizeModal,
-    setMapSizeModalOpen,
-  };
-}
-
-function useSaveSelectionDialogState() {
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const openSaveSelectionDialog = useCallback(() => {
-    setSaveDialogOpen(true);
-  }, []);
-  const closeSaveSelectionDialog = useCallback(() => {
-    setSaveDialogOpen(false);
-  }, []);
-
-  return {
-    saveDialogOpen,
-    openSaveSelectionDialog,
-    closeSaveSelectionDialog,
-  };
-}
-
-function useGridDimensionsInputs({ setRowsInput, setColsInput }) {
-  const handleChangeRows = useCallback(
-    (event) => {
-      setRowsInput(event.target.value);
-    },
-    [setRowsInput]
-  );
-
-  const handleChangeCols = useCallback(
-    (event) => {
-      setColsInput(event.target.value);
-    },
-    [setColsInput]
-  );
-
-  return { handleChangeRows, handleChangeCols };
-}
-
-function useZoomToRect({
-  clamp,
-  snap,
-  tileSize,
-  rows,
-  cols,
-  scrollRef,
-  gridContentRef,
-  setTileSize,
-  setUndoStack,
-  setRedoStack,
-}) {
-  return useCallback(
-    ({ left, top, width, height }) => {
-      const container = scrollRef.current;
-      const content = gridContentRef.current;
-      if (!container || !content) return;
-      setUndoStack((prev) => [
-        ...prev,
-        { type: "view", tileSize, scrollLeft: container.scrollLeft, scrollTop: container.scrollTop },
-      ]);
-      setRedoStack([]);
-
-      const prevTileSize = tileSize;
-      if (width < 8 || height < 8) return;
-
-      const scaleX = container.clientWidth / width;
-      const scaleY = container.clientHeight / height;
-      let next = clamp(snap(prevTileSize * Math.min(scaleX, scaleY), 4), 8, 128);
-      if (next <= prevTileSize) {
-        next = clamp(prevTileSize + 8, 8, 128);
-      }
-
-      const contentWidthPrev = cols * prevTileSize;
-      const contentHeightPrev = rows * prevTileSize;
-      let rx = (left + width / 2) / (contentWidthPrev || 1);
-      let ry = (top + height / 2) / (contentHeightPrev || 1);
-      rx = clamp(rx, 0, 1);
-      ry = clamp(ry, 0, 1);
-
-      const containerRect = container.getBoundingClientRect();
-      const contentRect = content.getBoundingClientRect();
-      const contentOffsetLeft = contentRect.left - containerRect.left + container.scrollLeft;
-      const contentOffsetTop = contentRect.top - containerRect.top + container.scrollTop;
-
-      setTileSize(next);
-      const centerAfterPaint = () => {
-        const contentWidthNext = cols * next;
-        const contentHeightNext = rows * next;
-        const desiredLeft = contentOffsetLeft + rx * contentWidthNext - container.clientWidth / 2;
-        const desiredTop = contentOffsetTop + ry * contentHeightNext - container.clientHeight / 2;
-        const minLeft = Math.max(0, contentOffsetLeft);
-        const minTop = Math.max(0, contentOffsetTop);
-        const maxLeft = Math.max(minLeft, contentOffsetLeft + contentWidthNext - container.clientWidth);
-        const maxTop = Math.max(minTop, contentOffsetTop + contentHeightNext - container.clientHeight);
-        container.scrollTo({
-          left: clamp(desiredLeft, minLeft, maxLeft),
-          top: clamp(desiredTop, minTop, maxTop),
-        });
-      };
-      requestAnimationFrame(() => requestAnimationFrame(centerAfterPaint));
-    },
-    [clamp, cols, gridContentRef, rows, scrollRef, setRedoStack, setTileSize, setUndoStack, snap, tileSize]
-  );
-}
-
-function useKeyboardShortcuts({ setZoomToolActive }) {
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      if (event.code === "Escape") {
-        setZoomToolActive(false);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [setZoomToolActive]);
-}
+import { useCanvasDisplayState } from "./state/useCanvasDisplayState.js";
+import { useCanvasRefs } from "./state/useCanvasRefs.js";
+import { useClampAndSnap } from "./state/useClampSnap.js";
+import { useGridDimensionsInputs } from "./state/useGridDimensionsInputs.js";
+import { useGridSettingsState } from "./state/useGridSettingsState.js";
+import { useKeyboardShortcuts } from "./state/useKeyboardShortcuts.js";
+import { useLayerAndInteractionState } from "./state/useLayerAndInteractionState.js";
+import { useLayoutRefs } from "./state/useLayoutRefs.js";
+import { useMapSizeDialogState } from "./state/useMapSizeDialogState.js";
+import { useMenuState } from "./state/useMenuState.js";
+import { useSaveSelectionDialogState } from "./state/useSaveSelectionDialogState.js";
+import { useTileState } from "./state/useTileState.js";
+import { useUndoRedoState } from "./state/useUndoRedoState.js";
+import { useZoomToRect } from "./state/useZoomToRect.js";
 
 export function useLegacyMapBuilderState() {
   const projectNameRef = useRef("My Map");
@@ -285,8 +83,7 @@ export function useLegacyMapBuilderState() {
   const [showGridLines, setShowGridLines] = useState(true);
   const [engine, setEngine] = useState("grid");
 
-  const clamp = useCallback((value, min, max) => Math.max(min, Math.min(max, value)), []);
-  const snap = useCallback((value, step = 4) => Math.round(value / step) * step, []);
+  const { clamp, snap } = useClampAndSnap();
 
   const handleZoomToRect = useZoomToRect({
     clamp,
@@ -303,13 +100,20 @@ export function useLegacyMapBuilderState() {
 
   useKeyboardShortcuts({ setZoomToolActive: zoomState.setZoomToolActive });
 
-  const [canvasOpacity, setCanvasOpacity] = useState(1);
-  const [canvasSpacing, setCanvasSpacing] = useState(0);
-  const [canvasBlendMode, setCanvasBlendMode] = useState("source-over");
-  const [canvasSmoothing, setCanvasSmoothing] = useState(true);
-  const [naturalSettings, setNaturalSettings] = useState(null);
-
-  const snapshotSettings = useCallback(() => {}, []);
+  const canvasDisplayState = useCanvasDisplayState();
+  const {
+    canvasOpacity,
+    setCanvasOpacity,
+    canvasSpacing,
+    setCanvasSpacing,
+    canvasBlendMode,
+    setCanvasBlendMode,
+    canvasSmoothing,
+    setCanvasSmoothing,
+    naturalSettings,
+    setNaturalSettings,
+    snapshotSettings,
+  } = canvasDisplayState;
 
   const legacyAssetWorkflow = useLegacyAssetWorkflow({
     hasSelection: gridSelectionState.hasSelection,
@@ -505,17 +309,7 @@ export function useLegacyMapBuilderState() {
     clamp,
     snap,
     handleZoomToRect,
-    canvasOpacity,
-    setCanvasOpacity,
-    canvasSpacing,
-    setCanvasSpacing,
-    canvasBlendMode,
-    setCanvasBlendMode,
-    canvasSmoothing,
-    setCanvasSmoothing,
-    naturalSettings,
-    setNaturalSettings,
-    snapshotSettings,
+    ...canvasDisplayState,
     ...legacyAssetWorkflow,
     closeAssetCreator,
     handleAssetUpdate,
