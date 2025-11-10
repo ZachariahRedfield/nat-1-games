@@ -18,6 +18,7 @@ export function useAssetLibrary({
     setAssets: state.setAssets,
     setNeedsAssetsFolder: state.setNeedsAssetsFolder,
     setSelectedAssetId: state.setSelectedAssetId,
+    setAssetsFolderDialogOpen: state.setAssetsFolderDialogOpen,
   });
 
   const selection = useAssetSelection({

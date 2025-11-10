@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 export function useLegacyProjectLoading({
   isAssetsFolderConfigured,
   setNeedsAssetsFolder,
+  setAssetsFolderDialogOpen,
   showToast,
   listMaps,
   loadProjectFromDirectory,
@@ -25,6 +26,7 @@ export function useLegacyProjectLoading({
     const configured = await isAssetsFolderConfigured();
     if (!configured) {
       setNeedsAssetsFolder(true);
+      setAssetsFolderDialogOpen(true);
       showToast("Select an Account Save Folder first.", "warning");
       return;
     }
@@ -35,6 +37,7 @@ export function useLegacyProjectLoading({
     isAssetsFolderConfigured,
     listMaps,
     setNeedsAssetsFolder,
+    setAssetsFolderDialogOpen,
     showToast,
   ]);
 

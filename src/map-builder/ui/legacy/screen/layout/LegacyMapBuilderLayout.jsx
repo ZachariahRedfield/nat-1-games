@@ -10,7 +10,7 @@ import FeedbackLayer from "../../modules/feedback/FeedbackLayer.jsx";
 import AssetCreatorModal from "../components/AssetCreatorModal.jsx";
 import LoadMapsModal from "../components/LoadMapsModal.jsx";
 import MapSizeModal from "../components/MapSizeModal.jsx";
-import AssetsFolderBanner from "../components/AssetsFolderBanner.jsx";
+import AssetsFolderDialog from "../components/AssetsFolderDialog.jsx";
 import LegacySettingsPanel from "../components/LegacySettingsPanel.jsx";
 import LegacyMapBuilderUndoRedoControls from "./LegacyUndoRedoControls.jsx";
 
@@ -19,7 +19,7 @@ const GRID_BACKGROUND_IMAGE =
 
 export default function LegacyMapBuilderLayout({
   headerProps,
-  assetsFolderBannerProps,
+  assetsFolderDialogProps,
   feedbackLayerProps,
   assetCreatorModalProps,
   loadMapsModalProps,
@@ -49,8 +49,6 @@ export default function LegacyMapBuilderLayout({
         currentScreen={currentScreen || "mapBuilder"}
       />
       <Header {...headerProps} onBack={onBack} session={session} onLogout={onLogout} />
-
-      <AssetsFolderBanner {...assetsFolderBannerProps} />
 
       <main className="flex flex-1 overflow-hidden min-h-0">
         <FeedbackLayer {...feedbackLayerProps} />
@@ -116,6 +114,7 @@ export default function LegacyMapBuilderLayout({
       <MapSizeModal {...mapSizeModalProps} />
       <BottomAssetsDrawer {...bottomAssetsDrawerProps} />
       <SaveSelectionDialog {...saveSelectionDialogProps} />
+      <AssetsFolderDialog {...assetsFolderDialogProps} />
     </div>
   );
 }

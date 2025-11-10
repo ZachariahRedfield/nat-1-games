@@ -9,6 +9,8 @@ export function createLegacyMapBuilderViewModel(state) {
     toggleMapsMenu,
     openMapSizeModal,
     needsAssetsFolder,
+    assetsFolderDialogOpen,
+    setAssetsFolderDialogOpen,
     promptChooseAssetsFolder,
     toasts,
     promptState,
@@ -157,8 +159,9 @@ export function createLegacyMapBuilderViewModel(state) {
   const fixedBarLeft = providedFixedBarLeft ?? fixedLayerBar?.left ?? 0;
   const fixedBarWidth = providedFixedBarWidth ?? fixedLayerBar?.width ?? 0;
 
-  const assetsFolderBannerProps = {
-    needsAssetsFolder,
+  const assetsFolderDialogProps = {
+    open: needsAssetsFolder && assetsFolderDialogOpen,
+    onClose: () => setAssetsFolderDialogOpen(false),
     onChooseFolder: promptChooseAssetsFolder,
   };
 
@@ -390,7 +393,7 @@ export function createLegacyMapBuilderViewModel(state) {
 
   return {
     headerProps,
-    assetsFolderBannerProps,
+    assetsFolderDialogProps,
     feedbackLayerProps,
     assetCreatorModalProps,
     loadMapsModalProps,
