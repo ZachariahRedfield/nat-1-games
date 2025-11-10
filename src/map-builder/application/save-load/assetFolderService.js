@@ -11,9 +11,13 @@ export async function loadAssetsFromStoredParent() {
   try {
     const parent = await getStoredParentDirectoryHandle();
     const ok = parent ? await verifyPermission(parent, false) : false;
-    if (!ok) return [];
+    if (!ok) {
+      await setStoredParentDirectoryHandle(null);
+      return [];
+    }
     const manifest = await readAssetsManifest(parent);
-    const hydrated = await hydrateAssetsFromFS({ assets: manifest.assets }, null, parent);
+    const manifestAssets = Array.isArray(manifest?.assets) ? manifest.assets : [];
+    const hydrated = await hydrateAssetsFromFS({ assets: manifestAssets }, null, parent);
     return hydrated;
   } catch (error) {
     console.error("loadAssetsFromStoredParent error", error);
@@ -41,7 +45,8 @@ export async function chooseAssetsFolder() {
     if (!manifest || !Array.isArray(manifest.assets)) {
       await writeAssetsManifest(parent, { version: 1, assets: [] });
     }
-    const hydrated = await hydrateAssetsFromFS({ assets: manifest.assets || [] }, null, parent);
+    const hydratedAssets = Array.isArray(manifest?.assets) ? manifest.assets : [];
+    const hydrated = await hydrateAssetsFromFS({ assets: hydratedAssets }, null, parent);
     return { ok: true, assets: hydrated };
   } catch (error) {
     console.error("chooseAssetsFolder error", error);
@@ -54,6 +59,9 @@ export async function isAssetsFolderConfigured() {
     const parent = await getStoredParentDirectoryHandle();
     if (!parent) return false;
     const ok = await verifyPermission(parent, false);
+    if (!ok) {
+      await setStoredParentDirectoryHandle(null);
+    }
     return Boolean(ok);
   } catch {
     return false;
