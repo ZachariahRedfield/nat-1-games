@@ -9,6 +9,7 @@ export function useLegacyProjectSaving({
   isAssetsFolderConfigured,
   showToast,
   setNeedsAssetsFolder,
+  setAssetsFolderDialogOpen,
   hasCurrentProjectDir,
   promptUser,
   saveProjectManager,
@@ -143,6 +144,7 @@ export function useLegacyProjectSaving({
     const configured = await isAssetsFolderConfigured();
     if (!configured) {
       setNeedsAssetsFolder(true);
+      setAssetsFolderDialogOpen(true);
       showToast("Select an Account Save Folder to save.", "warning");
       return;
     }
@@ -187,6 +189,7 @@ export function useLegacyProjectSaving({
     saveProjectAsManager,
     saveProjectManager,
     setNeedsAssetsFolder,
+    setAssetsFolderDialogOpen,
     showToast,
   ]);
 
@@ -194,6 +197,7 @@ export function useLegacyProjectSaving({
     const configured = await isAssetsFolderConfigured();
     if (!configured) {
       setNeedsAssetsFolder(true);
+      setAssetsFolderDialogOpen(true);
       showToast("Select an Account Save Folder to save.", "warning");
       return;
     }
@@ -227,6 +231,7 @@ export function useLegacyProjectSaving({
     refreshAssetsFromFilesystem,
     saveProjectAsManager,
     setNeedsAssetsFolder,
+    setAssetsFolderDialogOpen,
     showToast,
   ]);
 

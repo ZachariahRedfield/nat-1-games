@@ -12,6 +12,7 @@ function useAssetPersistence({
   setAssets,
   setNeedsAssetsFolder,
   setSelectedAssetId,
+  setAssetsFolderDialogOpen,
 }) {
   const globalAssetsRef = useRef([]);
   const persistTimerRef = useRef(null);
@@ -27,6 +28,7 @@ function useAssetPersistence({
       if (!mounted) return;
 
       setNeedsAssetsFolder(!configured);
+      setAssetsFolderDialogOpen(!configured);
 
       const gMap = new Map(
         (Array.isArray(global) ? global : [])
@@ -87,7 +89,7 @@ function useAssetPersistence({
         persistTimerRef.current = null;
       }
     };
-  }, [setAssets, setNeedsAssetsFolder, setSelectedAssetId]);
+  }, [setAssets, setNeedsAssetsFolder, setSelectedAssetId, setAssetsFolderDialogOpen]);
 
   useEffect(() => {
     if (persistTimerRef.current) {
@@ -108,12 +110,13 @@ function useAssetPersistence({
     const result = await chooseAssetsFolder();
     if (result?.ok) {
       setNeedsAssetsFolder(false);
+      setAssetsFolderDialogOpen(false);
       const list = result.assets || [];
       globalAssetsRef.current = list;
       setAssets(list);
       if (list[0]) setSelectedAssetId(list[0].id);
     }
-  }, [setAssets, setNeedsAssetsFolder, setSelectedAssetId]);
+  }, [setAssets, setNeedsAssetsFolder, setSelectedAssetId, setAssetsFolderDialogOpen]);
 
   return { promptChooseAssetsFolder };
 }

@@ -29,6 +29,7 @@ function useAssetLibraryState() {
     normalizeNaturalSettings(DEFAULT_NATURAL_SETTINGS)
   );
   const [needsAssetsFolder, setNeedsAssetsFolder] = useState(false);
+  const [assetsFolderDialogOpen, setAssetsFolderDialogOpen] = useState(false);
 
   return {
     assets,
@@ -73,6 +74,8 @@ function useAssetLibraryState() {
     setNaturalSettings,
     needsAssetsFolder,
     setNeedsAssetsFolder,
+    assetsFolderDialogOpen,
+    setAssetsFolderDialogOpen,
   };
 }
 

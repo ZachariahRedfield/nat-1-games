@@ -217,6 +217,7 @@ export function useLegacyMapBuilderState() {
   const projectLoadingState = useLegacyProjectLoading({
     isAssetsFolderConfigured,
     setNeedsAssetsFolder: legacyAssetWorkflow.setNeedsAssetsFolder,
+    setAssetsFolderDialogOpen: legacyAssetWorkflow.setAssetsFolderDialogOpen,
     showToast: feedbackState.showToast,
     listMaps,
     loadProjectFromDirectory,
@@ -237,6 +238,7 @@ export function useLegacyMapBuilderState() {
     isAssetsFolderConfigured,
     showToast: feedbackState.showToast,
     setNeedsAssetsFolder: legacyAssetWorkflow.setNeedsAssetsFolder,
+    setAssetsFolderDialogOpen: legacyAssetWorkflow.setAssetsFolderDialogOpen,
     hasCurrentProjectDir,
     promptUser,
     saveProjectManager,
