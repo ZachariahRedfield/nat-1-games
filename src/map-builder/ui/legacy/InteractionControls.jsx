@@ -41,6 +41,30 @@ const ZoomIcon = ({ className = "w-4 h-4" }) => (
   </svg>
 );
 
+const segmentedButtonClass = (isActive) =>
+  `px-3 py-1.5 text-sm font-medium relative group inline-flex items-center justify-center gap-2 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
+    isActive
+      ? "bg-blue-500 text-white shadow-inner"
+      : "text-white/80 hover:text-white hover:bg-white/10"
+  }`;
+
+const toggleButtonClass = (isActive) =>
+  `px-3 py-1.5 text-sm font-medium relative group inline-flex items-center gap-2 rounded-lg border transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
+    isActive
+      ? "border-red-500 bg-red-600/90 text-white shadow-inner"
+      : "border-slate-600/70 bg-slate-900/60 text-white/80 hover:text-white hover:bg-white/10"
+  }`;
+
+const primaryButtonClass = (enabled) =>
+  `px-3 py-1.5 text-sm font-medium relative group inline-flex items-center gap-2 rounded-lg border transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+    enabled
+      ? "border-amber-500 bg-amber-500/90 text-white hover:bg-amber-400"
+      : "cursor-not-allowed border-slate-700 bg-slate-900/50 text-white/60"
+  }`;
+
+const tooltipClass =
+  "absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900/95 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 pointer-events-none";
+
 export default function InteractionControls({
   interactionMode,
   setInteractionMode,
@@ -57,33 +81,33 @@ export default function InteractionControls({
   return (
     <>
       {/* Row 1: Mode segmented (+ Zoom Tool at right; mutually exclusive) */}
-      <div className="inline-flex items-center gap-0 bg-gray-700/40 border border-gray-600 rounded overflow-hidden">
+      <div className="inline-flex items-center gap-0 overflow-hidden rounded-xl border border-slate-600/80 bg-slate-900/60 shadow-sm backdrop-blur">
         <button
           onClick={() => { setZoomToolActive(false); setInteractionMode("draw"); }}
           title="Draw"
           aria-label="Draw"
-          className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && interactionMode === "draw") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+          className={segmentedButtonClass(!zoomToolActive && interactionMode === "draw")}
         >
           <BrushIcon className="w-4 h-4" />
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Draw</div>
+          <div className={tooltipClass}>Draw</div>
         </button>
         <button
           onClick={() => { setZoomToolActive(false); setInteractionMode("select"); }}
           title="Select"
           aria-label="Select"
-          className={`px-3 py-1 text-sm relative group ${(!zoomToolActive && interactionMode === "select") ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+          className={segmentedButtonClass(!zoomToolActive && interactionMode === "select")}
         >
           <CursorIcon className="w-4 h-4" />
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Select</div>
+          <div className={tooltipClass}>Select</div>
         </button>
         <button
-          className={`px-3 py-1 text-sm relative group ${zoomToolActive ? 'bg-blue-600 text-white' : 'bg-transparent text-white/90'}`}
+          className={segmentedButtonClass(zoomToolActive)}
           onClick={() => setZoomToolActive((v)=> !v)}
           title="Zoom Tool: drag a rectangle to zoom"
           aria-label="Zoom Tool"
         >
           <ZoomIcon className="w-4 h-4" />
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Zoom Tool</div>
+          <div className={tooltipClass}>Zoom Tool</div>
         </button>
       </div>
 
@@ -92,42 +116,43 @@ export default function InteractionControls({
         {interactionMode === 'draw' ? (
           <>
             {assetGroup !== 'token' && (
-              <div className="inline-flex items-center gap-0 bg-gray-700/40 border border-gray-600 rounded overflow-hidden">
+              <div className="inline-flex items-center gap-0 overflow-hidden rounded-xl border border-slate-600/80 bg-slate-900/60 shadow-sm backdrop-blur">
                 <button
                   onClick={() => setEngine("grid")}
                   title="Grid"
                   aria-label="Grid"
-                  className={`px-3 py-1 text-sm relative group ${engine === "grid" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                  className={segmentedButtonClass(engine === "grid")}
                 >
                   <GridIcon className="w-4 h-4" />
-                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Grid</div>
+                  <div className={tooltipClass}>Grid</div>
                 </button>
                 <button
                   onClick={() => setEngine("canvas")}
                   title="Canvas"
                   aria-label="Canvas"
-                  className={`px-3 py-1 text-sm relative group ${engine === "canvas" ? "bg-blue-600 text-white" : "bg-transparent text-white/90"}`}
+                  className={segmentedButtonClass(engine === "canvas")}
                 >
                   <CanvasIcon className="w-4 h-4" />
-                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Canvas</div>
+                  <div className={tooltipClass}>Canvas</div>
                 </button>
               </div>
             )}
             <button
               onClick={() => setIsErasing((s) => !s)}
-              className={`px-3 py-1 text-sm border rounded relative group ${isErasing ? 'bg-red-700 border-red-600' : 'bg-gray-700/40 border-gray-600'}`}
+              className={toggleButtonClass(isErasing)}
               title={`Eraser: ${isErasing ? 'On' : 'Off'}`}
               aria-label={`Eraser: ${isErasing ? 'On' : 'Off'}`}
             >
               <EraserIcon className="w-4 h-4" />
-              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Eraser: {isErasing ? 'On' : 'Off'}</div>
+              <span className="hidden text-xs font-medium sm:inline">Eraser</span>
+              <div className={tooltipClass}>Eraser: {isErasing ? 'On' : 'Off'}</div>
             </button>
           </>
         ) : (
           <button
             onClick={onSaveClick}
             disabled={!canSave}
-            className={`px-3 py-1 text-sm border rounded relative group ${ canSave ? 'bg-amber-600 border-amber-500 hover:bg-amber-500' : 'bg-gray-700/40 border-gray-600 cursor-not-allowed'}`}
+            className={primaryButtonClass(canSave)}
             title="Save selected as a new asset"
             aria-label="Save"
           >
@@ -135,7 +160,7 @@ export default function InteractionControls({
               <SaveIcon className="w-4 h-4" />
               <span className="text-xs">Save</span>
             </span>
-            <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none">Save</div>
+            <div className={tooltipClass}>Save</div>
           </button>
         )}
       </div>
