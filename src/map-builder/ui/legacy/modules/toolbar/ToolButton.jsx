@@ -1,8 +1,10 @@
 import React from "react";
 
-const DEFAULT_ACTIVE_CLASS = "bg-gray-700 text-white";
-const DEFAULT_INACTIVE_CLASS = "bg-transparent text-white/90 hover:bg-gray-700/40";
-const DEFAULT_DISABLED_CLASS = "bg-transparent text-white/50 cursor-not-allowed";
+const DEFAULT_ACTIVE_CLASS =
+  "bg-indigo-500/90 text-white shadow-lg shadow-indigo-500/30";
+const DEFAULT_INACTIVE_CLASS =
+  "text-white/80 hover:text-white hover:bg-white/10";
+const DEFAULT_DISABLED_CLASS = "text-white/40 cursor-not-allowed";
 
 export default function ToolButton({
   id,
@@ -42,10 +44,12 @@ export default function ToolButton({
         aria-label={label}
         disabled={disabled}
         onClick={handleClick}
-        className={`relative w-8 h-8 flex items-center justify-center rounded ${baseClass} ${className}`}
+        className={`relative w-10 h-10 flex items-center justify-center rounded-xl backdrop-blur-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${baseClass} ${className}`}
       >
         <span className={iconClassFor?.(id)}>{Icon ? <Icon /> : null}</span>
-        <span className={`absolute inset-0 flex items-center justify-center text-[10px] ${labelClassFor?.(id)}`}>
+        <span
+          className={`pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-semibold tracking-wide uppercase ${labelClassFor?.(id)}`}
+        >
           {label}
         </span>
       </button>

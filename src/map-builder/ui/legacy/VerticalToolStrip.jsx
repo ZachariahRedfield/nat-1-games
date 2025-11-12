@@ -14,7 +14,7 @@ import {
 } from "./modules/toolbar/icons.jsx";
 
 const FLOATING_PANEL_CLASS =
-  "h-[36px] bg-gray-700/30 border border-gray-600 rounded-md flex items-center justify-center group relative";
+  "group relative flex items-center justify-center rounded-2xl border border-white/10 bg-slate-900/70 px-1.5 py-1.5 shadow-lg backdrop-blur-lg";
 
 export default function VerticalToolStrip({
   interactionMode,
@@ -37,7 +37,7 @@ export default function VerticalToolStrip({
   const selectActive = !zoomToolActive && !panToolActive && interactionMode === "select";
 
   return (
-    <div className="relative inline-flex flex-col items-center gap-1 bg-gray-700/30 border border-gray-600 rounded-md p-1 shadow z-[10015] overflow-visible">
+    <div className="relative inline-flex flex-col items-center gap-1.5 rounded-3xl border border-white/10 bg-slate-900/70 px-2 py-3 shadow-2xl shadow-black/40 backdrop-blur-xl z-[10015] overflow-visible">
       <ToolButton
         id="draw"
         label="Draw"
@@ -84,7 +84,7 @@ export default function VerticalToolStrip({
             wrapperClassName={FLOATING_PANEL_CLASS}
             inactiveClassName={
               assetGroup === "token"
-                ? "bg-transparent text-white/50 cursor-not-allowed"
+                ? "text-white/40 cursor-not-allowed"
                 : undefined
             }
           />
