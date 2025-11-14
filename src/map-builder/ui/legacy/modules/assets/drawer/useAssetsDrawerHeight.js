@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function readStoredHeight(storageKey, fallback) {
   if (typeof window === "undefined") return fallback;
   try {
     const stored = window.localStorage?.getItem(storageKey);
     const numeric = Number(stored);
-    if (Number.isFinite(numeric) && numeric > 0) {
+    if (Number.isFinite(numeric) && numeric >= 0) {
       return numeric;
     }
   } catch (error) {
@@ -14,11 +14,22 @@ function readStoredHeight(storageKey, fallback) {
   return fallback;
 }
 
+function getViewportHeight() {
+  if (typeof window === "undefined") return 800;
+  return window.innerHeight || document.documentElement?.clientHeight || 800;
+}
+
 export function useAssetsDrawerHeight({ storageKey, initialHeight, minHeight, maxHeightPct }) {
-  const resizeHandleRef = useRef(null);
-  const pointerIdRef = useRef(null);
-  const draggingRef = useRef(false);
-  const [height, setHeight] = useState(() => readStoredHeight(storageKey, initialHeight));
+  const minimumHeight = Math.max(0, minHeight || 0);
+  const [height, setHeight] = useState(() => {
+    const stored = readStoredHeight(storageKey, initialHeight);
+    if (stored > minimumHeight) {
+      const viewportHeight = getViewportHeight();
+      const maximumHeight = Math.round(viewportHeight * (maxHeightPct || 1));
+      return Math.max(minimumHeight, maximumHeight);
+    }
+    return minimumHeight;
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -29,63 +40,34 @@ export function useAssetsDrawerHeight({ storageKey, initialHeight, minHeight, ma
     }
   }, [height, storageKey]);
 
-  const stopDragging = useCallback(() => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    if (typeof document !== "undefined") {
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    }
-    const handle = resizeHandleRef.current;
-    if (handle && pointerIdRef.current != null) {
-      handle.releasePointerCapture?.(pointerIdRef.current);
-    }
-    pointerIdRef.current = null;
-  }, []);
+  const computeExpandedHeight = useCallback(() => {
+    const viewportHeight = getViewportHeight();
+    const maximumHeight = Math.round(viewportHeight * (maxHeightPct || 1));
+    return Math.max(minimumHeight, maximumHeight);
+  }, [maxHeightPct, minimumHeight]);
 
-  useEffect(() => stopDragging, [stopDragging]);
+  const toggleDrawer = useCallback(() => {
+    setHeight((prev) => {
+      if (prev <= minimumHeight) {
+        return computeExpandedHeight();
+      }
+      return minimumHeight;
+    });
+  }, [computeExpandedHeight, minimumHeight]);
 
   useEffect(() => {
-    const handlePointerMove = (event) => {
-      if (!draggingRef.current) return;
-      const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 800;
-      const maximumHeight = Math.round(viewportHeight * (maxHeightPct || 1));
-      const minimumHeight = Math.max(0, minHeight || 0);
-      const nextHeight = Math.min(
-        maximumHeight,
-        Math.max(minimumHeight, Math.round(viewportHeight - event.clientY))
-      );
-      setHeight(nextHeight);
+    if (typeof window === "undefined") return undefined;
+    if (height <= minimumHeight) return undefined;
+    const handleResize = () => {
+      setHeight(computeExpandedHeight());
     };
-
-    const handlePointerUp = () => {
-      stopDragging();
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
-
+    window.addEventListener("resize", handleResize);
     return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("resize", handleResize);
     };
-  }, [maxHeightPct, minHeight, stopDragging]);
+  }, [computeExpandedHeight, height, minimumHeight]);
 
-  const handleResizeStart = useCallback(
-    (event) => {
-      draggingRef.current = true;
-      if (typeof document !== "undefined") {
-        document.body.style.userSelect = "none";
-        document.body.style.cursor = "ns-resize";
-      }
-      resizeHandleRef.current = event.currentTarget;
-      pointerIdRef.current = event.pointerId;
-      event.currentTarget?.setPointerCapture?.(event.pointerId);
-    },
-    []
-  );
+  const collapsed = useMemo(() => height <= minimumHeight, [height, minimumHeight]);
 
-  const collapsed = useMemo(() => height <= Math.max(0, minHeight || 0), [height, minHeight]);
-
-  return { height, collapsed, handleResizeStart };
+  return { height, collapsed, toggleDrawer };
 }
