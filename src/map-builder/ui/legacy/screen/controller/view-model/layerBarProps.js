@@ -5,6 +5,7 @@ export function createLayerBarProps(state) {
     setCurrentLayer: state.setCurrentLayer,
     addLayer: state.addLayer,
     renameLayer: state.renameLayer,
+    removeLayer: state.removeLayer,
     layerVisibility: state.layerVisibility,
     toggleLayerVisibility: state.toggleLayerVisibility,
     showGridLines: state.showGridLines,

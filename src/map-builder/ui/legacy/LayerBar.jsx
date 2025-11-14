@@ -1,5 +1,4 @@
 import React from "react";
-import LayersIcon from "./LayersIcon";
 
 function normalizeLayers(layers = []) {
   return layers
@@ -15,6 +14,7 @@ export default function LayerBar({
   setCurrentLayer,
   addLayer,
   renameLayer,
+  removeLayer,
   layerVisibility,
   toggleLayerVisibility,
   showGridLines,
@@ -31,9 +31,8 @@ export default function LayerBar({
   );
 
   const activeLayer = layerEntries.find((layer) => layer.id === currentLayer);
-  const activeLayerName = activeLayer?.name || "Layer";
   const activeLayerVisible = layerVisibility?.[currentLayer] !== false;
-  const toggleLabel = `${activeLayerVisible ? "Hide" : "Show"} ${activeLayerName}`;
+  const toggleLabel = activeLayerVisible ? "Hide Layer" : "Show Layer";
 
   const finishRename = React.useCallback(
     (commit) => {
@@ -54,17 +53,7 @@ export default function LayerBar({
   return (
     <div className="w-full z-[10020] bg-gray-800 text-white px-2 py-1 border-b border-gray-700 shadow">
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 mr-2">
-          <span className="text-[11px] uppercase opacity-80">Layers</span>
-          <div className="h-5 w-[76px] flex items-center">
-            <LayersIcon
-              layers={layerEntries}
-              currentLayer={currentLayer}
-              layerVisibility={layerVisibility}
-              onPick={setCurrentLayer}
-            />
-          </div>
-        </div>
+        <span className="text-[11px] uppercase opacity-80 mr-2">Layers</span>
 
         <button
           type="button"
@@ -78,6 +67,7 @@ export default function LayerBar({
           const isActive = layer.id === currentLayer;
           const isHidden = layerVisibility?.[layer.id] === false;
           const isEditing = renamingId === layer.id;
+          const canRemoveLayer = layerEntries.length > 1;
           const buttonClasses = [
             "px-2 py-0.5 text-sm rounded-full border transition",
             "border-white/80",
@@ -103,22 +93,35 @@ export default function LayerBar({
                 <button
                   type="button"
                   onClick={() => setCurrentLayer(layer.id)}
+                  onDoubleClick={(event) => {
+                    event.preventDefault();
+                    finishRename(false);
+                    setRenamingId(layer.id);
+                    setDraftName(layer.name);
+                  }}
                   className={buttonClasses}
-                  title={`Edit ${layer.name}`}
+                  title={isHidden ? `${layer.name} (hidden)` : layer.name}
                 >
                   {layer.name}
                 </button>
               )}
               <button
                 type="button"
-                className="px-1 py-0.5 text-xs rounded border border-white/40 text-white/70 hover:text-white hover:border-white/70"
-                title="Rename layer"
-                onClick={() => {
-                  setRenamingId(layer.id);
-                  setDraftName(layer.name);
+                className={`px-1 py-0.5 text-xs rounded border transition ${
+                  canRemoveLayer
+                    ? "border-red-400 text-red-300 hover:text-red-200 hover:border-red-300"
+                    : "border-white/20 text-white/30 cursor-not-allowed"
+                }`}
+                title={canRemoveLayer ? "Remove layer" : "Cannot remove the last layer"}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (!canRemoveLayer) return;
+                  finishRename(false);
+                  removeLayer?.(layer.id);
                 }}
+                disabled={!canRemoveLayer}
               >
-                ✎
+                ×
               </button>
             </div>
           );
