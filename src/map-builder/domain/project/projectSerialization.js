@@ -48,7 +48,7 @@ export function toTokensJson(projectState = {}) {
 }
 
 export async function buildProjectStateSnapshot(raw = {}, canvasesOrSingleBlob = null) {
-  const { map, settings, assets } = raw.project || raw || {};
+  const { map, settings, assets, layers: projectLayers, name } = raw.project || raw || {};
   const { tiles } = raw.tiles || {};
   const { objects, tokens } = raw.objects || {};
   const rows = map?.rows || raw.rows || 20;
@@ -56,6 +56,12 @@ export async function buildProjectStateSnapshot(raw = {}, canvasesOrSingleBlob =
   const tileSize = map?.gridSize || 32;
   const maps = tiles || raw.maps || {};
   const assetsIn = assets || raw.assets || [];
+  const settingsLayers = raw.settings?.layers;
+  const layersIn =
+    (Array.isArray(projectLayers) && projectLayers.length ? projectLayers : null) ??
+    (Array.isArray(raw.layers) && raw.layers.length ? raw.layers : null) ??
+    (Array.isArray(settingsLayers) && settingsLayers.length ? settingsLayers : null) ??
+    [];
 
   const canvasesInput = canvasesOrSingleBlob;
   let canvasDataUrl = null;
@@ -92,7 +98,8 @@ export async function buildProjectStateSnapshot(raw = {}, canvasesOrSingleBlob =
     tokens: tokens || raw.tokens || [],
     assets: assetsIn,
     settings: settings || raw.settings || {},
-    layers: raw.layers || raw.settings?.layers || [],
+    layers: layersIn,
+    name: name || raw.name || raw.settings?.name || null,
     canvasDataUrl,
     canvases,
   };

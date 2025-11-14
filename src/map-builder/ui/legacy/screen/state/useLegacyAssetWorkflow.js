@@ -92,6 +92,7 @@ export function useLegacyAssetWorkflow({
     setZoomToolActive,
     setPanToolActive,
     setCanvasColor,
+    showToast,
   });
 
   const [brushSize, setBrushSize] = useState(2);

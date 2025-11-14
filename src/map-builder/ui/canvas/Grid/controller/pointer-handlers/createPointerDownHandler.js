@@ -1,4 +1,5 @@
 import { computeGridPosition, getPointerCssPosition } from "./gridPointerUtils.js";
+import { getCornerSign, getCornerWorldPosition, oppositeCorner } from "../resizeMath.js";
 
 function setPointerCapture(event) {
   event.target.setPointerCapture?.(event.pointerId);
@@ -36,12 +37,9 @@ function beginObjectResize({ event, cornerHit, dragRef, callbacks, config }) {
   const { onBeginObjectStroke } = callbacks;
   const { currentLayer } = config;
   const o = cornerHit.sel;
-  const anchor = (() => {
-    if (cornerHit.corner === "nw") return { row: o.row + o.hTiles, col: o.col + o.wTiles };
-    if (cornerHit.corner === "ne") return { row: o.row + o.hTiles, col: o.col };
-    if (cornerHit.corner === "sw") return { row: o.row, col: o.col + o.wTiles };
-    return { row: o.row, col: o.col };
-  })();
+  const anchorCorner = oppositeCorner(cornerHit.corner);
+  const anchor = getCornerWorldPosition(o, anchorCorner);
+  const sign = getCornerSign(cornerHit.corner);
 
   onBeginObjectStroke?.(currentLayer);
   dragRef.current = {
@@ -50,6 +48,11 @@ function beginObjectResize({ event, cornerHit, dragRef, callbacks, config }) {
     anchorRow: anchor.row,
     anchorCol: anchor.col,
     corner: cornerHit.corner,
+    rotation: o.rotation || 0,
+    signX: sign.x,
+    signY: sign.y,
+    minWidthTiles: 1,
+    minHeightTiles: 1,
   };
   setPointerCapture(event);
   return true;
@@ -58,13 +61,9 @@ function beginObjectResize({ event, cornerHit, dragRef, callbacks, config }) {
 function beginTokenResize({ event, tokenCorner, dragRef, callbacks }) {
   const { onBeginTokenStroke } = callbacks;
   const token = tokenCorner.sel;
-  const anchorToken = (() => {
-    if (tokenCorner.corner === "nw")
-      return { row: token.row + (token.hTiles || 1), col: token.col + (token.wTiles || 1) };
-    if (tokenCorner.corner === "ne") return { row: token.row + (token.hTiles || 1), col: token.col };
-    if (tokenCorner.corner === "sw") return { row: token.row, col: token.col + (token.wTiles || 1) };
-    return { row: token.row, col: token.col };
-  })();
+  const anchorCorner = oppositeCorner(tokenCorner.corner);
+  const anchorToken = getCornerWorldPosition(token, anchorCorner);
+  const sign = getCornerSign(tokenCorner.corner);
 
   onBeginTokenStroke?.();
   dragRef.current = {
@@ -73,6 +72,11 @@ function beginTokenResize({ event, tokenCorner, dragRef, callbacks }) {
     anchorRow: anchorToken.row,
     anchorCol: anchorToken.col,
     corner: tokenCorner.corner,
+    rotation: token.rotation || 0,
+    signX: sign.x,
+    signY: sign.y,
+    minWidthTiles: 1,
+    minHeightTiles: 1,
   };
   setPointerCapture(event);
   return true;

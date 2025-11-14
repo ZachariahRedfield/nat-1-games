@@ -1,3 +1,23 @@
+function deriveCornerCursor(corner, rotation) {
+  const baseAngle = corner === "nw" || corner === "se" ? 45 : 135;
+  const raw = baseAngle + (rotation || 0);
+  const normalized = ((raw % 180) + 180) % 180;
+
+  if (normalized < 22.5 || normalized >= 157.5) {
+    return "ns-resize";
+  }
+
+  if (normalized >= 67.5 && normalized < 112.5) {
+    return "ew-resize";
+  }
+
+  if (normalized >= 22.5 && normalized < 67.5) {
+    return corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize";
+  }
+
+  return corner === "nw" || corner === "se" ? "nesw-resize" : "nwse-resize";
+}
+
 export function deriveCursorStyle({
   isPanning,
   panHotkey,
@@ -41,7 +61,7 @@ export function deriveCursorStyle({
     hitTokenResizeHandle(mousePos.x, mousePos.y);
 
   if (hit) {
-    return hit.corner === "nw" || hit.corner === "se" ? "nwse-resize" : "nesw-resize";
+    return deriveCornerCursor(hit.corner, hit.sel?.rotation || 0);
   }
 
   const ring =

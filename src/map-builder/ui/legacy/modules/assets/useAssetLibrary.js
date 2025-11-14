@@ -10,6 +10,7 @@ export function useAssetLibrary({
   setZoomToolActive,
   setPanToolActive,
   setCanvasColor,
+  showToast,
 }) {
   const state = useAssetLibraryState();
 
@@ -19,6 +20,7 @@ export function useAssetLibrary({
     setNeedsAssetsFolder: state.setNeedsAssetsFolder,
     setSelectedAssetId: state.setSelectedAssetId,
     setAssetsFolderDialogOpen: state.setAssetsFolderDialogOpen,
+    showToast,
   });
 
   const selection = useAssetSelection({
