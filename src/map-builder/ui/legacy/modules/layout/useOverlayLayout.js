@@ -18,34 +18,34 @@ function getScrollContainerMetrics(scrollEl) {
 
 export function useOverlayLayout({
   scrollRef,
-  layerBarWrapRef,
+  topControlsWrapRef,
   tileSize,
   rows,
   cols,
   menuOpen,
 }) {
-  const [layerBarHeight, setLayerBarHeight] = useState(0);
+  const [topControlsHeight, setTopControlsHeight] = useState(0);
   const [overlayPosition, setOverlayPosition] = useState({ top: 40, left: 0, center: 0 });
   const [fixedLayerBar, setFixedLayerBar] = useState({ top: 0, left: 0, width: 0 });
 
   const fixedBarWidth = fixedLayerBar?.width ?? 0;
 
   useEffect(() => {
-    const measureLayerBarHeight = () => {
-      const el = layerBarWrapRef?.current;
+    const measureTopControlsHeight = () => {
+      const el = topControlsWrapRef?.current;
       if (!el) {
-        setLayerBarHeight(0);
+        setTopControlsHeight(0);
         return;
       }
       const rect = el.getBoundingClientRect();
       const height = Math.max(0, Math.round(rect?.height || 0));
-      setLayerBarHeight(height);
+      setTopControlsHeight(height);
     };
 
-    measureLayerBarHeight();
-    window.addEventListener("resize", measureLayerBarHeight);
-    return () => window.removeEventListener("resize", measureLayerBarHeight);
-  }, [layerBarWrapRef, menuOpen, fixedBarWidth]);
+    measureTopControlsHeight();
+    window.addEventListener("resize", measureTopControlsHeight);
+    return () => window.removeEventListener("resize", measureTopControlsHeight);
+  }, [topControlsWrapRef, menuOpen, fixedBarWidth]);
 
   useEffect(() => {
     const measureOverlayAnchor = () => {
@@ -55,7 +55,7 @@ export function useOverlayLayout({
       const rect = scrollEl.getBoundingClientRect();
       const insetTop = 2;
       const insetLeft = 8;
-      const top = Math.round(rect.top + layerBarHeight + insetTop);
+      const top = Math.round(rect.top + topControlsHeight + insetTop);
       const left = Math.round(rect.left + insetLeft);
       const center = Math.round(rect.left + rect.width / 2);
 
@@ -78,7 +78,7 @@ export function useOverlayLayout({
       window.removeEventListener("resize", onScroll);
       cancelAnimationFrame(rafId);
     };
-  }, [scrollRef, layerBarHeight, tileSize, rows, cols, menuOpen]);
+  }, [scrollRef, topControlsHeight, tileSize, rows, cols, menuOpen]);
 
   useEffect(() => {
     const measureFixedLayerBar = () => {
@@ -114,7 +114,7 @@ export function useOverlayLayout({
   const fixedBarLeft = fixedLayerBar?.left ?? 0;
   return useMemo(
     () => ({
-      layerBarHeight,
+      topControlsHeight,
       overlayPosition,
       overlayTop,
       overlayLeft,
@@ -125,7 +125,7 @@ export function useOverlayLayout({
       fixedBarWidth,
     }),
     [
-      layerBarHeight,
+      topControlsHeight,
       overlayPosition,
       overlayTop,
       overlayLeft,
