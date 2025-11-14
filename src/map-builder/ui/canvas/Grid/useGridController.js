@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BASE_TILE } from "./utils.js";
 import useGridSelection from "./selection/useGridSelection.js";
 import {
@@ -241,6 +241,45 @@ export function useGridController({
   }, [setIsBrushing, setIsPanning, setLastPan]);
 
   useGlobalPointerRelease(resetPointerState);
+
+  useEffect(() => {
+    const scrollEl = scrollRef?.current;
+    if (!scrollEl) return undefined;
+
+    const contentEl = contentRef?.current;
+    const nodeAvailable = typeof Node !== "undefined";
+    const shouldAllowScroll = () => panToolActive || panHotkey || isPanning;
+
+    const shouldBlockEvent = (eventTarget) => {
+      if (!scrollEl) return false;
+      if (shouldAllowScroll()) return false;
+      if (!nodeAvailable) return eventTarget === scrollEl;
+      if (!(eventTarget instanceof Node)) return false;
+      if (eventTarget === scrollEl) return true;
+      if (!contentEl) return false;
+      return contentEl.contains(eventTarget);
+    };
+
+    const handleWheel = (event) => {
+      if (shouldBlockEvent(event.target)) {
+        event.preventDefault();
+      }
+    };
+
+    const handleTouchMove = (event) => {
+      if (shouldBlockEvent(event.target)) {
+        event.preventDefault();
+      }
+    };
+
+    scrollEl.addEventListener("wheel", handleWheel, { passive: false });
+    scrollEl.addEventListener("touchmove", handleTouchMove, { passive: false });
+
+    return () => {
+      scrollEl.removeEventListener("wheel", handleWheel);
+      scrollEl.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, [scrollRef, contentRef, panToolActive, panHotkey, isPanning]);
 
   const { handlePointerDown, handlePointerMove, handlePointerUp } =
     createGridPointerHandlers({
