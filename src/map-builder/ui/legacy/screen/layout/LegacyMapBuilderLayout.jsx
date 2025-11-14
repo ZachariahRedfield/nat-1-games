@@ -79,7 +79,7 @@ export default function LegacyMapBuilderLayout({
                 width: layout.fixedBarWidth || undefined,
               }}
             >
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col">
                 <Header {...headerAllProps} />
                 <LayerBar {...layerBarProps} />
               </div>
@@ -89,7 +89,7 @@ export default function LegacyMapBuilderLayout({
               className="fixed z-[10020]"
               style={{ top: layout.fixedBarTop, left: layout.fixedBarLeft, width: layout.fixedBarWidth }}
             >
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col">
                 <Header {...headerAllProps} />
                 <LayerBar {...layerBarProps} />
               </div>

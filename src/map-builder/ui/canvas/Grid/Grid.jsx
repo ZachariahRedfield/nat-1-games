@@ -178,6 +178,8 @@ export default function Grid(props) {
           setGridSettings={setGridSettings}
           updateObjectById={updateObjectById}
           updateTokenById={updateTokenById}
+          assets={assets}
+          objects={objects}
         />
 
         <MarqueeOverlay dragState={dragRef.current} tileSize={tileSize} />
