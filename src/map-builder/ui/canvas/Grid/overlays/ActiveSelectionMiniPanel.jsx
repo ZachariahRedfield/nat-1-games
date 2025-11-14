@@ -14,15 +14,24 @@ export default function ActiveSelectionMiniPanel({
   setGridSettings,
   updateObjectById,
   updateTokenById,
+  assets = [],
+  objects = {},
 }) {
   if (selectedObject) {
     const obj = selectedObject;
+    const layerObjects = Array.isArray(objects?.[currentLayer]) ? objects[currentLayer] : [];
+    const asset = assets?.find((item) => item.id === obj.assetId);
+    const baseName = (obj?.name && obj.name.trim()) || asset?.name || "Object";
+    const matchingObjects = layerObjects.filter((item) => item.assetId === obj.assetId);
+    const index = matchingObjects.findIndex((item) => item.id === obj.id);
+    const title = index >= 0 ? `${baseName} ${index + 1}` : baseName;
     return (
       <SelectionMiniPanel
         key={`obj-${obj.id}`}
         obj={obj}
         tileSize={tileSize}
         containerSize={containerSize}
+        title={title}
         onChangeSize={(newW, newH) => {
           const centerRow = obj.row + obj.hTiles / 2;
           const centerCol = obj.col + obj.wTiles / 2;
@@ -67,12 +76,15 @@ export default function ActiveSelectionMiniPanel({
 
   if (selectedToken) {
     const tok = selectedToken;
+    const tokenAsset = assets?.find((item) => item.id === tok.assetId);
+    const tokenTitle = tok?.name?.trim() || tokenAsset?.name || "Token";
     return (
       <SelectionMiniPanel
         key={`tok-${tok.id}`}
         obj={tok}
         tileSize={tileSize}
         containerSize={containerSize}
+        title={tokenTitle}
         onChangeSize={(newW, newH) => {
           const centerRow = tok.row + (tok.hTiles || 1) / 2;
           const centerCol = tok.col + (tok.wTiles || 1) / 2;

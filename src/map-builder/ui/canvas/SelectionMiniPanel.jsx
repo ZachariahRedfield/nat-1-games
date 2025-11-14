@@ -5,6 +5,7 @@ export default function SelectionMiniPanel({
   obj,
   tileSize,
   containerSize, // { w, h }
+  title = "Object",
   onChangeSize, // (newW, newH) => void
   onRotate, // (deltaDeg) => void
   onFlipX, // () => void
@@ -131,7 +132,7 @@ export default function SelectionMiniPanel({
         onPointerDown={onDragStart}
         title="Drag to move"
       >
-        Object
+        {title}
       </div>
       {/* Top controls grouped with crisp white outline */}
       <div className="flex items-center justify-between gap-2 mb-2">
