@@ -13,8 +13,6 @@ export default function SelectionMiniPanel({
   // onDelete removed from UI by request
   opacity = 1,
   onChangeOpacity, // (value 0..1)
-  snapToGrid = true,
-  onToggleSnap, // () => void
   linkXY = false,
   onToggleLink, // () => void
   // optional: token highlight color
@@ -139,10 +137,6 @@ export default function SelectionMiniPanel({
         <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
           <button className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded" onClick={onFlipX} title="Flip X">FX</button>
           <button className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded" onClick={onFlipY} title="Flip Y">FY</button>
-          <label className="inline-flex items-center gap-1" title="Grid Snap">
-            <input type="checkbox" checked={!!snapToGrid} onChange={onToggleSnap} />
-            <span>Snap</span>
-          </label>
         </div>
       </div>
 

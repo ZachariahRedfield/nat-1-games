@@ -46,8 +46,6 @@ export default function AssetDrawerSettings({
         naturalSettings={naturalSettings}
         setNaturalSettings={persistNaturalSettings}
         titleOverride="Settings"
-        showSnapControls={false}
-        showStep={false}
         hideNaturalSize
       />
     );
@@ -61,8 +59,6 @@ export default function AssetDrawerSettings({
       gridSettings={assetStamp}
       setGridSettings={persistAssetStamp}
       titleOverride="Settings"
-      showSnapControls={false}
-      showStep={selectedAsset?.kind !== "token" && selectedAsset?.kind !== "tokenGroup"}
       tokenHighlightColor={isToken ? selectedAsset?.glowDefault ?? DEFAULT_TOKEN_GLOW : undefined}
       onChangeTokenHighlight={
         isToken && selectedAsset?.id
