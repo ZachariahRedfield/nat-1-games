@@ -40,6 +40,8 @@ export default function LegacyMapBuilderLayout({
 }) {
   const { undo, redo, undoStack, redoStack } = historyControls;
 
+  const headerAllProps = { ...headerProps, onBack, session, onLogout };
+
   return (
     <div className="w-full h-full flex flex-col">
       <SiteHeader
@@ -48,7 +50,6 @@ export default function LegacyMapBuilderLayout({
         onNavigate={onNavigate}
         currentScreen={currentScreen || "mapBuilder"}
       />
-      <Header {...headerProps} onBack={onBack} session={session} onLogout={onLogout} />
 
       <main className="flex flex-1 overflow-hidden min-h-0">
         <FeedbackLayer {...feedbackLayerProps} />
@@ -66,11 +67,11 @@ export default function LegacyMapBuilderLayout({
               backgroundPosition: "50% 0, 2px 0",
               backgroundRepeat: "no-repeat, repeat",
               backgroundColor: "#f4e4c1",
-              paddingTop: layout.layerBarHeight,
+              paddingTop: layout.topControlsHeight,
             }}
           >
             <div
-              ref={layout.layerBarWrapRef}
+              ref={layout.topControlsWrapRef}
               className="absolute opacity-0 pointer-events-none -z-10"
               style={{
                 top: -9999,
@@ -78,14 +79,20 @@ export default function LegacyMapBuilderLayout({
                 width: layout.fixedBarWidth || undefined,
               }}
             >
-              <LayerBar {...layerBarProps} />
+              <div className="flex flex-col gap-3">
+                <Header {...headerAllProps} />
+                <LayerBar {...layerBarProps} />
+              </div>
             </div>
 
             <div
               className="fixed z-[10020]"
               style={{ top: layout.fixedBarTop, left: layout.fixedBarLeft, width: layout.fixedBarWidth }}
             >
-              <LayerBar {...layerBarProps} />
+              <div className="flex flex-col gap-3">
+                <Header {...headerAllProps} />
+                <LayerBar {...layerBarProps} />
+              </div>
             </div>
 
             <div className="relative w-full min-h-full flex justify-center items-start md:items-center p-6">

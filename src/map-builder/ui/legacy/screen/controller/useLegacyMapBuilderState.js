@@ -70,7 +70,7 @@ export function useLegacyMapBuilderState() {
 
   const layoutState = useOverlayLayout({
     scrollRef: layoutRefs.scrollRef,
-    layerBarWrapRef: layoutRefs.layerBarWrapRef,
+    topControlsWrapRef: layoutRefs.topControlsWrapRef,
     tileSize: tileState.tileSize,
     rows: sceneState.rows,
     cols: sceneState.cols,

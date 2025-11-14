@@ -11,8 +11,8 @@ export function createLayoutProps(state) {
     layout: {
       scrollRef: state.scrollRef,
       gridContentRef: state.gridContentRef,
-      layerBarWrapRef: state.layerBarWrapRef,
-      layerBarHeight: state.layerBarHeight,
+      topControlsWrapRef: state.topControlsWrapRef,
+      topControlsHeight: state.topControlsHeight,
       fixedBarTop,
       fixedBarLeft,
       fixedBarWidth,
