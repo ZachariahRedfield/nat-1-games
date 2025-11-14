@@ -14,11 +14,12 @@ import useGridController from "./useGridController.js";
 
 export default function Grid(props) {
   const {
+    layers = [],
     maps,
     objects,
     assets,
     canvasRefs,
-    layerVisibility = { background: true, base: true, sky: true },
+    layerVisibility: layerVisibilityProp = {},
     tokens = [],
     tokensVisible = true,
     tokenHUDVisible = true,
@@ -33,9 +34,17 @@ export default function Grid(props) {
     updateObjectById,
     updateTokenById,
     zoomToolActive = false,
-    currentLayer = "base",
+    currentLayer: currentLayerProp,
     showGridLines = true,
   } = props;
+
+  const currentLayer = currentLayerProp ?? layers[0]?.id ?? null;
+  const layerVisibility = {
+    ...layers.reduce((acc, layer) => {
+      acc[layer.id] = layerVisibilityProp?.[layer.id] !== false;
+      return acc;
+    }, {}),
+  };
 
   const {
     rows,
@@ -60,7 +69,12 @@ export default function Grid(props) {
     handlePointerMove,
     handlePointerUp,
     cellBg,
-  } = useGridController(props);
+  } = useGridController({
+    ...props,
+    layers,
+    currentLayer,
+    layerVisibility,
+  });
 
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>
@@ -69,6 +83,7 @@ export default function Grid(props) {
         style={{ position: "relative", width: cssWidth, height: cssHeight }}
       >
         <TilesLayer
+          layers={layers}
           maps={maps}
           rows={rows}
           cols={cols}
@@ -81,6 +96,7 @@ export default function Grid(props) {
         />
 
         <ObjectsLayer
+          layers={layers}
           objects={objects}
           assets={assets}
           tileSize={tileSize}
@@ -101,6 +117,7 @@ export default function Grid(props) {
         />
 
         <SelectionOverlay
+          layers={layers}
           objects={objects}
           currentLayer={currentLayer}
           selectedObjId={selectedObjId}
@@ -121,6 +138,7 @@ export default function Grid(props) {
         )}
 
         <CanvasLayers
+          layers={layers}
           canvasRefs={canvasRefs}
           bufferWidth={bufferWidth}
           bufferHeight={bufferHeight}

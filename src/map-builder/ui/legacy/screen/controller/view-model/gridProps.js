@@ -1,5 +1,6 @@
 export function createGridProps(state) {
   return {
+    layers: state.layers,
     maps: state.maps,
     objects: state.objects,
     assets: state.assets,

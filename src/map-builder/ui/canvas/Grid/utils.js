@@ -1,7 +1,6 @@
 // Shared constants and small helpers for the Grid module
 
 export const BASE_TILE = 32; // canvas buffer px per tile (zoom-safe)
-export const LAYERS = ["background", "base", "sky"];
 
 export const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 

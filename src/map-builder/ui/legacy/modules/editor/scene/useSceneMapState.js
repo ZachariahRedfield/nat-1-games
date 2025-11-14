@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { makeGrid } from "../../../utils.js";
 import { buildLayerMaps } from "./sceneBuilders.js";
 import {
   defaultGetCanvasColor,
@@ -6,14 +7,41 @@ import {
   defaultGetIsErasing,
 } from "./sceneDefaults.js";
 
+const toLayerIds = (layers) =>
+  (layers || [])
+    .map((layer) => (typeof layer === "string" ? layer : layer?.id))
+    .filter(Boolean);
+
 export function useSceneMapState({
   rows,
   cols,
+  layers,
   getCurrentLayer,
   getIsErasing,
   getCanvasColor,
 } = {}) {
-  const [maps, setMaps] = useState(() => buildLayerMaps(rows, cols));
+  const [maps, setMaps] = useState(() => buildLayerMaps(layers, rows, cols));
+
+  useEffect(() => {
+    const layerIds = toLayerIds(layers);
+    setMaps((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const id of layerIds) {
+        if (!next[id]) {
+          next[id] = makeGrid(rows, cols);
+          changed = true;
+        }
+      }
+      for (const key of Object.keys(next)) {
+        if (!layerIds.includes(key)) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [layers, rows, cols]);
 
   const placeTiles = useCallback(
     (updates, explicitColor) => {
@@ -30,8 +58,7 @@ export function useSceneMapState({
       const isErasing = erasingResolver();
 
       setMaps((prev) => {
-        const src = prev[targetLayer];
-        if (!src) return prev;
+        const src = prev[targetLayer] || makeGrid(rows, cols);
 
         let changed = false;
         const nextLayer = src.map((row, ri) =>
@@ -44,11 +71,11 @@ export function useSceneMapState({
           })
         );
 
-        if (!changed) return prev;
+        if (!changed && prev[targetLayer]) return prev;
         return { ...prev, [targetLayer]: nextLayer };
       });
     },
-    [getCurrentLayer, getIsErasing, getCanvasColor]
+    [cols, getCanvasColor, getCurrentLayer, getIsErasing, rows]
   );
 
   return {

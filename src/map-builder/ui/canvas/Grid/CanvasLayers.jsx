@@ -1,7 +1,7 @@
 import React from "react";
-import { LAYERS } from "./utils";
 
 export default function CanvasLayers({
+  layers = [],
   canvasRefs,
   bufferWidth,
   bufferHeight,
@@ -9,9 +9,12 @@ export default function CanvasLayers({
   cssHeight,
   layerVisibility,
 }) {
+  const layerIds = layers
+    .map((layer) => (typeof layer === "string" ? layer : layer?.id))
+    .filter(Boolean);
   return (
     <>
-      {LAYERS.map((layer, i) => (
+      {layerIds.map((layer, i) => (
         <canvas
           key={`canvas-${layer}`}
           ref={canvasRefs?.[layer]}

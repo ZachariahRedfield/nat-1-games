@@ -4,6 +4,7 @@ import { useSceneObjectState } from "./scene/useSceneObjectState.js";
 import { useSceneGridResizer } from "./scene/useSceneGridResizer.js";
 
 export function useLegacySceneState({
+  layers,
   getCurrentLayer,
   getIsErasing,
   getCanvasColor,
@@ -14,14 +15,16 @@ export function useLegacySceneState({
   const mapState = useSceneMapState({
     rows: dimensions.rows,
     cols: dimensions.cols,
+    layers,
     getCurrentLayer,
     getIsErasing,
     getCanvasColor,
   });
-  const objectState = useSceneObjectState();
+  const objectState = useSceneObjectState(layers);
   const updateGridSizes = useSceneGridResizer({
     rows: dimensions.rows,
     cols: dimensions.cols,
+    layers,
     setMaps: mapState.setMaps,
     setObjects: objectState.setObjects,
   });

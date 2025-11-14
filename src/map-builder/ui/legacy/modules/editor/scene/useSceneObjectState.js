@@ -1,9 +1,35 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { buildEmptyObjects } from "./sceneBuilders.js";
 import { uid } from "../../../utils.js";
 
-export function useSceneObjectState() {
-  const [objects, setObjects] = useState(() => buildEmptyObjects());
+const toLayerIds = (layers) =>
+  (layers || [])
+    .map((layer) => (typeof layer === "string" ? layer : layer?.id))
+    .filter(Boolean);
+
+export function useSceneObjectState(layers) {
+  const [objects, setObjects] = useState(() => buildEmptyObjects(layers));
+
+  useEffect(() => {
+    const layerIds = toLayerIds(layers);
+    setObjects((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const id of layerIds) {
+        if (!next[id]) {
+          next[id] = [];
+          changed = true;
+        }
+      }
+      for (const key of Object.keys(next)) {
+        if (!layerIds.includes(key)) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [layers]);
 
   const addObject = useCallback((layer, obj) => {
     if (!layer || !obj) return;

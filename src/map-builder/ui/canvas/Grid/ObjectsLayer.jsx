@@ -1,7 +1,7 @@
 import React from "react";
-import { LAYERS } from "./utils";
 
 export default function ObjectsLayer({
+  layers = [],
   objects,
   assets,
   tileSize,
@@ -10,10 +10,13 @@ export default function ObjectsLayer({
   layerVisibility,
 }) {
   const getAssetById = (id) => assets.find((a) => a.id === id);
+  const layerIds = layers
+    .map((layer) => (typeof layer === "string" ? layer : layer?.id))
+    .filter(Boolean);
 
   return (
     <>
-      {LAYERS.map((layer, i) => (
+      {layerIds.map((layer, i) => (
         <div
           key={`objs-${layer}`}
           className="absolute top-0 left-0 pointer-events-none"

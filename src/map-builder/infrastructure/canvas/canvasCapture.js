@@ -11,14 +11,13 @@ async function captureCanvasPNG(canvas) {
 }
 
 export async function capturePerLayerPNGs(canvasRefs) {
-  const output = { background: null, base: null, sky: null };
+  const output = {};
   if (!canvasRefs) return output;
-  const layers = ["background", "base", "sky"];
-  for (const layer of layers) {
-    const canvas = canvasRefs?.[layer]?.current;
+  const entries = Object.entries(canvasRefs);
+  for (const [layerId, ref] of entries) {
     // eslint-disable-next-line no-await-in-loop
-    const blob = await captureCanvasPNG(canvas);
-    output[layer] = blob;
+    const blob = await captureCanvasPNG(ref?.current);
+    output[layerId] = blob;
   }
   return output;
 }

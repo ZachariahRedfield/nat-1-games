@@ -1,11 +1,11 @@
 import { useCallback } from "react";
-import { LAYERS } from "../../utils.js";
 
 function cloneAssetList(assets) {
   return assets.map((asset) => ({ ...asset }));
 }
 
 export function useLegacyProjectSaving({
+  layers,
   isAssetsFolderConfigured,
   showToast,
   setNeedsAssetsFolder,
@@ -47,7 +47,11 @@ export function useLegacyProjectSaving({
   const pruneUnreferencedAssets = useCallback(() => {
     try {
       const referenced = new Set();
-      for (const layer of LAYERS) {
+      const layerIds = (layers || [])
+        .map((layer) => (typeof layer === "string" ? layer : layer?.id))
+        .filter(Boolean);
+      const keys = layerIds.length ? layerIds : Object.keys(objects || {});
+      for (const layer of keys) {
         for (const object of objects[layer] || []) {
           referenced.add(object.assetId);
         }
@@ -71,7 +75,7 @@ export function useLegacyProjectSaving({
       console.warn("Failed to prune unreferenced assets", err);
       return { assetsAfter: assets };
     }
-  }, [assets, currentLayer, objects, setAssets, setRedoStack, setUndoStack, tokens]);
+  }, [assets, currentLayer, layers, objects, setAssets, setRedoStack, setUndoStack, tokens]);
 
   const prepareProjectState = useCallback(
     (assetsAfter) => ({
@@ -80,6 +84,7 @@ export function useLegacyProjectSaving({
       rows,
       cols,
       tileSize,
+      layers,
       maps,
       objects,
       tokens,
@@ -127,6 +132,7 @@ export function useLegacyProjectSaving({
       tokens,
       tokensVisible,
       showGridLines,
+      layers,
     ]
   );
 

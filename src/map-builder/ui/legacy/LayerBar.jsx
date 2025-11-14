@@ -1,80 +1,150 @@
 import React from "react";
-import { LAYERS } from "./utils";
-import { EyeIcon, EyeOffIcon } from "./icons";
 import LayersIcon from "./LayersIcon";
 
-function LayerStackViz({ currentLayer, layerVisibility, onPick }) {
-  const W = 52, H = 36;
-  const base = { cx: 16, cy: 24, r: 7 };
-  const layers = LAYERS.map((l, i) => ({ key: l, cx: base.cx + i * 6, cy: base.cy - i * 6, r: base.r }));
-  const pathFor = (cx, cy, r) => `M ${cx} ${cy - r} L ${cx + r} ${cy} L ${cx} ${cy + r} L ${cx - r} ${cy} Z`;
-  return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="text-red-400">
-      {layers.map((ly) => {
-        const l = ly.key;
-        const active = currentLayer === l;
-        const vis = layerVisibility?.[l] !== false;
-        const stroke = active ? '#60a5fa' : '#ef4444';
-        const opacity = vis ? 1 : 0.35;
-        return (
-          <g key={`g-${l}`} onClick={() => onPick?.(l)} cursor="pointer">
-            <path d={pathFor(ly.cx, ly.cy, ly.r)} fill="none" stroke={stroke} strokeWidth={2} opacity={opacity} />
-            <path d={pathFor(ly.cx, ly.cy, ly.r + 4)} fill="transparent" stroke="transparent" strokeWidth={8} />
-          </g>
-        );
-      })}
-    </svg>
-  );
+function normalizeLayers(layers = []) {
+  return layers
+    .map((layer) =>
+      typeof layer === "string" ? { id: layer, name: layer } : layer
+    )
+    .filter((layer) => !!layer?.id);
 }
 
 export default function LayerBar({
+  layers = [],
   currentLayer,
   setCurrentLayer,
+  addLayer,
+  renameLayer,
   layerVisibility,
   toggleLayerVisibility,
-  tokensVisible,
-  setTokensVisible,
   showGridLines,
   setShowGridLines,
   tileSize,
   setTileSize,
 }) {
+  const [renamingId, setRenamingId] = React.useState(null);
+  const [draftName, setDraftName] = React.useState("");
+
+  const layerEntries = React.useMemo(
+    () => normalizeLayers(layers),
+    [layers]
+  );
+
+  const activeLayer = layerEntries.find((layer) => layer.id === currentLayer);
+  const activeLayerName = activeLayer?.name || "Layer";
+  const activeLayerVisible = layerVisibility?.[currentLayer] !== false;
+  const toggleLabel = `${activeLayerVisible ? "Hide" : "Show"} ${activeLayerName}`;
+
+  const finishRename = React.useCallback(
+    (commit) => {
+      if (renamingId) {
+        if (commit) renameLayer?.(renamingId, draftName);
+        setRenamingId(null);
+        setDraftName("");
+      }
+    },
+    [draftName, renamingId, renameLayer]
+  );
+
+  const handleAddLayer = React.useCallback(() => {
+    finishRename(false);
+    addLayer?.();
+  }, [addLayer, finishRename]);
+
   return (
     <div className="w-full z-[10020] bg-gray-800 text-white px-2 py-1 border-b border-gray-700 shadow">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 mr-2">
           <span className="text-[11px] uppercase opacity-80">Layers</span>
           <div className="h-5 w-[76px] flex items-center">
-            <LayersIcon currentLayer={currentLayer} layerVisibility={layerVisibility} onPick={setCurrentLayer} />
+            <LayersIcon
+              layers={layerEntries}
+              currentLayer={currentLayer}
+              layerVisibility={layerVisibility}
+              onPick={setCurrentLayer}
+            />
           </div>
         </div>
-        {LAYERS.map((l) => (
-          <button
-            key={`layerbar-${l}`}
-            onClick={() => setCurrentLayer(l)}
-            className={`px-2 py-0.5 text-sm rounded-full border border-white/90 ${currentLayer === l ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-200'}`}
-            title={`Edit ${l}`}
-          >
-            {l}
-          </button>
-        ))}
-        {(() => { const vis = layerVisibility?.[currentLayer] !== false; const cap = currentLayer.charAt(0).toUpperCase() + currentLayer.slice(1); const label = `${vis ? 'Hide' : 'Show'} ${cap}`; return (<button className="px-2 py-0.5 text-[12px] rounded-full border border-white/90 bg-gray-700" onClick={() => toggleLayerVisibility(currentLayer)} title={label}>{label}</button>); })()}
+
+        <button
+          type="button"
+          className="px-2 py-0.5 text-xs rounded-full border border-dashed border-white/60 text-white/80 hover:border-white/90 hover:text-white transition"
+          onClick={handleAddLayer}
+        >
+          + Add Layer
+        </button>
+
+        {layerEntries.map((layer) => {
+          const isActive = layer.id === currentLayer;
+          const isHidden = layerVisibility?.[layer.id] === false;
+          const isEditing = renamingId === layer.id;
+          const buttonClasses = [
+            "px-2 py-0.5 text-sm rounded-full border transition",
+            "border-white/80",
+            isActive ? "bg-blue-600 text-white border-blue-400" : "text-gray-300 hover:text-white",
+            isHidden ? "opacity-60" : "",
+          ].join(" ");
+
+          return (
+            <div key={`layerbar-${layer.id}`} className="flex items-center gap-1">
+              {isEditing ? (
+                <input
+                  className="px-2 py-0.5 text-sm rounded-full border border-blue-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  value={draftName}
+                  onChange={(event) => setDraftName(event.target.value)}
+                  onBlur={() => finishRename(true)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") finishRename(true);
+                    else if (event.key === "Escape") finishRename(false);
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCurrentLayer(layer.id)}
+                  className={buttonClasses}
+                  title={`Edit ${layer.name}`}
+                >
+                  {layer.name}
+                </button>
+              )}
+              <button
+                type="button"
+                className="px-1 py-0.5 text-xs rounded border border-white/40 text-white/70 hover:text-white hover:border-white/70"
+                title="Rename layer"
+                onClick={() => {
+                  setRenamingId(layer.id);
+                  setDraftName(layer.name);
+                }}
+              >
+                ✎
+              </button>
+            </div>
+          );
+        })}
+
+        <button
+          type="button"
+          disabled={!currentLayer}
+          className={`px-2 py-0.5 text-[12px] rounded-full border border-white/90 bg-gray-700 ${!currentLayer ? 'opacity-40 cursor-not-allowed' : ''}`}
+          onClick={() => currentLayer && toggleLayerVisibility(currentLayer)}
+          title={toggleLabel}
+        >
+          {toggleLabel}
+        </button>
+
         <div className="h-4 w-px bg-gray-600 mx-1" />
+
         <button
+          type="button"
           className="px-2 py-0.5 text-[12px] rounded-full border border-white/90 bg-gray-700"
-          onClick={() => setTokensVisible((v) => !v)}
-          title={tokensVisible ? 'Hide Tokens' : 'Show Tokens'}
+          onClick={() => setShowGridLines((value) => !value)}
+          title={showGridLines ? "Hide Grid" : "Show Grid"}
         >
-          {tokensVisible ? 'Hide Tokens' : 'Show Tokens'}
+          {showGridLines ? "Hide Grid" : "Show Grid"}
         </button>
-        <button
-          className="px-2 py-0.5 text-[12px] rounded-full border border-white/90 bg-gray-700"
-          onClick={() => setShowGridLines((v) => !v)}
-          title={showGridLines ? 'Hide Grid' : 'Show Grid'}
-        >
-          {showGridLines ? 'Hide Grid' : 'Show Grid'}
-        </button>
-        {/* Zoom slider on far right */}
+
         <div className="ml-auto flex items-center gap-2">
           <span className="text-[11px] opacity-80">Zoom</span>
           <input
@@ -83,9 +153,19 @@ export default function LayerBar({
             max="128"
             step="2"
             value={tileSize}
-            onChange={(e) => setTileSize(Math.max(8, Math.min(128, Math.round(parseInt(e.target.value)/2)*2)))}
+            onChange={(event) =>
+              setTileSize(
+                Math.max(
+                  8,
+                  Math.min(
+                    128,
+                    Math.round(parseInt(event.target.value, 10) / 2) * 2
+                  )
+                )
+              )
+            }
           />
-          <span className="text-[11px] w-10 text-right">{Math.round((tileSize/32)*100)}%</span>
+          <span className="text-[11px] w-10 text-right">{Math.round((tileSize / 32) * 100)}%</span>
         </div>
       </div>
     </div>
