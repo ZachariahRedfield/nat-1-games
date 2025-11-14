@@ -284,8 +284,7 @@ export function createPointerDownHandler(context) {
       if (beginZoomDrag({ event, pointer, refs, state })) return;
     }
 
-    const isMMB = event.button === 1 || (event.buttons & 4) === 4;
-    if (config.panToolActive || state.panHotkey || isMMB) {
+    if (config.panToolActive || state.panHotkey) {
       if (beginPan({ event, state })) return;
     }
 
