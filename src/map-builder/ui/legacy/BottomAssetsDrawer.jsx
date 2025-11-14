@@ -29,7 +29,7 @@ export default function BottomAssetsDrawer(props = {}) {
     <div className="fixed left-0 right-0 bottom-0 z-[10020] pointer-events-none">
       <div className="relative h-0 select-none pointer-events-none">
         <div
-          className="absolute left-3 bottom-[-1px] min-w-[120px] px-4 py-2 text-sm font-medium rounded-t-lg bg-gray-800 border border-gray-600 border-b-0 text-gray-100 pointer-events-auto shadow-sm flex items-center justify-center"
+          className="absolute left-3 bottom-[-1px] min-w-[120px] px-5 py-3 md:py-2 text-sm font-medium rounded-t-lg bg-gray-800 border border-gray-600 border-b-0 text-gray-100 pointer-events-auto shadow-sm flex items-center justify-center min-h-[44px]"
           style={{ cursor: "ns-resize" }}
           onPointerDown={handleResizeStart}
           title="Drag to resize"
