@@ -39,6 +39,22 @@ export function useLayerAndInteractionState() {
     });
   }, []);
 
+  const removeLayer = useCallback((layerId) => {
+    if (!layerId) return;
+    setLayers((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((layer) => layer.id !== layerId);
+      if (next.length === prev.length) return prev;
+      setCurrentLayer((current) => {
+        if (current === layerId) {
+          return next[0]?.id ?? null;
+        }
+        return current;
+      });
+      return next;
+    });
+  }, []);
+
   const renameLayer = useCallback((layerId, name) => {
     setLayers((prev) =>
       prev.map((layer) =>
@@ -56,6 +72,7 @@ export function useLayerAndInteractionState() {
     setCurrentLayer,
     layersById,
     addLayer,
+    removeLayer,
     renameLayer,
     interactionMode,
     setInteractionMode,
