@@ -13,6 +13,7 @@ function useAssetPersistence({
   setNeedsAssetsFolder,
   setSelectedAssetId,
   setAssetsFolderDialogOpen,
+  showToast,
 }) {
   const globalAssetsRef = useRef([]);
   const persistTimerRef = useRef(null);
@@ -115,8 +116,25 @@ function useAssetPersistence({
       globalAssetsRef.current = list;
       setAssets(list);
       if (list[0]) setSelectedAssetId(list[0].id);
+      return;
     }
-  }, [setAssets, setNeedsAssetsFolder, setSelectedAssetId, setAssetsFolderDialogOpen]);
+
+    if (result?.reason === "unsupported") {
+      showToast?.(
+        "Selecting an assets folder isn't supported on this device. Try using desktop Chrome or Edge.",
+        "warning",
+        6000
+      );
+    } else if (result && showToast) {
+      showToast("Failed to open assets folder.", "error");
+    }
+  }, [
+    setAssets,
+    setNeedsAssetsFolder,
+    setSelectedAssetId,
+    setAssetsFolderDialogOpen,
+    showToast,
+  ]);
 
   return { promptChooseAssetsFolder };
 }

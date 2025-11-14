@@ -1,4 +1,5 @@
 import { clamp } from "../../utils.js";
+import { computeResizeUpdate } from "../resizeMath.js";
 import { computeGridPosition, getPointerCssPosition } from "./gridPointerUtils.js";
 
 function handleZoomDrag({ refs, event, state }) {
@@ -42,28 +43,36 @@ function handleObjectResize({
     gridSettings: config.gridSettings,
   });
 
-  const pr = position.row;
-  const pc = position.col;
-  let topRow = Math.min(dragRef.current.anchorRow, pr);
-  let leftCol = Math.min(dragRef.current.anchorCol, pc);
-  let bottomRow = Math.max(dragRef.current.anchorRow, pr);
-  let rightCol = Math.max(dragRef.current.anchorCol, pc);
-  let newH = Math.max(1, Math.round(bottomRow - topRow));
-  let newW = Math.max(1, Math.round(rightCol - leftCol));
-
-  topRow = clamp(topRow, 0, Math.max(0, geometry.rows - newH));
-  leftCol = clamp(leftCol, 0, Math.max(0, geometry.cols - newW));
-
   const o = selection.getObjectById(config.currentLayer, dragRef.current.id);
   if (!o) return true;
 
-  actions.updateObjectById(config.currentLayer, o.id, {
-    row: topRow,
-    col: leftCol,
-    wTiles: newW,
-    hTiles: newH,
+  const result = computeResizeUpdate({
+    pointerRow: position.rowRaw ?? position.row,
+    pointerCol: position.colRaw ?? position.col,
+    anchorRow: dragRef.current.anchorRow,
+    anchorCol: dragRef.current.anchorCol,
+    rotation: dragRef.current.rotation ?? o.rotation ?? 0,
+    signX: dragRef.current.signX,
+    signY: dragRef.current.signY,
+    minWidthTiles: dragRef.current.minWidthTiles ?? 1,
+    minHeightTiles: dragRef.current.minHeightTiles ?? 1,
+    geometry,
   });
-  config.setGridSettings?.((settings) => ({ ...settings, sizeCols: newW, sizeRows: newH }));
+
+  if (!result) return true;
+
+  const { row, col, wTiles, hTiles } = result;
+  if (row === o.row && col === o.col && wTiles === o.wTiles && hTiles === o.hTiles) {
+    return true;
+  }
+
+  actions.updateObjectById(config.currentLayer, o.id, {
+    row,
+    col,
+    wTiles,
+    hTiles,
+  });
+  config.setGridSettings?.((settings) => ({ ...settings, sizeCols: wTiles, sizeRows: hTiles }));
   return true;
 }
 
@@ -79,26 +88,38 @@ function handleTokenResize({ event, refs, selection, config, geometry, actions }
     gridSettings: config.gridSettings,
   });
 
-  const pr = position.row;
-  const pc = position.col;
-  let topRow = Math.min(dragRef.current.anchorRow, pr);
-  let leftCol = Math.min(dragRef.current.anchorCol, pc);
-  let bottomRow = Math.max(dragRef.current.anchorRow, pr);
-  let rightCol = Math.max(dragRef.current.anchorCol, pc);
-  let newH = Math.max(1, Math.round(bottomRow - topRow));
-  let newW = Math.max(1, Math.round(rightCol - leftCol));
-
-  topRow = clamp(topRow, 0, Math.max(0, geometry.rows - newH));
-  leftCol = clamp(leftCol, 0, Math.max(0, geometry.cols - newW));
-
   const token = selection.getTokenById(dragRef.current.id);
   if (!token) return true;
 
+  const result = computeResizeUpdate({
+    pointerRow: position.rowRaw ?? position.row,
+    pointerCol: position.colRaw ?? position.col,
+    anchorRow: dragRef.current.anchorRow,
+    anchorCol: dragRef.current.anchorCol,
+    rotation: dragRef.current.rotation ?? token.rotation ?? 0,
+    signX: dragRef.current.signX,
+    signY: dragRef.current.signY,
+    minWidthTiles: dragRef.current.minWidthTiles ?? 1,
+    minHeightTiles: dragRef.current.minHeightTiles ?? 1,
+    geometry,
+  });
+
+  if (!result) return true;
+
+  const { row, col, wTiles, hTiles } = result;
+  const existingRow = token.row ?? 0;
+  const existingCol = token.col ?? 0;
+  const existingW = token.wTiles || 1;
+  const existingH = token.hTiles || 1;
+  if (row === existingRow && col === existingCol && wTiles === existingW && hTiles === existingH) {
+    return true;
+  }
+
   actions.updateTokenById?.(dragRef.current.id, {
-    row: topRow,
-    col: leftCol,
-    wTiles: newW,
-    hTiles: newH,
+    row,
+    col,
+    wTiles,
+    hTiles,
   });
   return true;
 }

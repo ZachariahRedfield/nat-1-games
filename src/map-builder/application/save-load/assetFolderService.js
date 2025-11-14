@@ -1,5 +1,6 @@
 import {
   getStoredParentDirectoryHandle,
+  hasFileSystemAccess,
   setStoredParentDirectoryHandle,
   verifyPermission,
 } from "../../infrastructure/filesystem/storageHandles.js";
@@ -27,6 +28,10 @@ export async function loadAssetsFromStoredParent() {
 
 export async function chooseAssetsFolder() {
   try {
+    if (!hasFileSystemAccess()) {
+      return { ok: false, reason: "unsupported" };
+    }
+
     let parent = await getStoredParentDirectoryHandle();
     try {
       parent = await window.showDirectoryPicker({

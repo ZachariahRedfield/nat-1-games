@@ -86,7 +86,9 @@ async function writeParentHandleStore(handles) {
 }
 
 export function hasFileSystemAccess() {
-  return typeof window !== "undefined" && Boolean(window.showDirectoryPicker);
+  if (typeof window === "undefined") return false;
+  if (!window.isSecureContext) return false;
+  return typeof window.showDirectoryPicker === "function";
 }
 
 export async function verifyPermission(handle, readWrite = false) {
