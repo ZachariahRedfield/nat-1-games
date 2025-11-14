@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { createDefaultLayers } from "../../utils.js";
 
 export function useLegacyProjectLoading({
   isAssetsFolderConfigured,
@@ -18,9 +19,40 @@ export function useLegacyProjectLoading({
   canvasRefs,
   confirmUser,
   deleteMap,
+  setLayers,
+  setCurrentLayer,
+  setLayerVisibility,
 }) {
   const [loadModalOpen, setLoadModalOpen] = useState(false);
   const [mapsList, setMapsList] = useState([]);
+
+  const normalizeLoadedLayers = useMemo(
+    () => (dataLayers, dataMaps) => {
+      if (Array.isArray(dataLayers) && dataLayers.length) {
+        return dataLayers
+          .map((layer) => {
+            if (typeof layer === "string") return { id: layer, name: layer };
+            if (layer && layer.id) {
+              return { id: layer.id, name: layer.name || layer.id };
+            }
+            return null;
+          })
+          .filter(Boolean);
+      }
+
+      if (dataMaps && typeof dataMaps === "object") {
+        return Object.keys(dataMaps).map((key) => ({
+          id: key,
+          name: key
+            .replace(/[-_]+/g, " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase()),
+        }));
+      }
+
+      return createDefaultLayers();
+    },
+    []
+  );
 
   const openLoadModal = useCallback(async () => {
     const configured = await isAssetsFolderConfigured();
@@ -72,9 +104,23 @@ export function useLegacyProjectLoading({
       }
       projectNameRef.current = data.name || data.settings?.name || "My Map";
 
+      const nextLayers = normalizeLoadedLayers(data.layers, data.maps);
+      setLayers(nextLayers);
+      if (data.settings?.layerVisibility) {
+        setLayerVisibility(data.settings.layerVisibility);
+      }
+      const activeLayerId = data.settings?.activeLayer;
+      const resolvedActiveLayer = nextLayers.find((layer) => layer.id === activeLayerId)
+        ? activeLayerId
+        : nextLayers[0]?.id;
+      if (resolvedActiveLayer) {
+        setCurrentLayer(resolvedActiveLayer);
+      }
+
       setTimeout(() => {
         if (data.canvases) {
-          for (const layer of ["background", "base", "sky"]) {
+          const layerOrder = nextLayers.map((layer) => layer.id);
+          for (const layer of layerOrder) {
             const dataUrl = data.canvases?.[layer];
             if (!dataUrl) continue;
             const canvas = canvasRefs[layer]?.current;
@@ -107,6 +153,7 @@ export function useLegacyProjectLoading({
     [
       canvasRefs,
       loadProjectFromDirectory,
+      normalizeLoadedLayers,
       setAssets,
       setColsInput,
       setMaps,
@@ -114,6 +161,9 @@ export function useLegacyProjectLoading({
       setRowsInput,
       setSelectedAssetId,
       setTokens,
+      setLayers,
+      setCurrentLayer,
+      setLayerVisibility,
       showToast,
       projectNameRef,
     ]

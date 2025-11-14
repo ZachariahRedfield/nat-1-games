@@ -40,6 +40,7 @@ export function useLegacyMapBuilderState() {
 
   const layerState = useLayerAndInteractionState();
   const sceneState = useLegacySceneState({
+    layers: layerState.layers,
     getCurrentLayer: useCallback(() => layerState.currentLayer, [layerState.currentLayer]),
     getIsErasing: useCallback(() => layerState.isErasing, [layerState.isErasing]),
     getCanvasColor: useCallback(() => layerState.canvasColor, [layerState.canvasColor]),
@@ -59,7 +60,7 @@ export function useLegacyMapBuilderState() {
   const saveSelectionDialogState = useSaveSelectionDialogState();
   const menuState = useMenuState();
   const mapSizeDialogState = useMapSizeDialogState();
-  const canvasRefsState = useCanvasRefs();
+  const canvasRefsState = useCanvasRefs(layerState.layers);
   const layoutRefs = useLayoutRefs();
   const tileState = useTileState();
   const undoRedoState = useUndoRedoState();
@@ -79,7 +80,7 @@ export function useLegacyMapBuilderState() {
 
   const zoomState = useZoomControls({ setTileSize: tileState.setTileSize });
 
-  const layerVisibilityState = useLayerVisibilityState();
+  const layerVisibilityState = useLayerVisibilityState(layerState.layers);
   const [showGridLines, setShowGridLines] = useState(true);
   const [engine, setEngine] = useState("grid");
 
@@ -232,9 +233,13 @@ export function useLegacyMapBuilderState() {
     canvasRefs: canvasRefsState.canvasRefs,
     confirmUser,
     deleteMap,
+    setLayers: layerState.setLayers,
+    setCurrentLayer: layerState.setCurrentLayer,
+    setLayerVisibility: layerVisibilityState.setLayerVisibility,
   });
 
   const projectSavingState = useLegacyProjectSaving({
+    layers: layerState.layers,
     isAssetsFolderConfigured,
     showToast: feedbackState.showToast,
     setNeedsAssetsFolder: legacyAssetWorkflow.setNeedsAssetsFolder,

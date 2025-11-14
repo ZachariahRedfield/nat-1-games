@@ -1,7 +1,7 @@
 import React from "react";
-import { LAYERS } from "./utils";
 
 export default function SelectionOverlay({
+  layers = [],
   objects,
   currentLayer,
   selectedObjId,
@@ -16,10 +16,13 @@ export default function SelectionOverlay({
   const ids = Array.isArray(selectedObjIds) && selectedObjIds.length
     ? selectedObjIds
     : (selectedObjId ? [selectedObjId] : []);
+  const layerIds = layers
+    .map((layer) => (typeof layer === "string" ? layer : layer?.id))
+    .filter(Boolean);
 
   return (
     <>
-      {LAYERS.map((layer, i) => {
+      {layerIds.map((layer, i) => {
         if (layer !== currentLayer || !layerVisibility[layer]) return null;
         const arr = ids
           .map((id) => getObjectById(layer, id))

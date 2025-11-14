@@ -1,14 +1,62 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createDefaultLayers,
+  ensureLayerName,
+  nextLayerName,
+  uid,
+} from "../../../utils.js";
 
 export function useLayerAndInteractionState() {
-  const [currentLayer, setCurrentLayer] = useState("base");
+  const [layers, setLayers] = useState(() => createDefaultLayers());
+  const [currentLayer, setCurrentLayer] = useState(() => createDefaultLayers()[0]?.id ?? null);
   const [interactionMode, setInteractionMode] = useState("draw");
   const [isErasing, setIsErasing] = useState(false);
   const [canvasColor, setCanvasColor] = useState(null);
 
+  useEffect(() => {
+    if (!layers.length) {
+      setLayers(createDefaultLayers());
+      return;
+    }
+    if (!layers.some((layer) => layer.id === currentLayer)) {
+      setCurrentLayer(layers[0]?.id ?? null);
+    }
+  }, [layers, currentLayer]);
+
+  const layersById = useMemo(() => {
+    const map = new Map();
+    for (const layer of layers) map.set(layer.id, layer);
+    return map;
+  }, [layers]);
+
+  const addLayer = useCallback(() => {
+    setLayers((prev) => {
+      const id = uid();
+      const name = nextLayerName(prev);
+      const next = [...prev, { id, name }];
+      setCurrentLayer(id);
+      return next;
+    });
+  }, []);
+
+  const renameLayer = useCallback((layerId, name) => {
+    setLayers((prev) =>
+      prev.map((layer) =>
+        layer.id === layerId
+          ? { ...layer, name: ensureLayerName(name, layer.name) }
+          : layer
+      )
+    );
+  }, []);
+
   return {
+    layers,
+    setLayers,
     currentLayer,
     setCurrentLayer,
+    layersById,
+    addLayer,
+    renameLayer,
     interactionMode,
     setInteractionMode,
     isErasing,

@@ -23,7 +23,7 @@ import { createGridPointerHandlers } from "./controller/createGridPointerHandler
 import { deriveCursorStyle } from "./controller/deriveCursorStyle.js";
 import { cellBackground } from "./controller/cellBackground.js";
 
-const DEFAULT_LAYER_VISIBILITY = { background: true, base: true, sky: true };
+const DEFAULT_LAYER_VISIBILITY = {};
 const DEFAULT_NATURAL_SETTINGS = {
   randomRotation: false,
   randomFlipX: false,
@@ -34,7 +34,8 @@ const DEFAULT_NATURAL_SETTINGS = {
 };
 
 export function useGridController({
-  maps,
+  layers = [],
+  maps = {},
   objects,
   assets,
   engine,
@@ -55,8 +56,8 @@ export function useGridController({
   scrollRef,
   contentRef, // kept for API parity even though controller does not use it directly
   canvasRefs,
-  currentLayer = "base",
-  layerVisibility = DEFAULT_LAYER_VISIBILITY,
+  currentLayer: currentLayerProp,
+  layerVisibility: layerVisibilityProp = DEFAULT_LAYER_VISIBILITY,
   tokensVisible = true,
   tokenHUDVisible = true,
   tokenHUDShowInitiative = false,
@@ -83,8 +84,17 @@ export function useGridController({
   updateTokenById,
   onTokenSelectionChange,
 }) {
-  const rows = maps.base.length;
-  const cols = maps.base[0].length;
+  const layerIds = (layers || [])
+    .map((layer) => (typeof layer === "string" ? layer : layer?.id))
+    .filter(Boolean);
+  const fallbackLayer = layerIds[0] ?? Object.keys(maps || {})[0] ?? null;
+  const currentLayer = currentLayerProp ?? fallbackLayer;
+  const rows = currentLayer && maps?.[currentLayer] ? maps[currentLayer].length : 0;
+  const cols = currentLayer && maps?.[currentLayer]?.[0] ? maps[currentLayer][0].length : 0;
+  const layerVisibility = layerIds.reduce((acc, id) => {
+    acc[id] = layerVisibilityProp?.[id] !== false;
+    return acc;
+  }, {});
 
   const cssWidth = cols * tileSize;
   const cssHeight = rows * tileSize;

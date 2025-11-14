@@ -15,6 +15,7 @@ export function toProjectJson(projectState = {}) {
     tokens,
     assets,
     settings,
+    layers,
   } = projectState;
 
   return {
@@ -22,13 +23,18 @@ export function toProjectJson(projectState = {}) {
     name: name || settings?.name || undefined,
     map: { rows, cols, gridSize: tileSize },
     settings: settings || {},
+    layers: Array.isArray(layers)
+      ? layers.map((layer) =>
+          typeof layer === "string" ? { id: layer, name: layer } : layer
+        )
+      : undefined,
     assets: (assets || []).map(stripAssetInMemoryFields),
   };
 }
 
 export function toTilesJson(projectState = {}) {
   const { maps } = projectState;
-  return { tiles: { background: maps?.background, base: maps?.base, sky: maps?.sky } };
+  return { tiles: maps || {} };
 }
 
 export function toObjectsJson(projectState = {}) {
@@ -48,7 +54,7 @@ export async function buildProjectStateSnapshot(raw = {}, canvasesOrSingleBlob =
   const rows = map?.rows || raw.rows || 20;
   const cols = map?.cols || raw.cols || 20;
   const tileSize = map?.gridSize || 32;
-  const maps = tiles || raw.maps || { background: [], base: [], sky: [] };
+  const maps = tiles || raw.maps || {};
   const assetsIn = assets || raw.assets || [];
 
   const canvasesInput = canvasesOrSingleBlob;
@@ -56,14 +62,14 @@ export async function buildProjectStateSnapshot(raw = {}, canvasesOrSingleBlob =
   let canvases = null;
   if (canvasesInput && typeof canvasesInput === "object" && !(canvasesInput instanceof Blob)) {
     canvases = {};
-    for (const layer of ["background", "base", "sky"]) {
-      const blob = canvasesInput[layer];
+    const entries = Object.entries(canvasesInput);
+    for (const [layerId, blob] of entries) {
       if (!blob) {
-        canvases[layer] = null;
+        canvases[layerId] = null;
         continue;
       }
       // eslint-disable-next-line no-await-in-loop
-      canvases[layer] = await new Promise((resolve) => {
+      canvases[layerId] = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.readAsDataURL(blob);
@@ -82,10 +88,11 @@ export async function buildProjectStateSnapshot(raw = {}, canvasesOrSingleBlob =
     cols,
     tileSize,
     maps,
-    objects: objects || raw.objects || { background: [], base: [], sky: [] },
+    objects: objects || raw.objects || {},
     tokens: tokens || raw.tokens || [],
     assets: assetsIn,
     settings: settings || raw.settings || {},
+    layers: raw.layers || raw.settings?.layers || [],
     canvasDataUrl,
     canvases,
   };

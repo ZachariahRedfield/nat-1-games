@@ -1,11 +1,12 @@
 export function createLayerBarProps(state) {
   return {
+    layers: state.layers,
     currentLayer: state.currentLayer,
     setCurrentLayer: state.setCurrentLayer,
+    addLayer: state.addLayer,
+    renameLayer: state.renameLayer,
     layerVisibility: state.layerVisibility,
     toggleLayerVisibility: state.toggleLayerVisibility,
-    tokensVisible: state.tokensVisible,
-    setTokensVisible: state.setTokensVisible,
     showGridLines: state.showGridLines,
     setShowGridLines: state.setShowGridLines,
     tileSize: state.tileSize,

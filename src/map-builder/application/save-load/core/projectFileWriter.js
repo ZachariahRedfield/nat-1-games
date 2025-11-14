@@ -22,13 +22,16 @@ export async function writeProjectFiles(projectDirHandle, projectState, layerBlo
   await writeJsonFile(projectDirHandle, ["objects.json"], objectsJson);
   await writeJsonFile(projectDirHandle, ["tokens.json"], tokensJson);
 
-  if (layerBlobs.background) {
-    await writeFile(projectDirHandle, ["canvas-background.png"], layerBlobs.background);
-  }
-  if (layerBlobs.base) {
-    await writeFile(projectDirHandle, ["canvas-base.png"], layerBlobs.base);
-  }
-  if (layerBlobs.sky) {
-    await writeFile(projectDirHandle, ["canvas-sky.png"], layerBlobs.sky);
+  const entries = Object.entries(layerBlobs || {});
+  let ordinal = 0;
+  for (const [layerId, blob] of entries) {
+    if (!blob) continue;
+    const safeId = (layerId || `layer-${ordinal}`).replace(/[^a-z0-9_-]/gi, "_");
+    if (layerId === "background" || layerId === "base" || layerId === "sky") {
+      await writeFile(projectDirHandle, [`canvas-${layerId}.png`], blob);
+    }
+    const index = String(ordinal).padStart(2, "0");
+    await writeFile(projectDirHandle, ["canvases", `${index}-${safeId}.png`], blob);
+    ordinal += 1;
   }
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { LAYERS } from "./utils";
+import { createDefaultLayers } from "./utils";
 
 const EyeIcon = ({ className = "w-4 h-4" }) => (
   <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
@@ -16,6 +16,7 @@ const EyeOffIcon = ({ className = "w-4 h-4" }) => (
 );
 
 export default function LayersBar({
+  layers = createDefaultLayers(),
   currentLayer,
   setCurrentLayer,
   layerVisibility,
@@ -25,6 +26,9 @@ export default function LayersBar({
   showAllLayers,
   hideAllLayers,
 }) {
+  const layerEntries = layers
+    .map((layer) => (typeof layer === "string" ? { id: layer, name: layer } : layer))
+    .filter((layer) => !!layer?.id);
   return (
     <div className="sticky top-0 left-0 right-0 z-40 bg-gray-800 text-white px-2 py-1 border-b border-gray-700">
       <div className="flex items-center gap-2 flex-wrap">
@@ -32,21 +36,21 @@ export default function LayersBar({
         <button className="px-2 py-0.5 text-[12px] bg-gray-700 rounded" onClick={showAllLayers}>Show All</button>
         <button className="px-2 py-0.5 text-[12px] bg-gray-700 rounded" onClick={hideAllLayers}>Hide All</button>
         <div className="h-4 w-px bg-gray-600 mx-1" />
-        {LAYERS.map((l) => (
-          <div key={`layerbar-${l}`} className="flex items-center gap-1">
+        {layerEntries.map((layer) => (
+          <div key={`layerbar-${layer.id}`} className="flex items-center gap-1">
             <button
-              onClick={() => setCurrentLayer(l)}
-              className={`px-2 py-0.5 text-[12px] rounded ${currentLayer === l ? 'bg-blue-600' : 'bg-gray-700'}`}
-              title={`Edit ${l}`}
+              onClick={() => setCurrentLayer(layer.id)}
+              className={`px-2 py-0.5 text-[12px] rounded ${currentLayer === layer.id ? 'bg-blue-600' : 'bg-gray-700'}`}
+              title={`Edit ${layer.name}`}
             >
-              {l}
+              {layer.name}
             </button>
             <button
-              onClick={() => toggleLayerVisibility(l)}
-              className={`px-2 py-0.5 text-[12px] rounded ${layerVisibility[l] ? 'bg-gray-600' : 'bg-gray-700'}`}
-              title={layerVisibility[l] ? 'Visible' : 'Hidden'}
+              onClick={() => toggleLayerVisibility(layer.id)}
+              className={`px-2 py-0.5 text-[12px] rounded ${layerVisibility[layer.id] ? 'bg-gray-600' : 'bg-gray-700'}`}
+              title={layerVisibility[layer.id] ? 'Visible' : 'Hidden'}
             >
-              {layerVisibility[l] ? <EyeIcon /> : <EyeOffIcon />}
+              {layerVisibility[layer.id] ? <EyeIcon /> : <EyeOffIcon />}
             </button>
           </div>
         ))}

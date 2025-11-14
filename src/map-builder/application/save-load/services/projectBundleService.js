@@ -81,9 +81,18 @@ export async function exportBundle(projectState, { canvasRefs, silent = false, m
   zip.file("tokens.json", JSON.stringify(tokensJson, null, 2));
 
   const layerBlobs = await capturePerLayerPNGs(canvasRefs);
-  if (layerBlobs.background) zip.file("canvas-background.png", layerBlobs.background);
-  if (layerBlobs.base) zip.file("canvas-base.png", layerBlobs.base);
-  if (layerBlobs.sky) zip.file("canvas-sky.png", layerBlobs.sky);
+  const entries = Object.entries(layerBlobs || {});
+  let ordinal = 0;
+  for (const [layerId, blob] of entries) {
+    if (!blob) continue;
+    const safeId = (layerId || `layer-${ordinal}`).replace(/[^a-z0-9_-]/gi, "_");
+    if (layerId === "background" || layerId === "base" || layerId === "sky") {
+      zip.file(`canvas-${layerId}.png`, blob);
+    }
+    const index = String(ordinal).padStart(2, "0");
+    zip.file(`canvases/${index}-${safeId}.png`, blob);
+    ordinal += 1;
+  }
 
   const content = await zip.generateAsync({ type: "blob" });
   const url = URL.createObjectURL(content);
@@ -175,13 +184,21 @@ export async function importBundle(file) {
   const objects = await readJsonEntry(zip, "objects.json");
   const tokensDoc = await readJsonEntry(zip, "tokens.json");
 
-  const canvases = { background: null, base: null, sky: null };
+  const canvases = {};
   const backgroundEntry = zip.file("canvas-background.png");
   const baseEntry = zip.file("canvas-base.png");
   const skyEntry = zip.file("canvas-sky.png");
   if (backgroundEntry) canvases.background = await backgroundEntry.async("blob");
   if (baseEntry) canvases.base = await baseEntry.async("blob");
   if (skyEntry) canvases.sky = await skyEntry.async("blob");
+  const canvasEntries = zip.file(/^canvases\//);
+  for (const entry of canvasEntries) {
+    const blob = await entry.async("blob");
+    const [, fileName] = entry.name.split("/");
+    const match = fileName.match(/^[0-9]+-(.+)\.png$/i);
+    const key = match ? match[1] : fileName.replace(/\.png$/i, "");
+    canvases[key] = blob;
+  }
   let singleCanvas = null;
   if (!backgroundEntry && !baseEntry && !skyEntry) {
     const single = zip.file("canvas.png");
