@@ -28,6 +28,8 @@ export function useOverlayLayout({
   const [overlayPosition, setOverlayPosition] = useState({ top: 40, left: 0, center: 0 });
   const [fixedLayerBar, setFixedLayerBar] = useState({ top: 0, left: 0, width: 0 });
 
+  const fixedBarWidth = fixedLayerBar?.width ?? 0;
+
   useEffect(() => {
     const measureLayerBarHeight = () => {
       const el = layerBarWrapRef?.current;
@@ -43,7 +45,7 @@ export function useOverlayLayout({
     measureLayerBarHeight();
     window.addEventListener("resize", measureLayerBarHeight);
     return () => window.removeEventListener("resize", measureLayerBarHeight);
-  }, [layerBarWrapRef, menuOpen]);
+  }, [layerBarWrapRef, menuOpen, fixedBarWidth]);
 
   useEffect(() => {
     const measureOverlayAnchor = () => {
@@ -110,8 +112,6 @@ export function useOverlayLayout({
 
   const fixedBarTop = fixedLayerBar?.top ?? 0;
   const fixedBarLeft = fixedLayerBar?.left ?? 0;
-  const fixedBarWidth = fixedLayerBar?.width ?? 0;
-
   return useMemo(
     () => ({
       layerBarHeight,
