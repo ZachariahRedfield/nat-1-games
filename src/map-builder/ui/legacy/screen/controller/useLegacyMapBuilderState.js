@@ -34,6 +34,7 @@ import { useSaveSelectionDialogState } from "./state/useSaveSelectionDialogState
 import { useTileState } from "./state/useTileState.js";
 import { useUndoRedoState } from "./state/useUndoRedoState.js";
 import { useZoomToRect } from "./state/useZoomToRect.js";
+import { deepCopyGrid, deepCopyObjects } from "../../utils.js";
 
 export function useLegacyMapBuilderState() {
   const projectNameRef = useRef("My Map");
@@ -64,6 +65,7 @@ export function useLegacyMapBuilderState() {
   const layoutRefs = useLayoutRefs();
   const tileState = useTileState();
   const undoRedoState = useUndoRedoState();
+  const { setUndoStack, setRedoStack } = undoRedoState;
 
   const feedbackState = useFeedbackState();
   const promptUser = feedbackState.requestPrompt;
@@ -81,6 +83,118 @@ export function useLegacyMapBuilderState() {
   const zoomState = useZoomControls({ setTileSize: tileState.setTileSize });
 
   const layerVisibilityState = useLayerVisibilityState(layerState.layers);
+
+  const { addLayer: baseAddLayer, removeLayer: baseRemoveLayer, renameLayer: baseRenameLayer } = layerState;
+  const layerList = layerState.layers || [];
+
+  const captureLayerHistorySnapshot = useCallback(
+    ({ includeMaps = false, includeObjects = false, includeCanvasFor } = {}) => {
+      const snapshot = {
+        type: "layers",
+        layers: layerList.map((layer) => ({ ...layer })),
+        currentLayer: layerState.currentLayer,
+        layerVisibility: { ...layerVisibilityState.layerVisibility },
+      };
+
+      if (includeMaps) {
+        const mapSnapshot = {};
+        Object.entries(sceneState.maps || {}).forEach(([id, grid]) => {
+          mapSnapshot[id] = deepCopyGrid(grid);
+        });
+        if (Object.keys(mapSnapshot).length) {
+          snapshot.maps = mapSnapshot;
+        }
+      }
+
+      if (includeObjects) {
+        const objectSnapshot = {};
+        Object.entries(sceneState.objects || {}).forEach(([id, list]) => {
+          objectSnapshot[id] = deepCopyObjects(list);
+        });
+        if (Object.keys(objectSnapshot).length) {
+          snapshot.objects = objectSnapshot;
+        }
+      }
+
+      if (includeCanvasFor && includeCanvasFor.length) {
+        const canvasSnapshot = {};
+        includeCanvasFor.forEach((layerId) => {
+          const canvas = canvasRefsState.canvasRefs?.[layerId]?.current;
+          if (!canvas) return;
+          try {
+            canvasSnapshot[layerId] = canvas.toDataURL();
+          } catch (error) {
+            // Ignore snapshot failures (e.g., tainted canvas)
+          }
+        });
+        if (Object.keys(canvasSnapshot).length) {
+          snapshot.canvasSnapshots = canvasSnapshot;
+        }
+      }
+
+      return snapshot;
+    },
+    [
+      canvasRefsState.canvasRefs,
+      layerState.currentLayer,
+      layerVisibilityState.layerVisibility,
+      layerList,
+      sceneState.maps,
+      sceneState.objects,
+    ],
+  );
+
+  const pushLayerHistory = useCallback(
+    ({ includeMaps = false, includeObjects = false, includeCanvas = false, targetLayerId, targetLayerIds } = {}) => {
+      const layerIds = targetLayerIds
+        ? targetLayerIds.filter(Boolean)
+        : targetLayerId
+        ? [targetLayerId]
+        : [];
+
+      const entry = captureLayerHistorySnapshot({
+        includeMaps,
+        includeObjects,
+        includeCanvasFor: includeCanvas ? layerIds : undefined,
+      });
+
+      setUndoStack((prev) => [...prev, entry]);
+      setRedoStack([]);
+    },
+    [captureLayerHistorySnapshot, setRedoStack, setUndoStack],
+  );
+
+  const addLayerWithHistory = useCallback(() => {
+    pushLayerHistory({});
+    baseAddLayer();
+  }, [baseAddLayer, pushLayerHistory]);
+
+  const removeLayerWithHistory = useCallback(
+    (layerId) => {
+      if (!layerId) return;
+      if ((layerList || []).length <= 1) {
+        baseRemoveLayer(layerId);
+        return;
+      }
+      pushLayerHistory({
+        includeMaps: true,
+        includeObjects: true,
+        includeCanvas: true,
+        targetLayerId: layerId,
+      });
+      baseRemoveLayer(layerId);
+    },
+    [baseRemoveLayer, layerList, pushLayerHistory],
+  );
+
+  const renameLayerWithHistory = useCallback(
+    (layerId, name) => {
+      if (!layerId) return;
+      pushLayerHistory({});
+      baseRenameLayer(layerId, name);
+    },
+    [baseRenameLayer, pushLayerHistory],
+  );
   const [showGridLines, setShowGridLines] = useState(true);
   const [engine, setEngine] = useState("grid");
 
@@ -205,6 +319,11 @@ export function useLegacyMapBuilderState() {
     setTileSize: tileState.setTileSize,
     scrollRef: layoutRefs.scrollRef,
     canvasRefs: canvasRefsState.canvasRefs,
+    layers: layerList,
+    setLayers: layerState.setLayers,
+    setCurrentLayer: layerState.setCurrentLayer,
+    layerVisibility: layerVisibilityState.layerVisibility,
+    setLayerVisibility: layerVisibilityState.setLayerVisibility,
     currentLayer: layerState.currentLayer,
     showToast: feedbackState.showToast,
     selectedObjsList: gridSelectionState.selectedObjsList,
@@ -292,6 +411,9 @@ export function useLegacyMapBuilderState() {
   return {
     projectNameRef,
     ...layerState,
+    addLayer: addLayerWithHistory,
+    removeLayer: removeLayerWithHistory,
+    renameLayer: renameLayerWithHistory,
     ...sceneState,
     ...gridSettingsState,
     ...gridSelectionState,
