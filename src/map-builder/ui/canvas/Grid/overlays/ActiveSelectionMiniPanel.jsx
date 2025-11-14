@@ -64,10 +64,6 @@ export default function ActiveSelectionMiniPanel({
           updateObjectById(currentLayer, obj.id, { opacity });
           setGridSettings?.((s) => ({ ...s, opacity }));
         }}
-        snapToGrid={!!gridSettings.snapToGrid}
-        onToggleSnap={() => {
-          setGridSettings?.((s) => ({ ...s, snapToGrid: !s?.snapToGrid }));
-        }}
         linkXY={!!gridSettings.linkXY}
         onToggleLink={() => setGridSettings?.((s) => ({ ...s, linkXY: !s?.linkXY }))}
       />
@@ -116,10 +112,6 @@ export default function ActiveSelectionMiniPanel({
           const opacity = Math.max(0.05, Math.min(1, val || 0));
           updateTokenById?.(tok.id, { opacity });
           setGridSettings?.((s) => ({ ...s, opacity }));
-        }}
-        snapToGrid={!!gridSettings.snapToGrid}
-        onToggleSnap={() => {
-          setGridSettings?.((s) => ({ ...s, snapToGrid: !s?.snapToGrid }));
         }}
         linkXY={!!gridSettings.linkXY}
         onToggleLink={() => setGridSettings?.((s) => ({ ...s, linkXY: !s?.linkXY }))}

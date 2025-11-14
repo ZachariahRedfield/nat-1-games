@@ -3,10 +3,6 @@ import { NumericInput } from "../../../../shared/index.js";
 import SectionTitle from "./components/SectionTitle.jsx";
 import LinkedSizeInputs from "./components/LinkedSizeInputs.jsx";
 
-function clampStep(value) {
-  return Math.max(0.05, parseFloat(value));
-}
-
 function buildLinkButtonClass(linked) {
   return `p-1 rounded border ${
     linked
@@ -22,14 +18,10 @@ export default function NaturalBrushSettings({
   naturalSettings,
   setNaturalSettings,
   snapshotSettings,
-  showSnapControls = true,
-  showStep = true,
   hideNaturalSize = false,
 }) {
   const linkXY = !!(gridSettings?.linkXY);
-  const numXYCls = showSnapControls
-    ? "w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
-    : "w-14 pr-5 px-2 py-1 text-xs text-black rounded border border-gray-500 bg-white";
+  const numXYCls = "w-12 pr-5 px-1 py-0.5 text-xs text-black rounded";
 
   const handleToggleLink = () => {
     snapshotSettings?.();
@@ -54,98 +46,27 @@ export default function NaturalBrushSettings({
     );
   };
 
-  const renderSnapControls = () => (
-    <div className="text-xs inline-flex items-center gap-3 px-2 py-1 border border-gray-700 rounded w-fit">
-      <label className="inline-flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={!!gridSettings?.snapToGrid}
-          onChange={(event) => {
-            snapshotSettings?.();
-            const next = event.target.checked;
-            setGridSettings((current) => ({ ...current, snapToGrid: next }));
-          }}
-        />
-        Grid Snap
-      </label>
-      {!gridSettings?.snapToGrid && (
-        <div className="inline-flex items-center gap-2">
-          <span>Step</span>
-          <NumericInput
-            value={gridSettings?.snapStep ?? 1}
-            min={0.05}
-            step={0.05}
-            className="w-12 px-1 py-0.5 text-xs text-black rounded"
-            onCommit={(value) => {
-              snapshotSettings?.();
-              setGridSettings((current) => ({ ...current, snapStep: clampStep(value) }));
-            }}
-            title="Used when Grid Snap is off"
-          />
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div>
       <SectionTitle title={titleOverride || "Settings"} />
       <div className="grid gap-2">
-        {!showSnapControls ? (
-          <div className="flex items-center gap-3">
-            {!hideNaturalSize && (
-              <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
-                <span>Size</span>
-                <LinkedSizeInputs
-                  valueCols={gridSettings?.sizeCols ?? gridSettings?.sizeTiles}
-                  valueRows={gridSettings?.sizeRows ?? gridSettings?.sizeTiles}
-                  onCommitCols={commitCols}
-                  onCommitRows={commitRows}
-                  linkXY={linkXY}
-                  onToggleLink={handleToggleLink}
-                  inputClassName={numXYCls}
-                  buttonClassName={buildLinkButtonClass(linkXY)}
-                />
-              </div>
-            )}
-            {showStep && (
-              <div className="text-xs inline-flex items-center gap-2 px-2 py-1 border border-white rounded-none w-fit">
-                <span>Draw Spacing</span>
-                <NumericInput
-                  value={gridSettings?.snapStep ?? 1}
-                  min={0.05}
-                  step={0.05}
-                  className="w-12 px-1 py-0.5 text-xs text-black rounded"
-                  onCommit={(value) => {
-                    snapshotSettings?.();
-                    setGridSettings((current) => ({ ...current, snapStep: clampStep(value) }));
-                  }}
-                  title="Spacing between placements while drawing"
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          !hideNaturalSize && (
-            <div className="flex items-end gap-3 mb-1">
-              <span className="text-xs">Size</span>
-              <div className="inline-flex items-center">
-                <LinkedSizeInputs
-                  valueCols={gridSettings?.sizeCols ?? gridSettings?.sizeTiles}
-                  valueRows={gridSettings?.sizeRows ?? gridSettings?.sizeTiles}
-                  onCommitCols={commitCols}
-                  onCommitRows={commitRows}
-                  linkXY={linkXY}
-                  onToggleLink={handleToggleLink}
-                  inputClassName="w-12 pr-5 px-1 py-0.5 text-xs text-black rounded"
-                  buttonClassName={`mx-1 ${buildLinkButtonClass(linkXY)}`}
-                />
-              </div>
+        {!hideNaturalSize && (
+          <div className="flex items-end gap-3 mb-1">
+            <span className="text-xs">Size</span>
+            <div className="inline-flex items-center">
+              <LinkedSizeInputs
+                valueCols={gridSettings?.sizeCols ?? gridSettings?.sizeTiles}
+                valueRows={gridSettings?.sizeRows ?? gridSettings?.sizeTiles}
+                onCommitCols={commitCols}
+                onCommitRows={commitRows}
+                linkXY={linkXY}
+                onToggleLink={handleToggleLink}
+                inputClassName={numXYCls}
+                buttonClassName={`mx-1 ${buildLinkButtonClass(linkXY)}`}
+              />
             </div>
-          )
+          </div>
         )}
-
-        {showSnapControls && renderSnapControls()}
 
         <div className="grid grid-cols-2 gap-2 mt-2">
           <label className="text-xs inline-flex items-center gap-2">

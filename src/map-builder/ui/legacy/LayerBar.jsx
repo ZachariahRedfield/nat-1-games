@@ -31,9 +31,6 @@ export default function LayerBar({
   );
 
   const activeLayer = layerEntries.find((layer) => layer.id === currentLayer);
-  const activeLayerVisible = layerVisibility?.[currentLayer] !== false;
-  const toggleLabel = activeLayerVisible ? "Hide Layer" : "Show Layer";
-
   const finishRename = React.useCallback(
     (commit) => {
       if (renamingId) {
@@ -45,6 +42,16 @@ export default function LayerBar({
     [draftName, renamingId, renameLayer]
   );
 
+  const activeLayerVisible = layerVisibility?.[currentLayer] !== false;
+  const toggleLabel = activeLayerVisible ? "Hide Layer" : "Show Layer";
+  const canRemoveActiveLayer = layerEntries.length > 1 && !!currentLayer;
+
+  const handleRemoveActiveLayer = React.useCallback(() => {
+    if (!canRemoveActiveLayer) return;
+    finishRename(false);
+    removeLayer?.(currentLayer);
+  }, [canRemoveActiveLayer, currentLayer, finishRename, removeLayer]);
+
   const handleAddLayer = React.useCallback(() => {
     finishRename(false);
     addLayer?.();
@@ -53,6 +60,16 @@ export default function LayerBar({
   return (
     <div className="w-full z-[10020] bg-gray-800 text-white px-2 py-1 border-b border-gray-700 shadow">
       <div className="flex items-center gap-3 flex-wrap">
+        {canRemoveActiveLayer && (
+          <button
+            type="button"
+            className="px-2 py-0.5 text-xs rounded border border-red-400 text-red-300 hover:text-red-200 hover:border-red-300 transition"
+            title={`Remove ${activeLayer?.name || "layer"}`}
+            onClick={handleRemoveActiveLayer}
+          >
+            ×
+          </button>
+        )}
         <span className="text-[11px] uppercase opacity-80 mr-2">Layers</span>
 
         <button
@@ -67,7 +84,6 @@ export default function LayerBar({
           const isActive = layer.id === currentLayer;
           const isHidden = layerVisibility?.[layer.id] === false;
           const isEditing = renamingId === layer.id;
-          const canRemoveLayer = layerEntries.length > 1;
           const buttonClasses = [
             "px-2 py-0.5 text-sm rounded-full border transition",
             "border-white/80",
@@ -105,24 +121,6 @@ export default function LayerBar({
                   {layer.name}
                 </button>
               )}
-              <button
-                type="button"
-                className={`px-1 py-0.5 text-xs rounded border transition ${
-                  canRemoveLayer
-                    ? "border-red-400 text-red-300 hover:text-red-200 hover:border-red-300"
-                    : "border-white/20 text-white/30 cursor-not-allowed"
-                }`}
-                title={canRemoveLayer ? "Remove layer" : "Cannot remove the last layer"}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (!canRemoveLayer) return;
-                  finishRename(false);
-                  removeLayer?.(layer.id);
-                }}
-                disabled={!canRemoveLayer}
-              >
-                ×
-              </button>
             </div>
           );
         })}
