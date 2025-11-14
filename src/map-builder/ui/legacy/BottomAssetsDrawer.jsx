@@ -18,7 +18,7 @@ export default function BottomAssetsDrawer(props = {}) {
     setNaturalSettings,
   } = props;
 
-  const { height, collapsed, handleResizeStart } = useAssetsDrawerHeight({
+  const { height, collapsed, toggleDrawer } = useAssetsDrawerHeight({
     storageKey: STORAGE_KEY,
     initialHeight,
     minHeight,
@@ -30,9 +30,9 @@ export default function BottomAssetsDrawer(props = {}) {
       <div className="relative h-0 select-none pointer-events-none">
         <div
           className="absolute left-3 bottom-[-1px] min-w-[120px] px-5 py-3 md:py-2 text-sm font-medium rounded-t-lg bg-gray-800 border border-gray-600 border-b-0 text-gray-100 pointer-events-auto shadow-sm flex items-center justify-center min-h-[44px]"
-          style={{ cursor: "ns-resize" }}
-          onPointerDown={handleResizeStart}
-          title="Drag to resize"
+          style={{ cursor: "pointer" }}
+          onClick={toggleDrawer}
+          title={collapsed ? "Click to open" : "Click to close"}
         >
           <span className="pointer-events-none">Assets</span>
         </div>
