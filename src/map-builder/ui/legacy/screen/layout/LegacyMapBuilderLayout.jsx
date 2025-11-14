@@ -72,7 +72,11 @@ export default function LegacyMapBuilderLayout({
             <div
               ref={layout.layerBarWrapRef}
               className="absolute opacity-0 pointer-events-none -z-10"
-              style={{ top: -9999, left: -9999 }}
+              style={{
+                top: -9999,
+                left: -9999,
+                width: layout.fixedBarWidth || undefined,
+              }}
             >
               <LayerBar {...layerBarProps} />
             </div>
