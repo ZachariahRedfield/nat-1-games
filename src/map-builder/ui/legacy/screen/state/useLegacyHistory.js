@@ -1,6 +1,61 @@
 import { useCallback } from "react";
 import { deepCopyGrid, deepCopyObjects } from "../../utils.js";
 
+const copyLayerList = (layers = []) => layers.map((layer) => ({ ...layer }));
+
+const copyMapState = (maps = {}) => {
+  const next = {};
+  Object.entries(maps || {}).forEach(([key, grid]) => {
+    next[key] = deepCopyGrid(grid);
+  });
+  return next;
+};
+
+const copyObjectState = (objects = {}) => {
+  const next = {};
+  Object.entries(objects || {}).forEach(([key, list]) => {
+    next[key] = deepCopyObjects(list);
+  });
+  return next;
+};
+
+const captureCanvasSnapshots = (layerIds = [], canvasRefs = {}) => {
+  if (!layerIds?.length) return undefined;
+  const snapshots = {};
+  layerIds.forEach((layerId) => {
+    const canvas = canvasRefs[layerId]?.current;
+    if (!canvas) return;
+    try {
+      snapshots[layerId] = canvas.toDataURL();
+    } catch (error) {
+      // Ignore snapshot failures (e.g., tainted canvas)
+    }
+  });
+  return Object.keys(snapshots).length ? snapshots : undefined;
+};
+
+const restoreCanvasSnapshots = (snapshots, canvasRefs = {}) => {
+  if (!snapshots || !Object.keys(snapshots).length) return;
+  const scheduler =
+    typeof requestAnimationFrame === "function"
+      ? requestAnimationFrame
+      : (fn) => setTimeout(fn, 0);
+  scheduler(() => {
+    Object.entries(snapshots).forEach(([layerId, snapshot]) => {
+      const canvas = canvasRefs[layerId]?.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = snapshot;
+    });
+  });
+};
+
 export function useLegacyHistory({
   undoStack,
   setUndoStack,
@@ -32,6 +87,11 @@ export function useLegacyHistory({
   setTileSize,
   scrollRef,
   canvasRefs,
+  layers,
+  setLayers,
+  setCurrentLayer,
+  layerVisibility,
+  setLayerVisibility,
   currentLayer,
   showToast,
   selectedObjsList,
@@ -165,6 +225,39 @@ export function useLegacyHistory({
         { type: "tokens", tokens: deepCopyObjects(tokens) },
       ]);
       setTokens(entry.tokens || []);
+    } else if (entry.type === "layers") {
+      const canvasLayerIds = entry.canvasSnapshots
+        ? Object.keys(entry.canvasSnapshots)
+        : [];
+      const redoCanvasSnapshots = entry.canvasSnapshots
+        ? captureCanvasSnapshots(canvasLayerIds, canvasRefs)
+        : undefined;
+      setRedoStack((prev) => [
+        ...prev,
+        {
+          type: "layers",
+          layers: copyLayerList(layers),
+          currentLayer,
+          layerVisibility: { ...(layerVisibility || {}) },
+          maps: entry.maps ? copyMapState(maps) : undefined,
+          objects: entry.objects ? copyObjectState(objects) : undefined,
+          canvasSnapshots: redoCanvasSnapshots,
+        },
+      ]);
+      setLayers(copyLayerList(entry.layers || []));
+      setCurrentLayer(entry.currentLayer ?? null);
+      if (entry.layerVisibility) {
+        setLayerVisibility({ ...entry.layerVisibility });
+      }
+      if (entry.maps) {
+        setMaps(copyMapState(entry.maps));
+      }
+      if (entry.objects) {
+        setObjects(copyObjectState(entry.objects));
+      }
+      if (entry.canvasSnapshots) {
+        restoreCanvasSnapshots(entry.canvasSnapshots, canvasRefs);
+      }
     } else if (entry.type === "settings") {
       setRedoStack((prev) => [
         ...prev,
@@ -234,6 +327,8 @@ export function useLegacyHistory({
     canvasRefs,
     canvasSpacing,
     canvasSmoothing,
+    layerVisibility,
+    layers,
     gridSettings,
     maps,
     naturalSettings,
@@ -249,6 +344,9 @@ export function useLegacyHistory({
     setMaps,
     setNaturalSettings,
     setObjects,
+    setLayers,
+    setCurrentLayer,
+    setLayerVisibility,
     setTileSize,
     setTokens,
     tileSize,
@@ -302,6 +400,39 @@ export function useLegacyHistory({
         { type: "tokens", tokens: deepCopyObjects(tokens) },
       ]);
       setTokens(entry.tokens || []);
+    } else if (entry.type === "layers") {
+      const canvasLayerIds = entry.canvasSnapshots
+        ? Object.keys(entry.canvasSnapshots)
+        : [];
+      const undoCanvasSnapshots = entry.canvasSnapshots
+        ? captureCanvasSnapshots(canvasLayerIds, canvasRefs)
+        : undefined;
+      setUndoStack((prev) => [
+        ...prev,
+        {
+          type: "layers",
+          layers: copyLayerList(layers),
+          currentLayer,
+          layerVisibility: { ...(layerVisibility || {}) },
+          maps: entry.maps ? copyMapState(maps) : undefined,
+          objects: entry.objects ? copyObjectState(objects) : undefined,
+          canvasSnapshots: undoCanvasSnapshots,
+        },
+      ]);
+      setLayers(copyLayerList(entry.layers || []));
+      setCurrentLayer(entry.currentLayer ?? null);
+      if (entry.layerVisibility) {
+        setLayerVisibility({ ...entry.layerVisibility });
+      }
+      if (entry.maps) {
+        setMaps(copyMapState(entry.maps));
+      }
+      if (entry.objects) {
+        setObjects(copyObjectState(entry.objects));
+      }
+      if (entry.canvasSnapshots) {
+        restoreCanvasSnapshots(entry.canvasSnapshots, canvasRefs);
+      }
     } else if (entry.type === "settings") {
       setUndoStack((prev) => [
         ...prev,
@@ -371,6 +502,8 @@ export function useLegacyHistory({
     canvasRefs,
     canvasSpacing,
     canvasSmoothing,
+    layerVisibility,
+    layers,
     gridSettings,
     maps,
     naturalSettings,
@@ -387,6 +520,9 @@ export function useLegacyHistory({
     setMaps,
     setNaturalSettings,
     setObjects,
+    setLayers,
+    setCurrentLayer,
+    setLayerVisibility,
     setTileSize,
     setTokens,
     tileSize,

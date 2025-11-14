@@ -60,17 +60,18 @@ export default function LayerBar({
   return (
     <div className="w-full z-[10020] bg-gray-800 text-white px-2 py-1 border-b border-gray-700 shadow">
       <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-[11px] uppercase opacity-80 mr-2">Layers</span>
+
         {canRemoveActiveLayer && (
           <button
             type="button"
-            className="px-2 py-0.5 text-xs rounded border border-red-400 text-red-300 hover:text-red-200 hover:border-red-300 transition"
+            className="ml-1 px-2 py-0.5 text-xs rounded border border-red-400 text-red-300 hover:text-red-200 hover:border-red-300 transition"
             title={`Remove ${activeLayer?.name || "layer"}`}
             onClick={handleRemoveActiveLayer}
           >
-            ×
+            Remove
           </button>
         )}
-        <span className="text-[11px] uppercase opacity-80 mr-2">Layers</span>
 
         <button
           type="button"
