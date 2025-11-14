@@ -26,7 +26,7 @@ export default function LayersBar({
   hideAllLayers,
 }) {
   return (
-    <div className="sticky top-0 left-0 right-0 z-40 bg-gray-800/80 text-white backdrop-blur px-2 py-1 border-b border-gray-700">
+    <div className="sticky top-0 left-0 right-0 z-40 bg-gray-800 text-white px-2 py-1 border-b border-gray-700">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] uppercase opacity-80 mr-1">Layers</span>
         <button className="px-2 py-0.5 text-[12px] bg-gray-700 rounded" onClick={showAllLayers}>Show All</button>
