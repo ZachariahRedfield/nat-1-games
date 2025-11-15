@@ -16,6 +16,8 @@ export default function ActiveSelectionMiniPanel({
   updateTokenById,
   assets = [],
   objects = {},
+  scrollRef,
+  contentRef,
 }) {
   if (selectedObject) {
     const obj = selectedObject;
@@ -66,6 +68,8 @@ export default function ActiveSelectionMiniPanel({
         }}
         linkXY={!!gridSettings.linkXY}
         onToggleLink={() => setGridSettings?.((s) => ({ ...s, linkXY: !s?.linkXY }))}
+        scrollRef={scrollRef}
+        contentRef={contentRef}
       />
     );
   }
@@ -120,6 +124,8 @@ export default function ActiveSelectionMiniPanel({
           const value = typeof hex === "string" && hex.trim() ? hex.trim() : "#7dd3fc";
           updateTokenById?.(tok.id, { glowColor: value });
         }}
+        scrollRef={scrollRef}
+        contentRef={contentRef}
       />
     );
   }
