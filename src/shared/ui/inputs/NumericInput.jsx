@@ -16,6 +16,7 @@ export default function NumericInput({
   const [focused, setFocused] = React.useState(false);
   const prevValueRef = React.useRef(null);
   const committedRef = React.useRef(false);
+  const dirtyRef = React.useRef(false);
 
   // Sync external value when not focused
   React.useEffect(() => {
@@ -51,6 +52,7 @@ export default function NumericInput({
     onCommit?.(n);
     setText(String(n));
     committedRef.current = true;
+    dirtyRef.current = false;
   };
 
   const handleKeyDown = (e) => {
@@ -89,21 +91,32 @@ export default function NumericInput({
       className={className}
       value={text}
       placeholder={placeholder}
-      onFocus={() => {
+      onFocus={(event) => {
         setFocused(true);
         committedRef.current = false;
+        dirtyRef.current = false;
         prevValueRef.current = value;
-        setText("");
+        const initial =
+          value === null || value === undefined || Number.isNaN(value) ? "" : String(value);
+        setText(initial);
+        event.target.select?.();
       }}
       onBlur={() => {
         setFocused(false);
-        // if no explicit commit, restore previous value
         if (!committedRef.current) {
-          const prev = prevValueRef.current;
-          setText(prev === null || prev === undefined || Number.isNaN(prev) ? "" : String(prev));
+          if (dirtyRef.current) {
+            commit(text);
+          } else {
+            const prev = prevValueRef.current;
+            const prevText = prev === null || prev === undefined || Number.isNaN(prev) ? "" : String(prev);
+            setText(prevText);
+          }
         }
       }}
-      onChange={(e) => setText(e.target.value)}
+      onChange={(e) => {
+        dirtyRef.current = true;
+        setText(e.target.value);
+      }}
       onKeyDown={handleKeyDown}
       title={title}
     />

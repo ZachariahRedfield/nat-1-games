@@ -11,6 +11,7 @@ export default function TextCommitInput({
   const [focused, setFocused] = React.useState(false);
   const prevValueRef = React.useRef(null);
   const committedRef = React.useRef(false);
+  const dirtyRef = React.useRef(false);
 
   // Sync external value when not focused
   React.useEffect(() => {
@@ -23,6 +24,7 @@ export default function TextCommitInput({
     onCommit?.(s);
     setText(String(s));
     committedRef.current = true;
+    dirtyRef.current = false;
   };
 
   const handleKeyDown = (e) => {
@@ -48,20 +50,30 @@ export default function TextCommitInput({
       className={className}
       value={text}
       placeholder={placeholder}
-      onFocus={() => {
+      onFocus={(event) => {
         setFocused(true);
         committedRef.current = false;
-        prevValueRef.current = value ?? "";
-        setText("");
+        dirtyRef.current = false;
+        const initial = value ?? "";
+        prevValueRef.current = initial;
+        setText(initial);
+        event.target.select?.();
       }}
       onBlur={() => {
         setFocused(false);
         if (!committedRef.current) {
-          const prev = prevValueRef.current;
-          setText(prev ?? "");
+          const prev = prevValueRef.current ?? "";
+          if (dirtyRef.current) {
+            commit(text ?? "");
+          } else {
+            setText(prev);
+          }
         }
       }}
-      onChange={(e) => setText(e.target.value)}
+      onChange={(e) => {
+        dirtyRef.current = true;
+        setText(e.target.value);
+      }}
       onKeyDown={handleKeyDown}
       title={title}
     />
