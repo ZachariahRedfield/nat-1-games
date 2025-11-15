@@ -45,7 +45,7 @@ const segmentedButtonClass = (isActive) =>
   `px-1.5 py-0.5 text-[11px] font-medium relative group inline-flex items-center justify-center gap-1 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
     isActive
       ? "bg-blue-500 text-white shadow-inner"
-      : "text-white/80 hover:text-white hover:bg-white/10"
+      : "bg-slate-900/60 text-white/80 hover:text-white hover:bg-slate-800/60"
   }`;
 
 const toggleButtonClass = (isActive) =>
@@ -81,7 +81,7 @@ export default function InteractionControls({
   return (
     <>
       {/* Row 1: Mode segmented (+ Zoom Tool at right; mutually exclusive) */}
-      <div className="inline-flex items-center gap-0 overflow-hidden rounded-xl border border-slate-600/80 bg-slate-900/60 shadow-sm backdrop-blur">
+      <div className="inline-flex items-center gap-0 overflow-hidden rounded-xl border border-slate-600/80 shadow-sm backdrop-blur">
         <button
           onClick={() => { setZoomToolActive(false); setInteractionMode("draw"); }}
           title="Draw"
@@ -116,7 +116,7 @@ export default function InteractionControls({
         {interactionMode === 'draw' ? (
           <>
             {assetGroup !== 'token' && (
-              <div className="inline-flex items-center gap-0 overflow-hidden rounded-xl border border-slate-600/80 bg-slate-900/60 shadow-sm backdrop-blur">
+              <div className="inline-flex items-center gap-0 overflow-hidden rounded-xl border border-slate-600/80 shadow-sm backdrop-blur">
                 <button
                   onClick={() => setEngine("grid")}
                   title="Grid"
