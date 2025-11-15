@@ -11,7 +11,7 @@ export default function BottomAssetsDrawer(props = {}) {
     assetPanelProps,
     initialHeight = 0,
     minHeight = 0,
-    maxHeightPct = 0.7,
+    maxHeightPct = 0.92,
     assetStamp,
     setAssetStamp,
     naturalSettings,
