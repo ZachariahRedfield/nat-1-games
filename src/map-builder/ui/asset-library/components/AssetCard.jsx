@@ -1,62 +1,91 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { resolvePrimaryPreview } from "../assetGrouping.js";
 
-function AssetPreview({ asset, showPreview }) {
-  const preview = resolvePrimaryPreview(asset);
+function AssetPreview({ asset, showPreview, preview }) {
+  const resolvedPreview = preview ?? resolvePrimaryPreview(asset);
 
   if (!showPreview) {
     return <div className="text-xs font-medium whitespace-normal break-words leading-tight py-0.5">{asset.name}</div>;
   }
 
-  if (preview.type === "image") {
+  if (resolvedPreview.type === "image") {
     return (
       <img
-        src={preview.src || undefined}
-        alt={preview.alt || asset.name}
-        className="w-full h-24 md:h-28 object-contain"
+        src={resolvedPreview.src || undefined}
+        alt={resolvedPreview.alt || asset.name}
+        className="absolute inset-0 w-full h-full object-cover"
       />
     );
   }
 
-  if (preview.type === "color") {
-    return <div className="w-full h-24 md:h-28 rounded" style={{ backgroundColor: preview.color }} />;
-  }
-
-  if (preview.type === "tokenGroup") {
+  if (resolvedPreview.type === "naturalStack") {
+    const items = Array.isArray(resolvedPreview.items) ? resolvedPreview.items : [];
     return (
-      <div className="w-full h-24 md:h-28 flex items-center justify-center text-[10px] opacity-80">
-        {preview.count || 0} tokens
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative w-[86%] h-[86%]">
+          {items.map((item, index) => {
+            const depth = items.length - index - 1;
+            const offset = depth * 6;
+            return (
+              <img
+                key={`${item.src || "variant"}-${index}`}
+                src={item.src || undefined}
+                alt={item.alt || resolvedPreview.alt || asset.name}
+                className="absolute inset-0 w-full h-full object-cover rounded-md shadow-md"
+                style={{ transform: `translate(${-offset}px, ${-offset}px)` }}
+              />
+            );
+          })}
+        </div>
       </div>
     );
   }
 
-  if (preview.type === "emptyNatural") {
+  if (resolvedPreview.type === "color") {
     return (
-      <div className="w-full h-24 md:h-28 flex items-center justify-center text-[10px] opacity-80">
+      <div
+        className="absolute inset-0"
+        style={{ backgroundColor: resolvedPreview.color, borderRadius: "inherit" }}
+      />
+    );
+  }
+
+  if (resolvedPreview.type === "tokenGroup") {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-white/80 bg-slate-900/60 backdrop-blur-sm">
+        {resolvedPreview.count || 0} tokens
+      </div>
+    );
+  }
+
+  if (resolvedPreview.type === "emptyNatural") {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-white/80 bg-slate-900/60 backdrop-blur-sm">
         0 variants
       </div>
     );
   }
 
   return (
-    <div className="w-full h-24 md:h-28 flex items-center justify-center text-[10px] opacity-80">No preview</div>
+    <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-white/80 bg-slate-900/60 backdrop-blur-sm">
+      No preview
+    </div>
   );
 }
 
-export default function AssetCard({
-  asset,
-  isSelected,
-  showPreview,
-  onSelect,
-  onEdit,
-  onDelete,
-}) {
+export default function AssetCard({ asset, isSelected, showPreview, onSelect, onEdit, onDelete }) {
   if (!asset) return null;
 
+  const preview = useMemo(() => resolvePrimaryPreview(asset), [asset]);
+
   const baseClasses = showPreview
-    ? "rounded-lg p-2 pb-2 text-xs flex flex-col border shadow-sm"
+    ? "group relative w-full aspect-square overflow-hidden rounded-xl border shadow-sm transition"
     : "p-2 text-xs rounded-lg border shadow-sm";
-  const stateClasses = isSelected
+  const stateClasses = showPreview
+    ? isSelected
+      ? "border-white/70 ring-1 ring-white/40"
+      : "border-white/10 hover:border-white/30"
+    : isSelected
     ? "border-white/90 ring-1 ring-white/70 bg-gray-700/80"
     : "border-gray-600 bg-gray-800/60 hover:bg-gray-700/60";
 
@@ -74,66 +103,79 @@ export default function AssetCard({
       className={`relative cursor-pointer transition ${baseClasses} ${stateClasses}`}
       title={asset.name}
     >
-      <AssetPreview asset={asset} showPreview={showPreview} />
-      {showPreview && (
+      {showPreview ? (
         <>
-          <div className="mt-1 h-px bg-gray-600" />
-          <div className="pt-1 truncate">{asset.name}</div>
+          <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
+          <div className="pointer-events-none absolute top-1 left-1 max-w-[70%]">
+            <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-white/90 shadow">
+              {asset.name}
+            </span>
+          </div>
+          {preview.type === "naturalStack" && preview.total > 1 ? (
+            <div className="pointer-events-none absolute top-1 right-1">
+              <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 shadow">
+                ×{preview.total}
+              </span>
+            </div>
+          ) : null}
+          {isSelected && (
+            <div className="absolute bottom-1 left-1 right-1 flex gap-1">
+              <button
+                type="button"
+                className="flex-1 px-2 py-0.5 text-[11px] rounded bg-gray-700/90 hover:bg-gray-600/90"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEdit?.(asset);
+                }}
+                title="Edit asset"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="flex-1 px-2 py-0.5 text-[11px] rounded bg-red-700/90 hover:bg-red-600/90"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete?.(asset);
+                }}
+                title="Delete asset"
+              >
+                Delete
+              </button>
+            </div>
+          )}
         </>
-      )}
-
-      {isSelected && (
-        showPreview ? (
-          <div className="mt-1 inline-flex overflow-hidden rounded">
-            <button
-              type="button"
-              className="px-2 py-0.5 text-[11px] bg-gray-700 hover:bg-gray-600"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEdit?.(asset);
-              }}
-              title="Edit asset"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDelete?.(asset);
-              }}
-              title="Delete asset"
-            >
-              Delete
-            </button>
-          </div>
-        ) : (
-          <div className="absolute top-1 right-1 inline-flex overflow-hidden rounded">
-            <button
-              type="button"
-              className="px-2 py-0.5 text-[11px] bg-gray-700 hover:bg-gray-600"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEdit?.(asset);
-              }}
-              title="Edit asset"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDelete?.(asset);
-              }}
-              title="Delete asset"
-            >
-              Delete
-            </button>
-          </div>
-        )
+      ) : (
+        <>
+          <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
+          {isSelected && (
+            <div className="absolute top-1 right-1 inline-flex overflow-hidden rounded">
+              <button
+                type="button"
+                className="px-2 py-0.5 text-[11px] bg-gray-700 hover:bg-gray-600"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEdit?.(asset);
+                }}
+                title="Edit asset"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete?.(asset);
+                }}
+                title="Delete asset"
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
