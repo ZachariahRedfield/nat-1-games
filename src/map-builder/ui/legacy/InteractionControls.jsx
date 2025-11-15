@@ -45,14 +45,14 @@ const segmentedButtonClass = (isActive) =>
   `px-1 py-px text-[8px] font-medium relative group inline-flex items-center justify-center gap-0.5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
     isActive
       ? "bg-blue-500 text-white shadow-inner"
-      : "bg-slate-900/60 text-white/80 hover:text-white hover:bg-slate-800/60"
+      : "bg-slate-900 text-white/80 hover:text-white hover:bg-slate-800"
   }`;
 
 const toggleButtonClass = (isActive) =>
   `px-1.5 py-px text-[8px] font-medium relative group inline-flex items-center gap-0.5 rounded-lg border transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
     isActive
       ? "border-red-500 bg-red-600/90 text-white shadow-inner"
-      : "border-slate-600/70 bg-slate-900/60 text-white/80 hover:text-white hover:bg-white/10"
+      : "border-slate-600/70 bg-slate-900 text-white/80 hover:text-white hover:bg-slate-800"
   }`;
 
 const primaryButtonClass = (enabled) =>
