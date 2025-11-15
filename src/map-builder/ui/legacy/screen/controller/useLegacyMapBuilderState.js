@@ -243,6 +243,7 @@ export function useLegacyMapBuilderState() {
       top: 0,
       width: cols * tileSize,
       height: rows * tileSize,
+      allowZoomOut: true,
     });
   }, [handleZoomToRect, sceneState.cols, sceneState.rows, tileState.tileSize]);
 
