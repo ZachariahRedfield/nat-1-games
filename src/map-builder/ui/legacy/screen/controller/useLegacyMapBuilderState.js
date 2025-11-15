@@ -64,6 +64,98 @@ export function useLegacyMapBuilderState() {
   const canvasRefsState = useCanvasRefs(layerState.layers);
   const layoutRefs = useLayoutRefs();
   const tileState = useTileState();
+  const baseSetTileSize = tileState.setTileSize;
+  const setTileSize = useCallback(
+    (valueOrUpdater) => {
+      const scrollEl = layoutRefs.scrollRef.current;
+      const contentEl = layoutRefs.gridContentRef.current;
+
+      if (!scrollEl || !contentEl) {
+        baseSetTileSize(valueOrUpdater);
+        return;
+      }
+
+      baseSetTileSize((prev) => {
+        const prevSize = Number(prev) || 0;
+        const nextRaw =
+          typeof valueOrUpdater === "function" ? valueOrUpdater(prevSize) : valueOrUpdater;
+        const nextSize = Number(nextRaw);
+
+        if (!Number.isFinite(nextSize) || nextSize <= 0) {
+          return prev;
+        }
+
+        if (!Number.isFinite(prevSize) || prevSize <= 0 || nextSize === prevSize) {
+          return nextSize;
+        }
+
+        const rows = Number(sceneState.rows) || 0;
+        const cols = Number(sceneState.cols) || 0;
+        if (!rows || !cols) {
+          return nextSize;
+        }
+
+        const containerRect = scrollEl.getBoundingClientRect();
+        const contentRect = contentEl.getBoundingClientRect();
+        const contentOffsetLeft = contentRect.left - containerRect.left + scrollEl.scrollLeft;
+        const contentOffsetTop = contentRect.top - containerRect.top + scrollEl.scrollTop;
+
+        const prevContentWidth = cols * prevSize;
+        const prevContentHeight = rows * prevSize;
+
+        if (!prevContentWidth || !prevContentHeight) {
+          return nextSize;
+        }
+
+        const viewCenterX = scrollEl.scrollLeft + scrollEl.clientWidth / 2;
+        const viewCenterY = scrollEl.scrollTop + scrollEl.clientHeight / 2;
+
+        const ratioX = Math.max(
+          0,
+          Math.min(1, (viewCenterX - contentOffsetLeft) / prevContentWidth),
+        );
+        const ratioY = Math.max(
+          0,
+          Math.min(1, (viewCenterY - contentOffsetTop) / prevContentHeight),
+        );
+
+        const applyScroll = () => {
+          const nextContentWidth = cols * nextSize;
+          const nextContentHeight = rows * nextSize;
+
+          const desiredLeft =
+            contentOffsetLeft + ratioX * nextContentWidth - scrollEl.clientWidth / 2;
+          const desiredTop =
+            contentOffsetTop + ratioY * nextContentHeight - scrollEl.clientHeight / 2;
+
+          const minLeft = Math.max(0, contentOffsetLeft);
+          const minTop = Math.max(0, contentOffsetTop);
+          const maxLeft = Math.max(
+            minLeft,
+            contentOffsetLeft + nextContentWidth - scrollEl.clientWidth,
+          );
+          const maxTop = Math.max(
+            minTop,
+            contentOffsetTop + nextContentHeight - scrollEl.clientHeight,
+          );
+
+          const clampedLeft = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
+          const clampedTop = Math.max(minTop, Math.min(maxTop, desiredTop));
+
+          scrollEl.scrollTo({ left: clampedLeft, top: clampedTop });
+        };
+
+        if (typeof requestAnimationFrame === "function") {
+          requestAnimationFrame(() => requestAnimationFrame(applyScroll));
+        } else {
+          setTimeout(applyScroll, 0);
+        }
+
+        return nextSize;
+      });
+    },
+    [baseSetTileSize, layoutRefs.gridContentRef, layoutRefs.scrollRef, sceneState.cols, sceneState.rows],
+  );
   const undoRedoState = useUndoRedoState();
   const { setUndoStack, setRedoStack } = undoRedoState;
 
@@ -80,7 +172,7 @@ export function useLegacyMapBuilderState() {
     menuOpen: menuState.mapsMenuOpen,
   });
 
-  const zoomState = useZoomControls({ setTileSize: tileState.setTileSize });
+  const zoomState = useZoomControls({ setTileSize });
 
   const layerVisibilityState = useLayerVisibilityState(layerState.layers);
 
@@ -226,7 +318,7 @@ export function useLegacyMapBuilderState() {
     cols: sceneState.cols,
     scrollRef: layoutRefs.scrollRef,
     gridContentRef: layoutRefs.gridContentRef,
-    setTileSize: tileState.setTileSize,
+    setTileSize,
     setUndoStack: undoRedoState.setUndoStack,
     setRedoStack: undoRedoState.setRedoStack,
   });
@@ -284,7 +376,7 @@ export function useLegacyMapBuilderState() {
     gridSettings: gridSettingsState.gridSettings,
     setGridSettings: gridSettingsState.setGridSettings,
     tileSize: tileState.tileSize,
-    setTileSize: tileState.setTileSize,
+    setTileSize,
     engine,
     setEngine,
     interactionMode: layerState.interactionMode,
@@ -348,7 +440,7 @@ export function useLegacyMapBuilderState() {
     naturalSettings,
     setNaturalSettings,
     tileSize: tileState.tileSize,
-    setTileSize: tileState.setTileSize,
+    setTileSize,
     scrollRef: layoutRefs.scrollRef,
     canvasRefs: canvasRefsState.canvasRefs,
     layers: layerList,
@@ -457,6 +549,7 @@ export function useLegacyMapBuilderState() {
     ...canvasRefsState,
     ...layoutRefs,
     ...tileState,
+    setTileSize,
     ...undoRedoState,
     ...feedbackState,
     promptUser,
