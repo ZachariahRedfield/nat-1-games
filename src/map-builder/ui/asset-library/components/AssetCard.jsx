@@ -79,12 +79,12 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
   const preview = useMemo(() => resolvePrimaryPreview(asset), [asset]);
 
   const previewBaseClasses =
-    "group relative w-full aspect-square overflow-hidden rounded-xl border shadow-sm transition";
+    "group relative w-2/3 mx-auto aspect-square overflow-hidden rounded-xl border shadow-sm transition";
   const previewStateClasses = isSelected
     ? "border-white/70 ring-1 ring-white/40"
     : "border-white/10 hover:border-white/30";
   const nameBaseClasses =
-    "relative inline-flex items-stretch gap-2 px-2 py-0 text-xs rounded-lg border shadow-sm transition";
+    "relative inline-flex h-full min-w-[160px] max-w-[220px] flex-col items-stretch gap-2 px-2 py-2 text-xs rounded-lg border shadow-sm transition";
   const nameStateClasses = isSelected
     ? "border-white/90 ring-1 ring-white/70 bg-gray-700/80"
     : "border-gray-600 bg-gray-800/60 hover:bg-gray-700/60";
@@ -163,10 +163,10 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
         <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
       </div>
       {isSelected && (
-        <div className="ml-2 flex flex-col self-stretch overflow-hidden rounded-md">
+        <div className="mt-auto flex gap-1 overflow-hidden rounded-md">
           <button
             type="button"
-            className="flex-1 px-2 text-[11px] bg-gray-700 hover:bg-gray-600"
+            className="flex-1 px-2 py-0.5 text-[11px] bg-gray-700 hover:bg-gray-600"
             onClick={(event) => {
               event.stopPropagation();
               onEdit?.(asset);
@@ -177,7 +177,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
           </button>
           <button
             type="button"
-            className="flex-1 px-2 text-[11px] bg-red-700 hover:bg-red-600"
+            className="flex-1 px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
             onClick={(event) => {
               event.stopPropagation();
               onDelete?.(asset);
