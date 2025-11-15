@@ -3,8 +3,9 @@ import React from "react";
 const DEFAULT_ACTIVE_CLASS =
   "bg-indigo-500/90 text-white shadow-lg shadow-indigo-500/30";
 const DEFAULT_INACTIVE_CLASS =
-  "text-white/80 hover:text-white hover:bg-white/10";
-const DEFAULT_DISABLED_CLASS = "text-white/40 cursor-not-allowed";
+  "text-white/80 bg-white/10 hover:text-white hover:bg-white/20";
+const DEFAULT_DISABLED_CLASS =
+  "text-white/40 bg-white/5 cursor-not-allowed";
 
 export default function ToolButton({
   id,
