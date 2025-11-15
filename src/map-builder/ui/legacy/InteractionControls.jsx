@@ -45,7 +45,7 @@ const segmentedButtonClass = (isActive) =>
   `px-1 py-px text-[8px] font-medium relative group inline-flex items-center justify-center gap-0.5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
     isActive
       ? "bg-blue-500/90 text-white shadow-inner"
-      : "bg-slate-900/80 text-white/90 hover:text-white hover:bg-slate-900/95"
+      : "bg-slate-900 text-white/90 hover:text-white hover:bg-slate-800"
   }`;
 
 const toggleButtonClass = (isActive) =>
