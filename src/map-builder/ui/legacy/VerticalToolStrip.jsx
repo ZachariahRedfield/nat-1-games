@@ -14,7 +14,19 @@ import {
 } from "./modules/toolbar/icons.jsx";
 
 const FLOATING_PANEL_CLASS =
-  "group relative flex items-center justify-center rounded-2xl border border-white/10 bg-slate-900/70 px-1.5 py-1.5 shadow-lg backdrop-blur-lg";
+  "group relative flex items-center justify-center rounded-2xl border border-white/10 bg-slate-900/70 px-1 py-1 shadow-lg backdrop-blur-lg";
+const SMALL_TOOL_BUTTON_CLASS = "w-[26px] h-[26px]";
+const SMALL_TOOL_ICON_CLASS = "w-3.5 h-3.5";
+
+const createSmallIcon = (IconComponent) => (props) => (
+  <IconComponent {...props} className={`${SMALL_TOOL_ICON_CLASS} ${props?.className ?? ""}`} />
+);
+
+const SmallGridIcon = createSmallIcon(GridIcon);
+const SmallCanvasIcon = createSmallIcon(CanvasIcon);
+const SmallEraserIcon = createSmallIcon(EraserIcon);
+const SmallSaveIcon = createSmallIcon(SaveIcon);
+const SmallTrashIcon = createSmallIcon(TrashIcon);
 
 export default function VerticalToolStrip({
   interactionMode,
@@ -58,7 +70,7 @@ export default function VerticalToolStrip({
           <ToolButton
             id="grid"
             label="Grid"
-            icon={GridIcon}
+            icon={SmallGridIcon}
             active={engine === "grid"}
             onClick={() => {
               setEngine?.("grid");
@@ -67,12 +79,13 @@ export default function VerticalToolStrip({
             iconClassFor={iconClassFor}
             labelClassFor={labelClassFor}
             wrapperClassName={FLOATING_PANEL_CLASS}
+            className={SMALL_TOOL_BUTTON_CLASS}
           />
 
           <ToolButton
             id="canvas"
             label="Canvas"
-            icon={CanvasIcon}
+            icon={SmallCanvasIcon}
             active={engine === "canvas"}
             onClick={() => {
               if (assetGroup === "token") return;
@@ -82,6 +95,7 @@ export default function VerticalToolStrip({
             iconClassFor={iconClassFor}
             labelClassFor={labelClassFor}
             wrapperClassName={FLOATING_PANEL_CLASS}
+            className={SMALL_TOOL_BUTTON_CLASS}
             inactiveClassName={
               assetGroup === "token"
                 ? "text-white/40 cursor-not-allowed"
@@ -92,7 +106,7 @@ export default function VerticalToolStrip({
           <ToolButton
             id="eraser"
             label="Eraser"
-            icon={EraserIcon}
+            icon={SmallEraserIcon}
             active={isErasing}
             onClick={() => {
               setIsErasing?.((state) => !state);
@@ -102,6 +116,7 @@ export default function VerticalToolStrip({
             labelClassFor={labelClassFor}
             wrapperClassName={FLOATING_PANEL_CLASS}
             activeClassName="bg-red-700 text-white"
+            className={SMALL_TOOL_BUTTON_CLASS}
           />
         </div>
       )}
@@ -154,7 +169,7 @@ export default function VerticalToolStrip({
           <ToolButton
             id="save"
             label="Save"
-            icon={SaveIcon}
+            icon={SmallSaveIcon}
             active={false}
             disabled={!canActOnSelection}
             onClick={() => {
@@ -165,12 +180,13 @@ export default function VerticalToolStrip({
             iconClassFor={iconClassFor}
             labelClassFor={labelClassFor}
             wrapperClassName={FLOATING_PANEL_CLASS}
+            className={SMALL_TOOL_BUTTON_CLASS}
           />
 
           <ToolButton
             id="delete"
             label="Delete"
-            icon={TrashIcon}
+            icon={SmallTrashIcon}
             active={false}
             disabled={!canActOnSelection}
             onClick={() => {
@@ -181,6 +197,7 @@ export default function VerticalToolStrip({
             iconClassFor={iconClassFor}
             labelClassFor={labelClassFor}
             wrapperClassName={FLOATING_PANEL_CLASS}
+            className={SMALL_TOOL_BUTTON_CLASS}
           />
         </div>
       )}
