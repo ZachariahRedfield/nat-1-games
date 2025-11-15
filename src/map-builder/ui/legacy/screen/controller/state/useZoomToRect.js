@@ -28,7 +28,10 @@ export function useZoomToRect({
 
       const scaleX = container.clientWidth / width;
       const scaleY = container.clientHeight / height;
-      let next = clamp(snap(prevTileSize * Math.min(scaleX, scaleY), 4), 8, 128);
+      const baseScale = Math.min(scaleX, scaleY);
+      const marginFactor = baseScale > 1 ? 0.92 : 0.98;
+      const targetScale = baseScale * marginFactor;
+      let next = clamp(snap(prevTileSize * targetScale, 4), 8, 128);
       if (!allowZoomOut && next <= prevTileSize) {
         next = clamp(prevTileSize + 8, 8, 128);
       }
