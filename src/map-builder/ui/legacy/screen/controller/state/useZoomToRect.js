@@ -51,13 +51,11 @@ export function useZoomToRect({
         const contentHeightNext = rows * next;
         const desiredLeft = contentOffsetLeft + rx * contentWidthNext - container.clientWidth / 2;
         const desiredTop = contentOffsetTop + ry * contentHeightNext - container.clientHeight / 2;
-        const minLeft = Math.max(0, contentOffsetLeft);
-        const minTop = Math.max(0, contentOffsetTop);
-        const maxLeft = Math.max(minLeft, contentOffsetLeft + contentWidthNext - container.clientWidth);
-        const maxTop = Math.max(minTop, contentOffsetTop + contentHeightNext - container.clientHeight);
+        const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+        const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
         container.scrollTo({
-          left: clamp(desiredLeft, minLeft, maxLeft),
-          top: clamp(desiredTop, minTop, maxTop),
+          left: clamp(desiredLeft, 0, maxLeft),
+          top: clamp(desiredTop, 0, maxTop),
         });
       };
       requestAnimationFrame(() => requestAnimationFrame(centerAfterPaint));
