@@ -44,22 +44,22 @@ const ZoomIcon = ({ className = "w-2 h-2" }) => (
 const segmentedButtonClass = (isActive) =>
   `px-1 py-px text-[8px] font-medium relative group inline-flex items-center justify-center gap-0.5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
     isActive
-      ? "bg-blue-500 text-white shadow-inner"
-      : "bg-slate-900 text-white/80 hover:text-white hover:bg-slate-800"
+      ? "bg-blue-500/90 text-white shadow-inner"
+      : "bg-slate-900/40 text-white/90 hover:text-white hover:bg-slate-900/60"
   }`;
 
 const toggleButtonClass = (isActive) =>
   `px-1.5 py-px text-[8px] font-medium relative group inline-flex items-center gap-0.5 rounded-lg border transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
     isActive
-      ? "border-red-500 bg-red-600/90 text-white shadow-inner"
-      : "border-slate-600/70 bg-slate-900 text-white/80 hover:text-white hover:bg-slate-800"
+      ? "border-red-500/80 bg-red-600/80 text-white shadow-inner"
+      : "border-slate-200/40 bg-slate-900/40 text-white/90 hover:text-white hover:bg-slate-900/60"
   }`;
 
 const primaryButtonClass = (enabled) =>
   `px-1.5 py-px text-[8px] font-medium relative group inline-flex items-center gap-0.5 rounded-lg border transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
     enabled
-      ? "border-amber-500 bg-amber-500/90 text-white hover:bg-amber-400"
-      : "cursor-not-allowed border-slate-700 bg-slate-900/50 text-white/60"
+      ? "border-amber-300/80 bg-amber-400/80 text-slate-900 hover:bg-amber-300/80"
+      : "cursor-not-allowed border-slate-200/30 bg-slate-900/30 text-white/60"
   }`;
 
 const tooltipClass =
