@@ -27,14 +27,15 @@ import { useGridDimensionsInputs } from "./state/useGridDimensionsInputs.js";
 import { useGridSettingsState } from "./state/useGridSettingsState.js";
 import { useKeyboardShortcuts } from "./state/useKeyboardShortcuts.js";
 import { useLayerAndInteractionState } from "./state/useLayerAndInteractionState.js";
+import { useLayerHistoryHandlers } from "./state/useLayerHistoryHandlers.js";
 import { useLayoutRefs } from "./state/useLayoutRefs.js";
 import { useMapSizeDialogState } from "./state/useMapSizeDialogState.js";
 import { useMenuState } from "./state/useMenuState.js";
 import { useSaveSelectionDialogState } from "./state/useSaveSelectionDialogState.js";
+import { useScrollSyncedTileSize } from "./state/useScrollSyncedTileSize.js";
 import { useTileState } from "./state/useTileState.js";
 import { useUndoRedoState } from "./state/useUndoRedoState.js";
 import { useZoomToRect } from "./state/useZoomToRect.js";
-import { deepCopyGrid, deepCopyObjects } from "../../utils.js";
 
 export function useLegacyMapBuilderState() {
   const projectNameRef = useRef("My Map");
@@ -64,98 +65,13 @@ export function useLegacyMapBuilderState() {
   const canvasRefsState = useCanvasRefs(layerState.layers);
   const layoutRefs = useLayoutRefs();
   const tileState = useTileState();
-  const baseSetTileSize = tileState.setTileSize;
-  const setTileSize = useCallback(
-    (valueOrUpdater) => {
-      const scrollEl = layoutRefs.scrollRef.current;
-      const contentEl = layoutRefs.gridContentRef.current;
-
-      if (!scrollEl || !contentEl) {
-        baseSetTileSize(valueOrUpdater);
-        return;
-      }
-
-      baseSetTileSize((prev) => {
-        const prevSize = Number(prev) || 0;
-        const nextRaw =
-          typeof valueOrUpdater === "function" ? valueOrUpdater(prevSize) : valueOrUpdater;
-        const nextSize = Number(nextRaw);
-
-        if (!Number.isFinite(nextSize) || nextSize <= 0) {
-          return prev;
-        }
-
-        if (!Number.isFinite(prevSize) || prevSize <= 0 || nextSize === prevSize) {
-          return nextSize;
-        }
-
-        const rows = Number(sceneState.rows) || 0;
-        const cols = Number(sceneState.cols) || 0;
-        if (!rows || !cols) {
-          return nextSize;
-        }
-
-        const containerRect = scrollEl.getBoundingClientRect();
-        const contentRect = contentEl.getBoundingClientRect();
-        const contentOffsetLeft = contentRect.left - containerRect.left + scrollEl.scrollLeft;
-        const contentOffsetTop = contentRect.top - containerRect.top + scrollEl.scrollTop;
-
-        const prevContentWidth = cols * prevSize;
-        const prevContentHeight = rows * prevSize;
-
-        if (!prevContentWidth || !prevContentHeight) {
-          return nextSize;
-        }
-
-        const viewCenterX = scrollEl.scrollLeft + scrollEl.clientWidth / 2;
-        const viewCenterY = scrollEl.scrollTop + scrollEl.clientHeight / 2;
-
-        const ratioX = Math.max(
-          0,
-          Math.min(1, (viewCenterX - contentOffsetLeft) / prevContentWidth),
-        );
-        const ratioY = Math.max(
-          0,
-          Math.min(1, (viewCenterY - contentOffsetTop) / prevContentHeight),
-        );
-
-        const applyScroll = () => {
-          const nextContentWidth = cols * nextSize;
-          const nextContentHeight = rows * nextSize;
-
-          const desiredLeft =
-            contentOffsetLeft + ratioX * nextContentWidth - scrollEl.clientWidth / 2;
-          const desiredTop =
-            contentOffsetTop + ratioY * nextContentHeight - scrollEl.clientHeight / 2;
-
-          const minLeft = Math.max(0, contentOffsetLeft);
-          const minTop = Math.max(0, contentOffsetTop);
-          const maxLeft = Math.max(
-            minLeft,
-            contentOffsetLeft + nextContentWidth - scrollEl.clientWidth,
-          );
-          const maxTop = Math.max(
-            minTop,
-            contentOffsetTop + nextContentHeight - scrollEl.clientHeight,
-          );
-
-          const clampedLeft = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
-          const clampedTop = Math.max(minTop, Math.min(maxTop, desiredTop));
-
-          scrollEl.scrollTo({ left: clampedLeft, top: clampedTop });
-        };
-
-        if (typeof requestAnimationFrame === "function") {
-          requestAnimationFrame(() => requestAnimationFrame(applyScroll));
-        } else {
-          setTimeout(applyScroll, 0);
-        }
-
-        return nextSize;
-      });
-    },
-    [baseSetTileSize, layoutRefs.gridContentRef, layoutRefs.scrollRef, sceneState.cols, sceneState.rows],
-  );
+  const setTileSize = useScrollSyncedTileSize({
+    baseSetTileSize: tileState.setTileSize,
+    scrollRef: layoutRefs.scrollRef,
+    gridContentRef: layoutRefs.gridContentRef,
+    rows: sceneState.rows,
+    cols: sceneState.cols,
+  });
   const undoRedoState = useUndoRedoState();
   const { setUndoStack, setRedoStack } = undoRedoState;
 
@@ -175,136 +91,22 @@ export function useLegacyMapBuilderState() {
   const zoomState = useZoomControls({ setTileSize });
 
   const layerVisibilityState = useLayerVisibilityState(layerState.layers);
-
-  const {
-    addLayer: baseAddLayer,
-    removeLayer: baseRemoveLayer,
-    renameLayer: baseRenameLayer,
-    moveLayer: baseMoveLayer,
-  } = layerState;
   const layerList = layerState.layers || [];
 
-  const captureLayerHistorySnapshot = useCallback(
-    ({ includeMaps = false, includeObjects = false, includeCanvasFor } = {}) => {
-      const snapshot = {
-        type: "layers",
-        layers: layerList.map((layer) => ({ ...layer })),
-        currentLayer: layerState.currentLayer,
-        layerVisibility: { ...layerVisibilityState.layerVisibility },
-      };
-
-      if (includeMaps) {
-        const mapSnapshot = {};
-        Object.entries(sceneState.maps || {}).forEach(([id, grid]) => {
-          mapSnapshot[id] = deepCopyGrid(grid);
-        });
-        if (Object.keys(mapSnapshot).length) {
-          snapshot.maps = mapSnapshot;
-        }
-      }
-
-      if (includeObjects) {
-        const objectSnapshot = {};
-        Object.entries(sceneState.objects || {}).forEach(([id, list]) => {
-          objectSnapshot[id] = deepCopyObjects(list);
-        });
-        if (Object.keys(objectSnapshot).length) {
-          snapshot.objects = objectSnapshot;
-        }
-      }
-
-      if (includeCanvasFor && includeCanvasFor.length) {
-        const canvasSnapshot = {};
-        includeCanvasFor.forEach((layerId) => {
-          const canvas = canvasRefsState.canvasRefs?.[layerId]?.current;
-          if (!canvas) return;
-          try {
-            canvasSnapshot[layerId] = canvas.toDataURL();
-          } catch (error) {
-            // Ignore snapshot failures (e.g., tainted canvas)
-          }
-        });
-        if (Object.keys(canvasSnapshot).length) {
-          snapshot.canvasSnapshots = canvasSnapshot;
-        }
-      }
-
-      return snapshot;
-    },
-    [
-      canvasRefsState.canvasRefs,
-      layerState.currentLayer,
-      layerVisibilityState.layerVisibility,
-      layerList,
-      sceneState.maps,
-      sceneState.objects,
-    ],
-  );
-
-  const pushLayerHistory = useCallback(
-    ({ includeMaps = false, includeObjects = false, includeCanvas = false, targetLayerId, targetLayerIds } = {}) => {
-      const layerIds = targetLayerIds
-        ? targetLayerIds.filter(Boolean)
-        : targetLayerId
-        ? [targetLayerId]
-        : [];
-
-      const entry = captureLayerHistorySnapshot({
-        includeMaps,
-        includeObjects,
-        includeCanvasFor: includeCanvas ? layerIds : undefined,
-      });
-
-      setUndoStack((prev) => [...prev, entry]);
-      setRedoStack([]);
-    },
-    [captureLayerHistorySnapshot, setRedoStack, setUndoStack],
-  );
-
-  const addLayerWithHistory = useCallback(() => {
-    pushLayerHistory({});
-    baseAddLayer();
-  }, [baseAddLayer, pushLayerHistory]);
-
-  const removeLayerWithHistory = useCallback(
-    (layerId) => {
-      if (!layerId) return;
-      if ((layerList || []).length <= 1) {
-        baseRemoveLayer(layerId);
-        return;
-      }
-      pushLayerHistory({
-        includeMaps: true,
-        includeObjects: true,
-        includeCanvas: true,
-        targetLayerId: layerId,
-      });
-      baseRemoveLayer(layerId);
-    },
-    [baseRemoveLayer, layerList, pushLayerHistory],
-  );
-
-  const renameLayerWithHistory = useCallback(
-    (layerId, name) => {
-      if (!layerId) return;
-      pushLayerHistory({});
-      baseRenameLayer(layerId, name);
-    },
-    [baseRenameLayer, pushLayerHistory],
-  );
-
-  const reorderLayerWithHistory = useCallback(
-    (layerId, targetIndex) => {
-      if (!layerId) return;
-      const currentIndex = layerList.findIndex((layer) => layer.id === layerId);
-      if (currentIndex < 0) return;
-      const clampedTarget = Math.max(0, Math.min(layerList.length - 1, targetIndex ?? 0));
-      if (currentIndex === clampedTarget) return;
-      pushLayerHistory({});
-      baseMoveLayer(layerId, clampedTarget);
-    },
-    [baseMoveLayer, layerList, pushLayerHistory],
-  );
+  const {
+    addLayerWithHistory,
+    removeLayerWithHistory,
+    renameLayerWithHistory,
+    reorderLayerWithHistory,
+  } = useLayerHistoryHandlers({
+    layerState,
+    layerVisibilityState,
+    canvasRefs: canvasRefsState.canvasRefs,
+    sceneMaps: sceneState.maps,
+    sceneObjects: sceneState.objects,
+    setUndoStack,
+    setRedoStack,
+  });
   const [showGridLines, setShowGridLines] = useState(true);
   const [engine, setEngine] = useState("grid");
 
