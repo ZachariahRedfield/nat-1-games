@@ -18,6 +18,8 @@ export default function SelectionMiniPanel({
   // optional: token highlight color
   highlightColor,
   onChangeHighlightColor,
+  scrollRef,
+  contentRef,
 }) {
   const panelW = 280;
   const showHighlight = typeof highlightColor === "string" && typeof onChangeHighlightColor === "function";
@@ -30,14 +32,69 @@ export default function SelectionMiniPanel({
   const w = (obj?.wTiles ?? 1) * safeTileSize;
   const h = (obj?.hTiles ?? 1) * safeTileSize;
 
-  // Try to place panel left of the object; fallback to right; clamp vertically
+  const computeBounds = React.useCallback(() => {
+    const fallbackMinX = 4;
+    const fallbackMinY = 4;
+    const fallbackMaxX = Math.max(fallbackMinX, containerW - panelW - 4);
+    const fallbackMaxY = Math.max(fallbackMinY, containerH - panelH - 4);
+
+    const scrollEl = scrollRef?.current;
+    const contentEl = contentRef?.current;
+    if (!scrollEl || !contentEl) {
+      return {
+        minX: fallbackMinX,
+        maxX: fallbackMaxX,
+        minY: fallbackMinY,
+        maxY: fallbackMaxY,
+      };
+    }
+
+    const scrollRect = scrollEl.getBoundingClientRect();
+    const contentRect = contentEl.getBoundingClientRect();
+    const rawMinX = scrollRect.left - contentRect.left + 4;
+    const rawMinY = scrollRect.top - contentRect.top + 4;
+    const rawMaxX = scrollRect.right - contentRect.left - panelW - 4;
+    const rawMaxY = scrollRect.bottom - contentRect.top - panelH - 4;
+
+    return {
+      minX: Math.min(Math.max(fallbackMinX, rawMinX), fallbackMaxX),
+      maxX: Math.max(fallbackMinX, Math.min(fallbackMaxX, rawMaxX)),
+      minY: Math.min(Math.max(fallbackMinY, rawMinY), fallbackMaxY),
+      maxY: Math.max(fallbackMinY, Math.min(fallbackMaxY, rawMaxY)),
+    };
+  }, [containerH, containerW, contentRef, panelH, panelW, scrollRef]);
+
+  const clampToBounds = React.useCallback(
+    (x, y) => {
+      const bounds = computeBounds();
+      const minX = Math.min(bounds.minX, bounds.maxX);
+      const maxX = Math.max(bounds.minX, bounds.maxX);
+      const minY = Math.min(bounds.minY, bounds.maxY);
+      const maxY = Math.max(bounds.minY, bounds.maxY);
+      return {
+        x: Math.min(Math.max(minX, x), maxX),
+        y: Math.min(Math.max(minY, y), maxY),
+      };
+    },
+    [computeBounds],
+  );
+
+  const bounds = React.useMemo(() => computeBounds(), [computeBounds]);
+
+  // Try to place panel left of the object; fallback to right; clamp within bounds
   let defX = left - panelW - 8;
-  if (defX < 0) defX = left + w + 8;
+  if (defX < bounds.minX) defX = left + w + 8;
   let defY = top + h / 2 - panelH / 2;
-  const minY = 4;
-  const maxY = Math.max(minY, containerH - panelH - 4);
-  defY = Math.max(minY, Math.min(maxY, defY));
-  const defaultPos = { x: defX, y: defY };
+  const defaultPos = React.useMemo(() => {
+    const minX = Math.min(bounds.minX, bounds.maxX);
+    const maxX = Math.max(bounds.minX, bounds.maxX);
+    const minY = Math.min(bounds.minY, bounds.maxY);
+    const maxY = Math.max(bounds.minY, bounds.maxY);
+    return {
+      x: Math.min(Math.max(minX, defX), maxX),
+      y: Math.min(Math.max(minY, defY), maxY),
+    };
+  }, [bounds.maxX, bounds.maxY, bounds.minX, bounds.minY, defX, defY]);
 
   const [pos, setPos] = React.useState(() => defaultPos);
   const movedRef = React.useRef(false);
@@ -51,12 +108,20 @@ export default function SelectionMiniPanel({
       movedRef.current = false;
     }
     if (!obj) {
-      setPos({ x: defaultPos.x, y: defaultPos.y });
+      setPos(defaultPos);
       return;
     }
     if (movedRef.current) return; // preserve manual position for same selection
-    setPos({ x: defaultPos.x, y: defaultPos.y });
-  }, [obj?.id, defaultPos.x, defaultPos.y, containerW, containerH, panelH]);
+    setPos(defaultPos);
+  }, [defaultPos, obj, panelH]);
+
+  React.useEffect(() => {
+    setPos((prev) => {
+      const next = clampToBounds(prev.x, prev.y);
+      if (next.x === prev.x && next.y === prev.y) return prev;
+      return next;
+    });
+  }, [clampToBounds]);
 
   const onDragMove = React.useCallback(
     (e) => {
@@ -66,11 +131,10 @@ export default function SelectionMiniPanel({
       if (!point) return;
       const dx = point.clientX - st.x;
       const dy = point.clientY - st.y;
-      const nx = Math.max(4, Math.min(containerW - panelW - 4, st.px + dx));
-      const ny = Math.max(4, Math.min(containerH - panelH - 4, st.py + dy));
-      setPos({ x: nx, y: ny });
+      const next = clampToBounds(st.px + dx, st.py + dy);
+      setPos(next);
     },
-    [containerW, containerH, panelH]
+    [clampToBounds]
   );
 
   const onDragEnd = React.useCallback(() => {

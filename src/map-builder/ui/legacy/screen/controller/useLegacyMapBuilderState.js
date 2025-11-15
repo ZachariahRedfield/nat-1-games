@@ -84,7 +84,12 @@ export function useLegacyMapBuilderState() {
 
   const layerVisibilityState = useLayerVisibilityState(layerState.layers);
 
-  const { addLayer: baseAddLayer, removeLayer: baseRemoveLayer, renameLayer: baseRenameLayer } = layerState;
+  const {
+    addLayer: baseAddLayer,
+    removeLayer: baseRemoveLayer,
+    renameLayer: baseRenameLayer,
+    moveLayer: baseMoveLayer,
+  } = layerState;
   const layerList = layerState.layers || [];
 
   const captureLayerHistorySnapshot = useCallback(
@@ -195,6 +200,19 @@ export function useLegacyMapBuilderState() {
     },
     [baseRenameLayer, pushLayerHistory],
   );
+
+  const reorderLayerWithHistory = useCallback(
+    (layerId, targetIndex) => {
+      if (!layerId) return;
+      const currentIndex = layerList.findIndex((layer) => layer.id === layerId);
+      if (currentIndex < 0) return;
+      const clampedTarget = Math.max(0, Math.min(layerList.length - 1, targetIndex ?? 0));
+      if (currentIndex === clampedTarget) return;
+      pushLayerHistory({});
+      baseMoveLayer(layerId, clampedTarget);
+    },
+    [baseMoveLayer, layerList, pushLayerHistory],
+  );
   const [showGridLines, setShowGridLines] = useState(true);
   const [engine, setEngine] = useState("grid");
 
@@ -214,6 +232,19 @@ export function useLegacyMapBuilderState() {
   });
 
   useKeyboardShortcuts({ setZoomToolActive: zoomState.setZoomToolActive });
+
+  const zoomToFit = useCallback(() => {
+    const rows = Number(sceneState.rows) || 0;
+    const cols = Number(sceneState.cols) || 0;
+    const tileSize = Number(tileState.tileSize) || 0;
+    if (!rows || !cols || !tileSize) return;
+    handleZoomToRect({
+      left: 0,
+      top: 0,
+      width: cols * tileSize,
+      height: rows * tileSize,
+    });
+  }, [handleZoomToRect, sceneState.cols, sceneState.rows, tileState.tileSize]);
 
   const canvasDisplayState = useCanvasDisplayState();
   const {
@@ -414,6 +445,7 @@ export function useLegacyMapBuilderState() {
     addLayer: addLayerWithHistory,
     removeLayer: removeLayerWithHistory,
     renameLayer: renameLayerWithHistory,
+    reorderLayer: reorderLayerWithHistory,
     ...sceneState,
     ...gridSettingsState,
     ...gridSelectionState,
@@ -438,6 +470,7 @@ export function useLegacyMapBuilderState() {
     clamp,
     snap,
     handleZoomToRect,
+    zoomToFit,
     ...canvasDisplayState,
     ...legacyAssetWorkflow,
     closeAssetCreator,

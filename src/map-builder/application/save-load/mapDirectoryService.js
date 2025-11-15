@@ -1,4 +1,6 @@
 import {
+  getCurrentProjectDirectoryHandle,
+  clearCurrentProjectDirectory,
   getStoredParentDirectoryHandle,
   verifyPermission,
 } from "../../infrastructure/filesystem/storageHandles.js";
@@ -59,6 +61,10 @@ export async function deleteMap(folderName) {
     const mapsDir = await ensureMapsDir(parent);
     try {
       await mapsDir.removeEntry(folderName, { recursive: true });
+      const currentHandle = getCurrentProjectDirectoryHandle?.();
+      if (currentHandle && currentHandle.name === folderName) {
+        clearCurrentProjectDirectory();
+      }
       return { ok: true };
     } catch (error) {
       console.error("removeEntry failed", error);

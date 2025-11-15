@@ -12,5 +12,7 @@ export function createLayerBarProps(state) {
     setShowGridLines: state.setShowGridLines,
     tileSize: state.tileSize,
     setTileSize: state.setTileSize,
+    reorderLayer: state.reorderLayer,
+    onZoomToFit: state.zoomToFit,
   };
 }

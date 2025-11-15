@@ -36,6 +36,8 @@ export default function Grid(props) {
     zoomToolActive = false,
     currentLayer: currentLayerProp,
     showGridLines = true,
+    contentRef,
+    scrollRef,
   } = props;
 
   const currentLayer = currentLayerProp ?? layers[0]?.id ?? null;
@@ -78,10 +80,7 @@ export default function Grid(props) {
 
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>
-      <div
-        ref={props.contentRef}
-        style={{ position: "relative", width: cssWidth, height: cssHeight }}
-      >
+        <div ref={contentRef} style={{ position: "relative", width: cssWidth, height: cssHeight }}>
         <TilesLayer
           layers={layers}
           maps={maps}
@@ -180,6 +179,8 @@ export default function Grid(props) {
           updateTokenById={updateTokenById}
           assets={assets}
           objects={objects}
+          scrollRef={scrollRef}
+          contentRef={contentRef}
         />
 
         <MarqueeOverlay dragState={dragRef.current} tileSize={tileSize} />

@@ -1,5 +1,5 @@
 import { clamp } from "../../utils.js";
-import { computeResizeUpdate } from "../resizeMath.js";
+import { computeResizeUpdate, getCornerWorldPosition, oppositeCorner } from "../resizeMath.js";
 import { computeGridPosition, getPointerCssPosition } from "./gridPointerUtils.js";
 
 function handleZoomDrag({ refs, event, state }) {
@@ -73,6 +73,11 @@ function handleObjectResize({
     hTiles,
   });
   config.setGridSettings?.((settings) => ({ ...settings, sizeCols: wTiles, sizeRows: hTiles }));
+  const anchorCorner = oppositeCorner(dragRef.current.corner);
+  const updated = { ...o, row, col, wTiles, hTiles };
+  const anchorPos = getCornerWorldPosition(updated, anchorCorner);
+  dragRef.current.anchorRow = anchorPos.row;
+  dragRef.current.anchorCol = anchorPos.col;
   return true;
 }
 
@@ -121,6 +126,11 @@ function handleTokenResize({ event, refs, selection, config, geometry, actions }
     wTiles,
     hTiles,
   });
+  const anchorCorner = oppositeCorner(dragRef.current.corner);
+  const updated = { ...token, row, col, wTiles, hTiles };
+  const anchorPos = getCornerWorldPosition(updated, anchorCorner);
+  dragRef.current.anchorRow = anchorPos.row;
+  dragRef.current.anchorCol = anchorPos.col;
   return true;
 }
 

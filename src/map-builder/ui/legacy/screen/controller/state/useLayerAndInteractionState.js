@@ -65,6 +65,19 @@ export function useLayerAndInteractionState() {
     );
   }, []);
 
+  const moveLayer = useCallback((layerId, targetIndex) => {
+    setLayers((prev) => {
+      const index = prev.findIndex((layer) => layer.id === layerId);
+      if (index < 0) return prev;
+      const clampedIndex = Math.max(0, Math.min(prev.length - 1, targetIndex ?? 0));
+      if (index === clampedIndex) return prev;
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      next.splice(clampedIndex, 0, item);
+      return next;
+    });
+  }, []);
+
   return {
     layers,
     setLayers,
@@ -74,6 +87,7 @@ export function useLayerAndInteractionState() {
     addLayer,
     removeLayer,
     renameLayer,
+    moveLayer,
     interactionMode,
     setInteractionMode,
     isErasing,
