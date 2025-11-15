@@ -13,7 +13,7 @@ export function useZoomToRect({
   setRedoStack,
 }) {
   return useCallback(
-    ({ left, top, width, height }) => {
+    ({ left, top, width, height, allowZoomOut = false }) => {
       const container = scrollRef.current;
       const content = gridContentRef.current;
       if (!container || !content) return;
@@ -29,7 +29,7 @@ export function useZoomToRect({
       const scaleX = container.clientWidth / width;
       const scaleY = container.clientHeight / height;
       let next = clamp(snap(prevTileSize * Math.min(scaleX, scaleY), 4), 8, 128);
-      if (next <= prevTileSize) {
+      if (!allowZoomOut && next <= prevTileSize) {
         next = clamp(prevTileSize + 8, 8, 128);
       }
 
