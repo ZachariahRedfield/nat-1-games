@@ -38,15 +38,20 @@ export function resolvePrimaryPreview(asset) {
     return { type: "color", color: asset.color || "#cccccc" };
   }
   if (asset.kind === "natural") {
-    const variant = Array.isArray(asset.variants) ? asset.variants[0] : null;
-    if (!variant) {
+    const variants = Array.isArray(asset.variants)
+      ? asset.variants.filter((entry) => entry && entry.src)
+      : [];
+    if (!variants.length) {
       return { type: "emptyNatural" };
     }
     return {
-      type: "image",
-      src: variant.src || null,
+      type: "naturalStack",
+      items: variants.slice(0, 4).map((variant, index) => ({
+        src: variant.src || null,
+        alt: variant.name || `${asset.name} ${index + 1}`,
+      })),
+      total: variants.length,
       alt: asset.name,
-      aspectRatio: variant.aspectRatio || 1,
     };
   }
   if (asset.kind === "tokenGroup") {
