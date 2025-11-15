@@ -112,8 +112,8 @@ export default function LegacyMapBuilderLayout({
                 canRedo={redoStack.length > 0}
               />
 
-              <div className="flex-1 flex justify-center">
-                <div ref={layout.gridContentRef} className="relative inline-flex">
+              <div className="flex-1 flex">
+                <div ref={layout.gridContentRef} className="relative inline-flex mx-auto">
                   <Grid {...gridProps} />
                 </div>
               </div>
