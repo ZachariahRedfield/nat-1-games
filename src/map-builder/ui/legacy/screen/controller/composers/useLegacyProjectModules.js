@@ -8,11 +8,11 @@ import {
   loadAssetsFromStoredParent,
   isAssetsFolderConfigured,
   hasCurrentProjectDir,
-} from "../../../../application/save-load/index.js";
-import { useLegacyAssetWorkflow } from "../state/useLegacyAssetWorkflow.js";
-import { useLegacyHistory } from "../state/useLegacyHistory.js";
-import { useLegacyProjectLoading } from "../state/useLegacyProjectLoading.js";
-import { useLegacyProjectSaving } from "../state/useLegacyProjectSaving.js";
+} from "../../../../../application/save-load/index.js";
+import { useLegacyAssetWorkflow } from "../../state/useLegacyAssetWorkflow.js";
+import { useLegacyHistory } from "../../state/useLegacyHistory.js";
+import { useLegacyProjectLoading } from "../../../modules/save-load/useLegacyProjectLoading.js";
+import { useLegacyProjectSaving } from "../../../modules/save-load/useLegacyProjectSaving.js";
 
 export function useLegacyProjectModules({
   projectNameRef,
