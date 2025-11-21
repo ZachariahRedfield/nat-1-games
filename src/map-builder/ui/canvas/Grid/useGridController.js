@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { BASE_TILE } from "./utils.js";
+import { useRef } from "react";
 import useGridSelection from "./selection/useGridSelection.js";
 import {
   hitObjectResizeHandle as baseHitObjectResizeHandle,
@@ -7,23 +6,19 @@ import {
   hitTokenResizeHandle as baseHitTokenResizeHandle,
   hitTokenRotateRing as baseHitTokenRotateRing,
 } from "./controller/selectionHitTests.js";
-import {
-  paintBrushTip as renderBrushTip,
-  stampBetweenCanvas as connectBrushPoints,
-} from "./controller/brushPreview.js";
-import {
-  eraseGridStampAt as eraseGridStamp,
-  placeGridImageAt as placeGridImage,
-  placeGridColorStampAt as placeGridColorStamp,
-  placeTokenAt as placeToken,
-} from "./controller/gridPlacement.js";
-import usePanHotkey from "./controller/usePanHotkey.js";
-import useGlobalPointerRelease from "./controller/useGlobalPointerRelease.js";
 import { createGridPointerHandlers } from "./controller/createGridPointerHandlers.js";
 import { deriveCursorStyle } from "./controller/deriveCursorStyle.js";
 import { cellBackground } from "./controller/cellBackground.js";
+import usePanHotkey from "./controller/usePanHotkey.js";
+import {
+  useGridGeometry,
+  DEFAULT_LAYER_VISIBILITY,
+} from "./controller/grid-controller/useGridGeometry.js";
+import { useBrushPreview } from "./controller/grid-controller/useBrushPreview.js";
+import { createPlacementActions } from "./controller/grid-controller/createPlacementActions.js";
+import { usePointerLifecycle } from "./controller/grid-controller/usePointerLifecycle.js";
+import { useScrollBlocker } from "./controller/grid-controller/useScrollBlocker.js";
 
-const DEFAULT_LAYER_VISIBILITY = {};
 const DEFAULT_NATURAL_SETTINGS = {
   randomRotation: false,
   randomFlipX: false,
@@ -54,7 +49,7 @@ export function useGridController({
   interactionMode = "draw",
   tileSize = 32,
   scrollRef,
-  contentRef, // kept for API parity even though controller does not use it directly
+  contentRef,
   canvasRefs,
   currentLayer: currentLayerProp,
   layerVisibility: layerVisibilityProp = DEFAULT_LAYER_VISIBILITY,
@@ -84,29 +79,23 @@ export function useGridController({
   updateTokenById,
   onTokenSelectionChange,
 }) {
-  const layerIds = (layers || [])
-    .map((layer) => (typeof layer === "string" ? layer : layer?.id))
-    .filter(Boolean);
-  const fallbackLayer = layerIds[0] ?? Object.keys(maps || {})[0] ?? null;
-  const currentLayer = currentLayerProp ?? fallbackLayer;
-  const rows = currentLayer && maps?.[currentLayer] ? maps[currentLayer].length : 0;
-  const cols = currentLayer && maps?.[currentLayer]?.[0] ? maps[currentLayer][0].length : 0;
-  const layerVisibility = layerIds.reduce((acc, id) => {
-    acc[id] = layerVisibilityProp?.[id] !== false;
-    return acc;
-  }, {});
+  const {
+    currentLayer,
+    rows,
+    cols,
+    cssWidth,
+    cssHeight,
+    bufferWidth,
+    bufferHeight,
+    layerIsVisible,
+  } = useGridGeometry({
+    layers,
+    maps,
+    currentLayer: currentLayerProp,
+    layerVisibility: layerVisibilityProp,
+    tileSize,
+  });
 
-  const cssWidth = cols * tileSize;
-  const cssHeight = rows * tileSize;
-  const bufferWidth = cols * BASE_TILE;
-  const bufferHeight = rows * BASE_TILE;
-
-  const layerIsVisible = layerVisibility?.[currentLayer] !== false;
-
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastPan, setLastPan] = useState(null);
-  const [isBrushing, setIsBrushing] = useState(false);
-  const [mousePos, setMousePos] = useState(null);
   const panHotkey = usePanHotkey();
 
   const mouseDownRef = useRef(false);
@@ -115,6 +104,16 @@ export function useGridController({
   const lastTileRef = useRef({ row: -1, col: -1 });
   const zoomDragRef = useRef(null);
   const dragRef = useRef(null);
+
+  const pointerLifecycle = usePointerLifecycle({
+    mouseDownRef,
+    lastStampCssRef,
+    emaCssRef,
+    lastTileRef,
+  });
+
+  const { isPanning, setIsPanning, lastPan, setLastPan, isBrushing, setIsBrushing, mousePos, setMousePos } =
+    pointerLifecycle;
 
   const stamp = stampSettings || gridSettings || {};
 
@@ -164,20 +163,13 @@ export function useGridController({
   const hitTokenRotateRing = (xCss, yCss) =>
     baseHitTokenRotateRing(xCss, yCss, { getSelectedToken, tileSize });
 
-  const toCanvasCoords = (xCss, yCss) => {
-    const scaleX = bufferWidth / cssWidth;
-    const scaleY = bufferHeight / cssHeight;
-    return { x: xCss * scaleX, y: yCss * scaleY };
-  };
-
-  const getActiveCtx = () => {
-    const canvas = canvasRefs?.[currentLayer]?.current;
-    return canvas ? canvas.getContext("2d") : null;
-  };
-
-  const brushPreviewContext = {
-    getActiveCtx,
-    toCanvasCoords,
+  const { paintTipAt, stampBetweenCanvas } = useBrushPreview({
+    canvasRefs,
+    currentLayer,
+    bufferWidth,
+    bufferHeight,
+    cssWidth,
+    cssHeight,
     isErasing,
     canvasBlendMode,
     selectedAsset,
@@ -188,10 +180,7 @@ export function useGridController({
     canvasColor,
     tileSize,
     canvasSpacing,
-  };
-
-  const paintTipAt = (cssPoint) => renderBrushTip(cssPoint, brushPreviewContext);
-  const stampBetweenCanvas = (a, b) => connectBrushPoints(a, b, brushPreviewContext);
+  });
 
   const getTopMostObjectAt = (layer, r, c) => {
     const arr = objects[layer] || [];
@@ -218,7 +207,7 @@ export function useGridController({
     return null;
   };
 
-  const placementContext = {
+  const placementActions = createPlacementActions({
     rows,
     cols,
     gridSettings,
@@ -233,144 +222,89 @@ export function useGridController({
     canvasColor,
     assets,
     addToken,
-  };
+  });
 
-  const eraseGridStampAt = (row, col) => eraseGridStamp(row, col, placementContext);
-  const placeGridImageAt = (row, col) => placeGridImage(row, col, placementContext);
-  const placeGridColorStampAt = (row, col) => placeGridColorStamp(row, col, placementContext);
-  const placeTokenAt = (row, col) => placeToken(row, col, placementContext);
+  useScrollBlocker({ scrollRef, contentRef, panToolActive, panHotkey, isPanning });
 
-  const resetPointerState = useCallback(() => {
-    mouseDownRef.current = false;
-    setIsBrushing(false);
-    setIsPanning(false);
-    setLastPan(null);
-    lastStampCssRef.current = null;
-    emaCssRef.current = null;
-    lastTileRef.current = { row: -1, col: -1 };
-  }, [setIsBrushing, setIsPanning, setLastPan]);
-
-  useGlobalPointerRelease(resetPointerState);
-
-  useEffect(() => {
-    const scrollEl = scrollRef?.current;
-    if (!scrollEl) return undefined;
-
-    const contentEl = contentRef?.current;
-    const nodeAvailable = typeof Node !== "undefined";
-    const shouldAllowScroll = () => panToolActive || panHotkey || isPanning;
-
-    const shouldBlockEvent = (eventTarget) => {
-      if (!scrollEl) return false;
-      if (shouldAllowScroll()) return false;
-      if (!nodeAvailable) return eventTarget === scrollEl;
-      if (!(eventTarget instanceof Node)) return false;
-      if (eventTarget === scrollEl) return true;
-      if (!contentEl) return false;
-      return contentEl.contains(eventTarget);
-    };
-
-    const handleWheel = (event) => {
-      if (shouldBlockEvent(event.target)) {
-        event.preventDefault();
-      }
-    };
-
-    const handleTouchMove = (event) => {
-      if (shouldBlockEvent(event.target)) {
-        event.preventDefault();
-      }
-    };
-
-    scrollEl.addEventListener("wheel", handleWheel, { passive: false });
-    scrollEl.addEventListener("touchmove", handleTouchMove, { passive: false });
-
-    return () => {
-      scrollEl.removeEventListener("wheel", handleWheel);
-      scrollEl.removeEventListener("touchmove", handleTouchMove);
-    };
-  }, [scrollRef, contentRef, panToolActive, panHotkey, isPanning]);
-
-  const { handlePointerDown, handlePointerMove, handlePointerUp } =
-    createGridPointerHandlers({
-      geometry: { rows, cols, cssWidth, cssHeight },
-      refs: {
-        mouseDownRef,
-        zoomDragRef,
-        dragRef,
-        lastStampCssRef,
-        emaCssRef,
-        lastTileRef,
-        scrollRef,
-      },
-      selection: {
-        hitResizeHandle,
-        hitRotateRing,
-        hitTokenResizeHandle,
-        hitTokenRotateRing,
-        setSelectedObjId,
-        setSelectedObjIds,
-        setSelectedTokenId,
-        setSelectedTokenIds,
-        selectedObjId,
-        selectedObjIds,
-        selectedTokenId,
-        selectedTokenIds,
-        getObjectById,
-        getTokenById,
-        getTopMostObjectAt,
-        getTopMostTokenAt,
-      },
-      state: {
-        setMousePos,
-        setIsPanning,
-        setLastPan,
-        setIsBrushing,
-        isPanning,
-        lastPan,
-        panHotkey,
-      },
-      config: {
-        zoomToolActive,
-        panToolActive,
-        layerIsVisible,
-        interactionMode,
-        engine,
-        assetGroup,
-        selectedAsset,
-        isErasing,
-        canvasColor,
-        canvasSmoothing,
-        gridSettings,
-        setGridSettings,
-        currentLayer,
-      },
-      actions: {
-        placeGridImageAt,
-        placeGridColorStampAt,
-        eraseGridStampAt,
-        placeTokenAt,
-        moveObject,
-        moveToken,
-        updateObjectById,
-        updateTokenById,
-        onSelectionChange,
-        onTokenSelectionChange,
-      },
-      callbacks: {
-        onBeginTileStroke,
-        onBeginCanvasStroke,
-        onBeginObjectStroke,
-        onBeginTokenStroke,
-        onZoomToolRect,
-      },
-      data: {
-        tokens,
-        objects,
-        paintTipAt,
-        stampBetweenCanvas,
-      },
-    });
+  const { handlePointerDown, handlePointerMove, handlePointerUp } = createGridPointerHandlers({
+    geometry: { rows, cols, cssWidth, cssHeight },
+    refs: {
+      mouseDownRef,
+      zoomDragRef,
+      dragRef,
+      lastStampCssRef,
+      emaCssRef,
+      lastTileRef,
+      scrollRef,
+    },
+    selection: {
+      hitResizeHandle,
+      hitRotateRing,
+      hitTokenResizeHandle,
+      hitTokenRotateRing,
+      setSelectedObjId,
+      setSelectedObjIds,
+      setSelectedTokenId,
+      setSelectedTokenIds,
+      selectedObjId,
+      selectedObjIds,
+      selectedTokenId,
+      selectedTokenIds,
+      getObjectById,
+      getTokenById,
+      getTopMostObjectAt,
+      getTopMostTokenAt,
+    },
+    state: {
+      setMousePos,
+      setIsPanning,
+      setLastPan,
+      setIsBrushing,
+      isPanning,
+      lastPan,
+      panHotkey,
+    },
+    config: {
+      zoomToolActive,
+      panToolActive,
+      layerIsVisible,
+      interactionMode,
+      engine,
+      assetGroup,
+      selectedAsset,
+      isErasing,
+      canvasColor,
+      canvasSmoothing,
+      gridSettings,
+      setGridSettings,
+      currentLayer,
+    },
+    actions: {
+      placeGridImageAt: placementActions.placeGridImageAt,
+      placeGridColorStampAt: placementActions.placeGridColorStampAt,
+      eraseGridStampAt: placementActions.eraseGridStampAt,
+      placeTokenAt: placementActions.placeTokenAt,
+      moveObject,
+      moveToken,
+      updateObjectById,
+      updateTokenById,
+      onSelectionChange,
+      onTokenSelectionChange,
+    },
+    callbacks: {
+      onBeginTileStroke,
+      onBeginCanvasStroke,
+      onBeginObjectStroke,
+      onBeginTokenStroke,
+      onZoomToolRect,
+    },
+    data: {
+      tokens,
+      objects,
+      paintTipAt,
+      stampBetweenCanvas,
+    },
+  });
 
   const cursorStyle = deriveCursorStyle({
     isPanning,
