@@ -84,6 +84,7 @@ export function useGridSelection({
   useObjectSelectionGridSync({
     gridSettings,
     selectedObjId,
+    selectedObjIds,
     currentLayer,
     rows,
     cols,

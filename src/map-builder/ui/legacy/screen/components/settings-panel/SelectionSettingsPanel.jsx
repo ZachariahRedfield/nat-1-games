@@ -34,14 +34,5 @@ export default function SelectionSettingsPanel(props) {
     return <TokenSettingsPanel {...props} />;
   }
 
-  const multipleAssetsSelected = interactionMode === "select" && (selectedObjsList?.length || 0) > 1;
-  if (multipleAssetsSelected) {
-    return (
-      <SelectionLockedNotice>
-        Multiple selected — settings locked. Save as a group to edit parent settings later.
-      </SelectionLockedNotice>
-    );
-  }
-
   return <AssetSettingsPanel {...props} />;
 }
