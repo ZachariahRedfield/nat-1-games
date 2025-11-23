@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { clamp } from "../utils.js";
 
 export function useObjectSelectionGridSync({
   gridSettings,
   selectedObjId,
+  selectedObjIds = [],
   currentLayer,
   rows,
   cols,
@@ -11,10 +12,70 @@ export function useObjectSelectionGridSync({
   getAssetById,
   updateObjectById,
 }) {
+  const prevGridSettingsRef = useRef(gridSettings);
+  const prevSelectedIdsRef = useRef(selectedObjIds);
+
   useEffect(() => {
     if (!gridSettings || !selectedObjId) return;
     const obj = getObjectById(currentLayer, selectedObjId);
     if (!obj) return;
+
+    const prevSelectedIds = Array.isArray(prevSelectedIdsRef.current) ? prevSelectedIdsRef.current : [];
+    const currentSelectedIds = Array.isArray(selectedObjIds) ? selectedObjIds : [];
+    const selectionChanged =
+      prevSelectedIds.length !== currentSelectedIds.length ||
+      prevSelectedIds.some((id, index) => id !== currentSelectedIds[index]);
+
+    if (selectionChanged) {
+      prevSelectedIdsRef.current = currentSelectedIds;
+      prevGridSettingsRef.current = gridSettings;
+    }
+
+    if (Array.isArray(selectedObjIds) && selectedObjIds.length > 1) {
+      const prev = prevGridSettingsRef.current || {};
+      const deltaSizeCols =
+        typeof gridSettings.sizeCols === "number" ? (gridSettings.sizeCols || 0) - (prev.sizeCols || 0) : 0;
+      const deltaSizeRows =
+        typeof gridSettings.sizeRows === "number" ? (gridSettings.sizeRows || 0) - (prev.sizeRows || 0) : 0;
+      const deltaRotation =
+        typeof gridSettings.rotation === "number" ? (gridSettings.rotation || 0) - (prev.rotation || 0) : 0;
+      const deltaOpacity =
+        typeof gridSettings.opacity === "number" ? (gridSettings.opacity || 0) - (prev.opacity || 0) : 0;
+      const flipXChanged = typeof gridSettings.flipX === "boolean" && gridSettings.flipX !== prev.flipX;
+      const flipYChanged = typeof gridSettings.flipY === "boolean" && gridSettings.flipY !== prev.flipY;
+
+      const hasDelta =
+        deltaSizeCols ||
+        deltaSizeRows ||
+        deltaRotation ||
+        deltaOpacity ||
+        flipXChanged ||
+        flipYChanged;
+
+      if (hasDelta) {
+        for (const id of selectedObjIds) {
+          const current = getObjectById(currentLayer, id);
+          if (!current) continue;
+
+          const wTiles = Math.max(1, Math.round((current.wTiles || 1) + deltaSizeCols));
+          const hTiles = Math.max(1, Math.round((current.hTiles || 1) + deltaSizeRows));
+          const rotation = ((current.rotation || 0) + deltaRotation + 360) % 360;
+          const opacity = Math.max(0.05, Math.min(1, (current.opacity ?? 1) + deltaOpacity));
+
+          updateObjectById(currentLayer, current.id, {
+            wTiles,
+            hTiles,
+            rotation,
+            flipX: flipXChanged ? !!gridSettings.flipX : current.flipX,
+            flipY: flipYChanged ? !!gridSettings.flipY : current.flipY,
+            opacity,
+          });
+        }
+      }
+
+      prevGridSettingsRef.current = gridSettings;
+      return;
+    }
 
     const asset = getAssetById(obj.assetId);
     const aspect = asset?.aspectRatio || 1;
@@ -58,9 +119,12 @@ export function useObjectSelectionGridSync({
       flipY: !!gridSettings.flipY,
       opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
     });
+
+    prevGridSettingsRef.current = gridSettings;
   }, [
     gridSettings,
     selectedObjId,
+    selectedObjIds,
     currentLayer,
     rows,
     cols,

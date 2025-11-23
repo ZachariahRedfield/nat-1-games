@@ -26,6 +26,30 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
     return true;
   }
 
+  if (dragRef.current.kind === "multi-object" && selection.selectedObjIds?.length > 1) {
+    const { startRow, startCol, bounds, offsets } = dragRef.current;
+    const deltaRow = row - startRow;
+    const deltaCol = col - startCol;
+
+    const minRowShift = -bounds.minRow;
+    const maxRowShift = geometry.rows - bounds.maxRow;
+    const minColShift = -bounds.minCol;
+    const maxColShift = geometry.cols - bounds.maxCol;
+
+    const clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
+    const clampedColShift = clamp(deltaCol, minColShift, maxColShift);
+
+    for (const offset of offsets) {
+      const baseRow = startRow - offset.offsetRow;
+      const baseCol = startCol - offset.offsetCol;
+      const newRow = baseRow + clampedRowShift;
+      const newCol = baseCol + clampedColShift;
+      actions.moveObject(config.currentLayer, offset.id, newRow, newCol);
+    }
+
+    return true;
+  }
+
   if (dragRef.current.kind === "token" && selection.selectedTokenId && selection.selectedTokenIds.length <= 1) {
     const tok = selection.getTokenById(selection.selectedTokenId);
     if (!tok) return true;

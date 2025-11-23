@@ -18,16 +18,29 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
         const obj = arr[arr.length - 1];
         setSelectedObj(obj);
 
-        setGridSettings((prev) => ({
-          ...prev,
-          sizeTiles: Math.max(1, Math.round(obj.wTiles || 1)),
-          sizeCols: Math.max(1, Math.round(obj.wTiles || 1)),
-          sizeRows: Math.max(1, Math.round(obj.hTiles || 1)),
-          rotation: obj.rotation || 0,
-          flipX: !!obj.flipX,
-          flipY: !!obj.flipY,
-          opacity: obj.opacity ?? 1,
-        }));
+        if (arr.length > 1) {
+          setGridSettings((prev) => ({
+            ...prev,
+            sizeTiles: 0,
+            sizeCols: 0,
+            sizeRows: 0,
+            rotation: 0,
+            flipX: false,
+            flipY: false,
+            opacity: 0,
+          }));
+        } else {
+          setGridSettings((prev) => ({
+            ...prev,
+            sizeTiles: Math.max(1, Math.round(obj.wTiles || 1)),
+            sizeCols: Math.max(1, Math.round(obj.wTiles || 1)),
+            sizeRows: Math.max(1, Math.round(obj.hTiles || 1)),
+            rotation: obj.rotation || 0,
+            flipX: !!obj.flipX,
+            flipY: !!obj.flipY,
+            opacity: obj.opacity ?? 1,
+          }));
+        }
         return;
       }
 
