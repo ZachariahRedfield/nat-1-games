@@ -10,6 +10,7 @@ import {
   beginTokenRotation,
 } from "./pointer-down/resizeHandlers.js";
 import { beginPan, beginZoomDrag } from "./pointer-down/zoomAndPanHandlers.js";
+import { setPointerCapture } from "./pointer-down/pointerCapture.js";
 
 export function createPointerDownHandler(context) {
   const {
@@ -82,6 +83,7 @@ export function createPointerDownHandler(context) {
       if (
         hitObj &&
         handleObjectSelection({
+          event,
           object: hitObj,
           row,
           col,
@@ -95,8 +97,15 @@ export function createPointerDownHandler(context) {
         return;
       }
 
-      clearSelection({ selection, actions });
-      dragRef.current = null;
+      const marqueeKind = config.assetGroup === "token" ? "marquee-token" : "marquee-obj";
+      dragRef.current = {
+        kind: marqueeKind,
+        startRow: row,
+        startCol: col,
+        curRow: row,
+        curCol: col,
+      };
+      setPointerCapture(event);
       return;
     }
 

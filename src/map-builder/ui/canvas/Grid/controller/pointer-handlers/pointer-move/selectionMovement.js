@@ -16,8 +16,8 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
   const row = position.row;
   const col = position.col;
 
-  if (dragRef.current.kind === "object" && selection.selectedObjId && selection.selectedObjIds.length <= 1) {
-    const obj = selection.getObjectById(config.currentLayer, selection.selectedObjId);
+  if (dragRef.current.kind === "object") {
+    const obj = selection.getObjectById(config.currentLayer, dragRef.current.id);
     if (!obj) return true;
     const { offsetRow, offsetCol } = dragRef.current;
     const newRow = clamp(row - offsetRow, 0, Math.max(0, geometry.rows - obj.hTiles));
@@ -26,8 +26,32 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
     return true;
   }
 
-  if (dragRef.current.kind === "token" && selection.selectedTokenId && selection.selectedTokenIds.length <= 1) {
-    const tok = selection.getTokenById(selection.selectedTokenId);
+  if (dragRef.current.kind === "multi-object" && selection.selectedObjIds?.length > 1) {
+    const { startRow, startCol, bounds, offsets } = dragRef.current;
+    const deltaRow = row - startRow;
+    const deltaCol = col - startCol;
+
+    const minRowShift = -bounds.minRow;
+    const maxRowShift = geometry.rows - bounds.maxRow;
+    const minColShift = -bounds.minCol;
+    const maxColShift = geometry.cols - bounds.maxCol;
+
+    const clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
+    const clampedColShift = clamp(deltaCol, minColShift, maxColShift);
+
+    for (const offset of offsets) {
+      const baseRow = startRow - offset.offsetRow;
+      const baseCol = startCol - offset.offsetCol;
+      const newRow = baseRow + clampedRowShift;
+      const newCol = baseCol + clampedColShift;
+      actions.moveObject(config.currentLayer, offset.id, newRow, newCol);
+    }
+
+    return true;
+  }
+
+  if (dragRef.current.kind === "token") {
+    const tok = selection.getTokenById(dragRef.current.id);
     if (!tok) return true;
     const { offsetRow, offsetCol } = dragRef.current;
     const width = tok.wTiles || 1;
