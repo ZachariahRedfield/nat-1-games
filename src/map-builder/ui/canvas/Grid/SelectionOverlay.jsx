@@ -20,6 +20,8 @@ export default function SelectionOverlay({
     .map((layer) => (typeof layer === "string" ? layer : layer?.id))
     .filter(Boolean);
 
+  if (ids.length > 1) return null;
+
   return (
     <>
       {layerIds.map((layer, i) => {
