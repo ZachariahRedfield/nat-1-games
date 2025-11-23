@@ -40,10 +40,10 @@ export const paintBrushTip = (cssPoint, context) => {
 
     const scaleX = bufferWidth > 0 ? img.width / bufferWidth : 1;
     const scaleY = bufferHeight > 0 ? img.height / bufferHeight : 1;
-    const srcX = destLeft * scaleX;
-    const srcY = destTop * scaleY;
-    const srcW = pxSize * scaleX;
-    const srcH = pxSize * scaleY;
+    const srcX = Math.max(0, Math.min(img.width, destLeft * scaleX));
+    const srcY = Math.max(0, Math.min(img.height, destTop * scaleY));
+    const srcW = Math.max(0, Math.min(img.width - srcX, pxSize * scaleX));
+    const srcH = Math.max(0, Math.min(img.height - srcY, pxSize * scaleY));
 
     ctx.translate(p.x, p.y);
     const rot = (((stamp?.rotation ?? gridSettings?.rotation) || 0) * Math.PI) / 180;
@@ -52,6 +52,12 @@ export const paintBrushTip = (cssPoint, context) => {
     ctx.beginPath();
     ctx.arc(0, 0, half, 0, Math.PI * 2);
     ctx.clip();
+    if (!isErasing) {
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.clearRect(-half, -half, pxSize, pxSize);
+      ctx.restore();
+    }
     ctx.drawImage(img, srcX, srcY, srcW, srcH, -half, -half, pxSize, pxSize);
     ctx.restore();
     return;
@@ -72,7 +78,7 @@ export const paintBrushTip = (cssPoint, context) => {
 export const stampBetweenCanvas = (a, b, context) => {
   const { brushSize, tileSize, canvasSpacing } = context;
   const radiusCss = (brushSize * tileSize) / 2;
-  const spacing = Math.max(1, radiusCss * canvasSpacing);
+  const spacing = Math.max(1, radiusCss, radiusCss * canvasSpacing);
   const distance = dist(a, b);
   if (distance <= spacing) {
     paintBrushTip(b, context);
