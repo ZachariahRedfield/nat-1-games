@@ -29,7 +29,17 @@ function handleTokenSelection({ token, row, col, selection, actions, dragRef }) 
   return true;
 }
 
-function handleObjectSelection({ object, row, col, selection, actions, dragRef, callbacks, config }) {
+function handleObjectSelection({
+  event,
+  object,
+  row,
+  col,
+  selection,
+  actions,
+  dragRef,
+  callbacks,
+  config,
+}) {
   const {
     setSelectedTokenId,
     setSelectedTokenIds,
@@ -41,6 +51,82 @@ function handleObjectSelection({ object, row, col, selection, actions, dragRef, 
   const { onSelectionChange } = actions;
   const { onBeginObjectStroke } = callbacks;
   const { currentLayer } = config;
+
+  const additive = event?.metaKey || event?.ctrlKey;
+
+  if (additive) {
+    setSelectedTokenId(null);
+    setSelectedTokenIds([]);
+
+    const currentIds = Array.isArray(selectedObjIds) ? selectedObjIds : [];
+    const alreadySelected = currentIds.includes(object.id);
+    const nextIds = alreadySelected
+      ? currentIds.filter((id) => id !== object.id)
+      : [...currentIds, object.id];
+
+    if (!nextIds.length) {
+      setSelectedObjIds([]);
+      setSelectedObjId(null);
+      onSelectionChange?.([]);
+      dragRef.current = null;
+      return true;
+    }
+
+    const selectionOffsets = nextIds
+      .map((id) => {
+        const current = getObjectById(currentLayer, id);
+        if (!current) return null;
+        return {
+          id,
+          offsetRow: row - current.row,
+          offsetCol: col - current.col,
+          height: current.hTiles,
+          width: current.wTiles,
+          row: current.row,
+          col: current.col,
+        };
+      })
+      .filter(Boolean);
+
+    setSelectedObjIds(nextIds);
+    setSelectedObjId(object.id);
+    onSelectionChange?.(
+      nextIds.map((id) => getObjectById(currentLayer, id)).filter(Boolean),
+    );
+
+    if (selectionOffsets.length > 1) {
+      const minRow = Math.min(...selectionOffsets.map((item) => item.row));
+      const maxRow = Math.max(...selectionOffsets.map((item) => item.row + item.height));
+      const minCol = Math.min(...selectionOffsets.map((item) => item.col));
+      const maxCol = Math.max(...selectionOffsets.map((item) => item.col + item.width));
+
+      onBeginObjectStroke?.(currentLayer);
+      dragRef.current = {
+        kind: "multi-object",
+        ids: selectionOffsets.map((item) => item.id),
+        offsets: selectionOffsets.map(({ id, offsetRow, offsetCol, height, width }) => ({
+          id,
+          offsetRow,
+          offsetCol,
+          height,
+          width,
+        })),
+        bounds: { minRow, maxRow, minCol, maxCol },
+        startRow: row,
+        startCol: col,
+      };
+      return true;
+    }
+
+    onBeginObjectStroke?.(currentLayer);
+    dragRef.current = {
+      kind: "object",
+      id: object.id,
+      offsetRow: row - object.row,
+      offsetCol: col - object.col,
+    };
+    return true;
+  }
 
   if (selectedObjIds.length > 1 && selectedObjIds.includes(object.id)) {
     const selectionOffsets = selectedObjIds
