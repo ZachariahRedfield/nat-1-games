@@ -50,8 +50,8 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
     return true;
   }
 
-  if (dragRef.current.kind === "token") {
-    const tok = selection.getTokenById(dragRef.current.id);
+  if (dragRef.current.kind === "token" && selection.selectedTokenId && selection.selectedTokenIds.length <= 1) {
+    const tok = selection.getTokenById(selection.selectedTokenId);
     if (!tok) return true;
     const { offsetRow, offsetCol } = dragRef.current;
     const width = tok.wTiles || 1;
