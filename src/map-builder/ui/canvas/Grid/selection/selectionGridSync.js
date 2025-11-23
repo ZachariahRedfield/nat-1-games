@@ -57,6 +57,13 @@ export function useObjectSelectionGridSync({
           const current = getObjectById(currentLayer, id);
           if (!current) continue;
 
+          const linkXY = !!current.linkXY;
+          const primaryDelta = linkXY ? deltaSizeCols || deltaSizeRows : null;
+          const widthDelta = linkXY ? primaryDelta ?? 0 : deltaSizeCols;
+          const heightDelta = linkXY ? primaryDelta ?? 0 : deltaSizeRows;
+
+          const wTiles = Math.max(1, Math.round((current.wTiles || 1) + widthDelta));
+          const hTiles = Math.max(1, Math.round((current.hTiles || 1) + heightDelta));
           const wTiles = Math.max(1, Math.round((current.wTiles || 1) + deltaSizeCols));
           const hTiles = Math.max(1, Math.round((current.hTiles || 1) + deltaSizeRows));
           const rotation = ((current.rotation || 0) + deltaRotation + 360) % 360;
@@ -69,6 +76,7 @@ export function useObjectSelectionGridSync({
             flipX: flipXChanged ? !!gridSettings.flipX : current.flipX,
             flipY: flipYChanged ? !!gridSettings.flipY : current.flipY,
             opacity,
+            linkXY: current.linkXY,
           });
         }
       }
@@ -118,6 +126,7 @@ export function useObjectSelectionGridSync({
       flipX: !!gridSettings.flipX,
       flipY: !!gridSettings.flipY,
       opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+      linkXY: !!gridSettings.linkXY,
     });
 
     prevGridSettingsRef.current = gridSettings;
