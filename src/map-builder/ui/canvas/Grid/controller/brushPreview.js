@@ -13,6 +13,8 @@ export const paintBrushTip = (cssPoint, context) => {
     canvasOpacity,
     brushSize,
     canvasColor,
+    bufferWidth,
+    bufferHeight,
   } = context;
 
   const ctx = getActiveCtx?.();
@@ -32,11 +34,25 @@ export const paintBrushTip = (cssPoint, context) => {
   if (selectedAsset?.kind === "image" && selectedAsset.img) {
     const img = selectedAsset.img;
     const pxSize = brushSize * BASE_TILE;
+    const half = pxSize / 2;
+    const destLeft = p.x - half;
+    const destTop = p.y - half;
+
+    const scaleX = bufferWidth > 0 ? img.width / bufferWidth : 1;
+    const scaleY = bufferHeight > 0 ? img.height / bufferHeight : 1;
+    const srcX = destLeft * scaleX;
+    const srcY = destTop * scaleY;
+    const srcW = pxSize * scaleX;
+    const srcH = pxSize * scaleY;
+
     ctx.translate(p.x, p.y);
     const rot = (((stamp?.rotation ?? gridSettings?.rotation) || 0) * Math.PI) / 180;
     ctx.rotate(rot);
     ctx.scale((stamp?.flipX ?? gridSettings?.flipX) ? -1 : 1, (stamp?.flipY ?? gridSettings?.flipY) ? -1 : 1);
-    ctx.drawImage(img, -pxSize / 2, -pxSize / 2, pxSize, pxSize);
+    ctx.beginPath();
+    ctx.arc(0, 0, half, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(img, srcX, srcY, srcW, srcH, -half, -half, pxSize, pxSize);
     ctx.restore();
     return;
   }
