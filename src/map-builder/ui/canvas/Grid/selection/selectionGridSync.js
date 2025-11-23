@@ -64,6 +64,8 @@ export function useObjectSelectionGridSync({
 
           const wTiles = Math.max(1, Math.round((current.wTiles || 1) + widthDelta));
           const hTiles = Math.max(1, Math.round((current.hTiles || 1) + heightDelta));
+          const wTiles = Math.max(1, Math.round((current.wTiles || 1) + deltaSizeCols));
+          const hTiles = Math.max(1, Math.round((current.hTiles || 1) + deltaSizeRows));
           const rotation = ((current.rotation || 0) + deltaRotation + 360) % 360;
           const opacity = Math.max(0.05, Math.min(1, (current.opacity ?? 1) + deltaOpacity));
 
