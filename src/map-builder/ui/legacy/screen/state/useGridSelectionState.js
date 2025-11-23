@@ -28,6 +28,7 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
             flipX: false,
             flipY: false,
             opacity: 0,
+            linkXY: false,
           }));
         } else {
           setGridSettings((prev) => ({
@@ -39,6 +40,7 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
             flipX: !!obj.flipX,
             flipY: !!obj.flipY,
             opacity: obj.opacity ?? 1,
+            linkXY: !!obj.linkXY,
           }));
         }
         return;

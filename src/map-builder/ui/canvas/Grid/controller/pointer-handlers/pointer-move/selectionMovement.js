@@ -16,8 +16,8 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
   const row = position.row;
   const col = position.col;
 
-  if (dragRef.current.kind === "object" && selection.selectedObjId && selection.selectedObjIds.length <= 1) {
-    const obj = selection.getObjectById(config.currentLayer, selection.selectedObjId);
+  if (dragRef.current.kind === "object") {
+    const obj = selection.getObjectById(config.currentLayer, dragRef.current.id);
     if (!obj) return true;
     const { offsetRow, offsetCol } = dragRef.current;
     const newRow = clamp(row - offsetRow, 0, Math.max(0, geometry.rows - obj.hTiles));
