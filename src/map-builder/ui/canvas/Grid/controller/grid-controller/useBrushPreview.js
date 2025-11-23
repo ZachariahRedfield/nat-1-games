@@ -52,6 +52,8 @@ export function useBrushPreview({
       canvasOpacity,
       brushSize,
       canvasColor,
+      bufferWidth,
+      bufferHeight,
       tileSize,
       canvasSpacing,
     }),
@@ -66,6 +68,8 @@ export function useBrushPreview({
       canvasOpacity,
       brushSize,
       canvasColor,
+      bufferWidth,
+      bufferHeight,
       tileSize,
       canvasSpacing,
     ]
