@@ -22,8 +22,20 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
     const { startRow, startCol, baseRow, baseCol, height, width } = dragRef.current;
     const deltaRow = row - startRow;
     const deltaCol = col - startCol;
-    const newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - (height ?? obj.hTiles)));
-    const newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - (width ?? obj.wTiles)));
+
+    const objHeight = height ?? obj.hTiles ?? 1;
+    const objWidth = width ?? obj.wTiles ?? 1;
+
+    const minRowShift = -baseRow;
+    const maxRowShift = geometry.rows - (baseRow + objHeight);
+    const minColShift = -baseCol;
+    const maxColShift = geometry.cols - (baseCol + objWidth);
+
+    const clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
+    const clampedColShift = clamp(deltaCol, minColShift, maxColShift);
+
+    const newRow = baseRow + clampedRowShift;
+    const newCol = baseCol + clampedColShift;
     actions.moveObject(config.currentLayer, obj.id, newRow, newCol);
     return true;
   }
