@@ -20,7 +20,7 @@ export default function SelectionOverlay({
     .map((layer) => (typeof layer === "string" ? layer : layer?.id))
     .filter(Boolean);
 
-  if (ids.length > 1) return null;
+  const isMultiSelection = ids.length > 1;
 
   return (
     <>
@@ -67,24 +67,25 @@ export default function SelectionOverlay({
                       boxShadow: "0 0 0 2px rgba(74,222,128,0.3) inset",
                     }}
                   >
-                    {handlePositions.map((pos) => (
-                      <div
-                        key={`hdl-${sel.id}-${pos.key}`}
-                        className="absolute bg-emerald-400 shadow pointer-events-none"
-                        style={{
-                          left: pos.left,
-                          top: pos.top,
-                          width: sz,
-                          height: sz,
-                          transform: 'translate(-50%, -50%)',
-                          zIndex: baseZ,
-                          borderRadius: 2,
-                        }}
-                      />
-                    ))}
+                    {!isMultiSelection &&
+                      handlePositions.map((pos) => (
+                        <div
+                          key={`hdl-${sel.id}-${pos.key}`}
+                          className="absolute bg-emerald-400 shadow pointer-events-none"
+                          style={{
+                            left: pos.left,
+                            top: pos.top,
+                            width: sz,
+                            height: sz,
+                            transform: 'translate(-50%, -50%)',
+                            zIndex: baseZ,
+                            borderRadius: 2,
+                          }}
+                        />
+                      ))}
                   </div>
 
-                  {arr.length === 1 && (
+                  {!isMultiSelection && arr.length === 1 && (
                     <div
                       key={`rot-ring-${sel.id}`}
                       className="absolute pointer-events-none"

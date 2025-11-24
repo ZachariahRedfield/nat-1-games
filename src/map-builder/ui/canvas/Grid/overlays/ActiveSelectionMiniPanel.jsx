@@ -1,10 +1,59 @@
-import React from "react";
+import React, { useMemo } from "react";
 import SelectionMiniPanel from "../../SelectionMiniPanel.jsx";
 import { clamp } from "../utils.js";
+import { useSelectionPanelPosition } from "../../selection-panel/useSelectionPanelPosition.js";
+
+function MultiSelectionMiniPanel({
+  anchorObj,
+  tileSize,
+  containerSize,
+  selectionCount,
+  scrollRef,
+  contentRef,
+}) {
+  const panelSize = useMemo(() => ({ width: 260, height: 116 }), []);
+  const { position, onDragStart } = useSelectionPanelPosition({
+    obj: anchorObj,
+    tileSize,
+    containerSize,
+    panelSize,
+    scrollRef,
+    contentRef,
+  });
+
+  if (!anchorObj) return null;
+
+  return (
+    <div
+      className="absolute bg-gray-900/95 text-white border border-gray-700 rounded shadow-lg p-3"
+      style={{
+        left: position.x,
+        top: position.y,
+        width: panelSize.width,
+        height: panelSize.height,
+        zIndex: 10060,
+      }}
+    >
+      <div
+        className="text-[11px] font-semibold mb-2 cursor-move select-none"
+        onPointerDown={onDragStart}
+        title="Drag to move"
+      >
+        {selectionCount} assets selected
+      </div>
+
+      <div className="text-[11px] leading-4 text-gray-200">
+        Resize and rotation controls are disabled while selecting multiple assets. Drag the group to
+        reposition it.
+      </div>
+    </div>
+  );
+}
 
 export default function ActiveSelectionMiniPanel({
   selectedObject,
   selectedToken,
+  selectedObjIds = [],
   tileSize,
   containerSize,
   currentLayer,
@@ -19,9 +68,36 @@ export default function ActiveSelectionMiniPanel({
   scrollRef,
   contentRef,
 }) {
+  const layerObjects = useMemo(
+    () => (Array.isArray(objects?.[currentLayer]) ? objects[currentLayer] : []),
+    [currentLayer, objects],
+  );
+
+  const selectedObjects = useMemo(() => {
+    if (!Array.isArray(selectedObjIds) || !selectedObjIds.length) return [];
+    return selectedObjIds
+      .map((id) => layerObjects.find((item) => item.id === id))
+      .filter(Boolean);
+  }, [layerObjects, selectedObjIds]);
+
+  const multiObjectSelection = selectedObjects.length > 1;
+  const anchorObject = selectedObjects[0];
+
+  if (multiObjectSelection) {
+    return (
+      <MultiSelectionMiniPanel
+        anchorObj={anchorObject}
+        tileSize={tileSize}
+        containerSize={containerSize}
+        selectionCount={selectedObjects.length}
+        scrollRef={scrollRef}
+        contentRef={contentRef}
+      />
+    );
+  }
+
   if (selectedObject) {
     const obj = selectedObject;
-    const layerObjects = Array.isArray(objects?.[currentLayer]) ? objects[currentLayer] : [];
     const asset = assets?.find((item) => item.id === obj.assetId);
     const baseName = (obj?.name && obj.name.trim()) || asset?.name || "Object";
     const matchingObjects = layerObjects.filter((item) => item.assetId === obj.assetId);
