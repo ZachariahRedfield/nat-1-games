@@ -13,7 +13,7 @@ export default function TokenSelectionOverlay({
       ? [selectedTokenId]
       : [];
 
-  if (!ids.length) return null;
+  if (!ids.length || ids.length > 1) return null;
 
   const renderSelectionBox = (token) => {
     const left = token.col * tileSize;
