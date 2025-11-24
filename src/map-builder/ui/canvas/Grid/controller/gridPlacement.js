@@ -1,10 +1,10 @@
 import { clamp, hexToRgba } from "../utils.js";
 
-const computeTileBounds = (centerRow, centerCol, widthTiles, heightTiles, snapLike) => {
-  const baseRow = snapLike ? Math.floor(centerRow) : centerRow;
-  const baseCol = snapLike ? Math.floor(centerCol) : centerCol;
-  const halfH = snapLike ? Math.floor(heightTiles / 2) : heightTiles / 2;
-  const halfW = snapLike ? Math.floor(widthTiles / 2) : widthTiles / 2;
+const computeTileBounds = (centerRow, centerCol, widthTiles, heightTiles) => {
+  const baseRow = centerRow;
+  const baseCol = centerCol;
+  const halfH = heightTiles / 2;
+  const halfW = widthTiles / 2;
   return { baseRow, baseCol, halfH, halfW };
 };
 
@@ -69,9 +69,7 @@ export const placeGridImageAt = (centerRow, centerCol, context) => {
   const wTiles = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
   const hTiles = Math.max(1, Math.round(stamp.sizeRows ?? Math.round(wTiles / aspect)));
 
-  const step = gridSettings?.snapStep ?? 1;
-  const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-  const { baseRow, baseCol, halfH, halfW } = computeTileBounds(centerRow, centerCol, wTiles, hTiles, snapLike);
+  const { baseRow, baseCol, halfH, halfW } = computeTileBounds(centerRow, centerCol, wTiles, hTiles);
 
   const r0 = clamp(baseRow - halfH, 0, Math.max(0, rows - hTiles));
   const c0 = clamp(baseCol - halfW, 0, Math.max(0, cols - wTiles));
@@ -116,16 +114,10 @@ export const placeGridColorStampAt = (centerRow, centerCol, context) => {
   const wTiles = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
   const hTiles = Math.max(1, Math.round((stamp.sizeRows ?? stamp.sizeTiles ?? gridSettings.sizeRows ?? gridSettings.sizeTiles ?? 1)));
 
-  const step = gridSettings?.snapStep ?? 1;
-  const snapLike = !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-  const { baseRow, baseCol, halfH, halfW } = computeTileBounds(centerRow, centerCol, wTiles, hTiles, snapLike);
+  const { baseRow, baseCol, halfH, halfW } = computeTileBounds(centerRow, centerCol, wTiles, hTiles);
 
-  let r0 = clamp(baseRow - halfH, 0, Math.max(0, rows - hTiles));
-  let c0 = clamp(baseCol - halfW, 0, Math.max(0, cols - wTiles));
-  if (!snapLike) {
-    r0 = clamp(Math.round(r0), 0, Math.max(0, rows - hTiles));
-    c0 = clamp(Math.round(c0), 0, Math.max(0, cols - wTiles));
-  }
+  const r0 = clamp(baseRow - halfH, 0, Math.max(0, rows - hTiles));
+  const c0 = clamp(baseCol - halfW, 0, Math.max(0, cols - wTiles));
 
   const updates = [];
   for (let r = 0; r < hTiles; r++) {
@@ -146,18 +138,16 @@ export const placeTokenAt = (centerRow, centerCol, context) => {
 
   const baseW = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
   const baseH = Math.max(1, Math.round((stamp.sizeRows ?? stamp.sizeTiles ?? gridSettings.sizeRows ?? gridSettings.sizeTiles ?? 1)));
-  const snap = !!gridSettings?.snapToGrid;
-
   if (selectedAsset.kind === "token") {
     const wTiles = baseW;
     const hTiles = baseH;
     const r0 = clamp(
-      snap ? centerRow - Math.floor(hTiles / 2) : centerRow - hTiles / 2,
+      centerRow - hTiles / 2,
       0,
       Math.max(0, rows - hTiles)
     );
     const c0 = clamp(
-      snap ? centerCol - Math.floor(wTiles / 2) : centerCol - wTiles / 2,
+      centerCol - wTiles / 2,
       0,
       Math.max(0, cols - wTiles)
     );
@@ -187,12 +177,12 @@ export const placeTokenAt = (centerRow, centerCol, context) => {
       const wTiles = baseW;
       const hTiles = baseH;
       const r0 = clamp(
-        snap ? centerRow - Math.floor(hTiles / 2) : centerRow - hTiles / 2,
+        centerRow - hTiles / 2,
         0,
         Math.max(0, rows - hTiles)
       );
       const c0 = clamp(
-        snap ? cursorCol - Math.floor(wTiles / 2) : cursorCol - wTiles / 2,
+        cursorCol - wTiles / 2,
         0,
         Math.max(0, cols - wTiles)
       );
