@@ -28,14 +28,27 @@ export function useObjectSelectionGridSync({
 
     if (selectionChanged) {
       prevSelectedIdsRef.current = currentSelectedIds;
-      prevGridSettingsRef.current = gridSettings;
+      // Establish a neutral baseline when switching selection groups so multi-edit deltas always start at zero.
+      prevGridSettingsRef.current =
+        currentSelectedIds.length > 1
+          ? {
+              ...gridSettings,
+              sizeCols: 0,
+              sizeRows: 0,
+              sizeTiles: 0,
+              rotation: 0,
+              opacity: 0,
+              flipX: false,
+              flipY: false,
+            }
+          : gridSettings;
     }
 
     if (Array.isArray(selectedObjIds) && selectedObjIds.length > 1) {
       const prev = prevGridSettingsRef.current || {};
-      const deltaSizeCols =
+      const rawDeltaSizeCols =
         typeof gridSettings.sizeCols === "number" ? (gridSettings.sizeCols || 0) - (prev.sizeCols || 0) : 0;
-      const deltaSizeRows =
+      const rawDeltaSizeRows =
         typeof gridSettings.sizeRows === "number" ? (gridSettings.sizeRows || 0) - (prev.sizeRows || 0) : 0;
       const deltaRotation =
         typeof gridSettings.rotation === "number" ? (gridSettings.rotation || 0) - (prev.rotation || 0) : 0;
@@ -45,8 +58,8 @@ export function useObjectSelectionGridSync({
       const flipYChanged = typeof gridSettings.flipY === "boolean" && gridSettings.flipY !== prev.flipY;
 
       const hasDelta =
-        deltaSizeCols ||
-        deltaSizeRows ||
+        rawDeltaSizeCols ||
+        rawDeltaSizeRows ||
         deltaRotation ||
         deltaOpacity ||
         flipXChanged ||
@@ -58,9 +71,20 @@ export function useObjectSelectionGridSync({
           if (!current) continue;
 
           const linkXY = !!current.linkXY;
-          const primaryDelta = linkXY ? deltaSizeCols || deltaSizeRows : null;
-          const widthDelta = linkXY ? primaryDelta ?? 0 : deltaSizeCols;
-          const heightDelta = linkXY ? primaryDelta ?? 0 : deltaSizeRows;
+          const uiLinked = !!gridSettings?.linkXY;
+          const primaryDelta = linkXY ? rawDeltaSizeCols || rawDeltaSizeRows : null;
+
+          const widthDelta = linkXY ? primaryDelta ?? 0 : rawDeltaSizeCols;
+          let heightDelta;
+          if (linkXY) {
+            heightDelta = primaryDelta ?? 0;
+          } else if (uiLinked && !linkXY && rawDeltaSizeCols && rawDeltaSizeCols === rawDeltaSizeRows) {
+            // The settings UI mirrors values when its link toggle is on; respect per-object link flags by
+            // ignoring mirrored height deltas for unlinked assets.
+            heightDelta = 0;
+          } else {
+            heightDelta = rawDeltaSizeRows;
+          }
 
           const wTiles = Math.max(1, Math.round((current.wTiles || 1) + widthDelta));
           const hTiles = Math.max(1, Math.round((current.hTiles || 1) + heightDelta));

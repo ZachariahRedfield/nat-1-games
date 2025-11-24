@@ -24,15 +24,17 @@ export function useSelectionState({
   const getAssetById = useCallback((id) => assets.find((a) => a.id === id), [assets]);
 
   const getSelectedObject = useCallback(() => {
-    if (selectedObjId) return getObjectById(currentLayer, selectedObjId);
-    if (selectedObjIds?.length === 1) return getObjectById(currentLayer, selectedObjIds[0]);
-    return null;
+    const count = Array.isArray(selectedObjIds) ? selectedObjIds.length : 0;
+    if (count !== 1) return null;
+    const id = selectedObjId ?? selectedObjIds[0];
+    return id ? getObjectById(currentLayer, id) : null;
   }, [currentLayer, getObjectById, selectedObjId, selectedObjIds]);
 
   const getSelectedToken = useCallback(() => {
-    if (selectedTokenId) return getTokenById(selectedTokenId);
-    if (selectedTokenIds?.length === 1) return getTokenById(selectedTokenIds[0]);
-    return null;
+    const count = Array.isArray(selectedTokenIds) ? selectedTokenIds.length : 0;
+    if (count !== 1) return null;
+    const id = selectedTokenId ?? selectedTokenIds[0];
+    return id ? getTokenById(id) : null;
   }, [getTokenById, selectedTokenId, selectedTokenIds]);
 
   const clearObjectSelection = useCallback(() => {
