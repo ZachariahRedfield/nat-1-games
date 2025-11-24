@@ -23,8 +23,12 @@ function handleTokenSelection({ token, row, col, selection, actions, dragRef }) 
   dragRef.current = {
     kind: "token",
     id: token.id,
-    offsetRow: row - token.row,
-    offsetCol: col - token.col,
+    startRow: row,
+    startCol: col,
+    baseRow: token.row,
+    baseCol: token.col,
+    height: token.hTiles || 1,
+    width: token.wTiles || 1,
   };
   return true;
 }
@@ -122,8 +126,12 @@ function handleObjectSelection({
     dragRef.current = {
       kind: "object",
       id: object.id,
-      offsetRow: row - object.row,
-      offsetCol: col - object.col,
+      startRow: row,
+      startCol: col,
+      baseRow: object.row,
+      baseCol: object.col,
+      height: object.hTiles,
+      width: object.wTiles,
     };
     return true;
   }
@@ -180,8 +188,12 @@ function handleObjectSelection({
   dragRef.current = {
     kind: "object",
     id: object.id,
-    offsetRow: row - object.row,
-    offsetCol: col - object.col,
+    startRow: row,
+    startCol: col,
+    baseRow: object.row,
+    baseCol: object.col,
+    height: object.hTiles,
+    width: object.wTiles,
   };
   return true;
 }

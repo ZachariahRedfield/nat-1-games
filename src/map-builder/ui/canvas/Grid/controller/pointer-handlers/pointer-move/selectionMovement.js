@@ -19,9 +19,11 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
   if (dragRef.current.kind === "object") {
     const obj = selection.getObjectById(config.currentLayer, dragRef.current.id);
     if (!obj) return true;
-    const { offsetRow, offsetCol } = dragRef.current;
-    const newRow = clamp(row - offsetRow, 0, Math.max(0, geometry.rows - obj.hTiles));
-    const newCol = clamp(col - offsetCol, 0, Math.max(0, geometry.cols - obj.wTiles));
+    const { startRow, startCol, baseRow, baseCol, height, width } = dragRef.current;
+    const deltaRow = row - startRow;
+    const deltaCol = col - startCol;
+    const newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - (height ?? obj.hTiles)));
+    const newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - (width ?? obj.wTiles)));
     actions.moveObject(config.currentLayer, obj.id, newRow, newCol);
     return true;
   }
@@ -53,11 +55,13 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
   if (dragRef.current.kind === "token" && selection.selectedTokenId && selection.selectedTokenIds.length <= 1) {
     const tok = selection.getTokenById(selection.selectedTokenId);
     if (!tok) return true;
-    const { offsetRow, offsetCol } = dragRef.current;
-    const width = tok.wTiles || 1;
-    const height = tok.hTiles || 1;
-    const newRow = clamp(row - offsetRow, 0, Math.max(0, geometry.rows - height));
-    const newCol = clamp(col - offsetCol, 0, Math.max(0, geometry.cols - width));
+    const { startRow, startCol, baseRow, baseCol, height, width } = dragRef.current;
+    const deltaRow = row - startRow;
+    const deltaCol = col - startCol;
+    const nextHeight = height ?? tok.hTiles ?? 1;
+    const nextWidth = width ?? tok.wTiles ?? 1;
+    const newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - nextHeight));
+    const newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - nextWidth));
     actions.moveToken?.(tok.id, newRow, newCol);
     return true;
   }

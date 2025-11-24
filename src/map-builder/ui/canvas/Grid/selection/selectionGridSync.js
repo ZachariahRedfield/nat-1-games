@@ -131,11 +131,8 @@ export function useObjectSelectionGridSync({
 
     const centerRow = obj.row + obj.hTiles / 2;
     const centerCol = obj.col + obj.wTiles / 2;
-    const step = gridSettings?.snapStep ?? 1;
-    const snapLike =
-      !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-    let newRow = snapLike ? Math.round(centerRow - nextH / 2) : centerRow - nextH / 2;
-    let newCol = snapLike ? Math.round(centerCol - nextW / 2) : centerCol - nextW / 2;
+    const newRow = centerRow - nextH / 2;
+    const newCol = centerCol - nextW / 2;
     newRow = clamp(newRow, 0, Math.max(0, rows - nextH));
     newCol = clamp(newCol, 0, Math.max(0, cols - nextW));
 
@@ -199,14 +196,8 @@ export function useTokenSelectionGridSync({
 
     const centerRow = token.row + (token.hTiles || 1) / 2;
     const centerCol = token.col + (token.wTiles || 1) / 2;
-    const step = gridSettings?.snapStep ?? 1;
-    const snapLike =
-      !!gridSettings?.snapToGrid || (!gridSettings?.snapToGrid && step === 1);
-    let newRow = snapLike ? Math.round(centerRow - hTiles / 2) : centerRow - hTiles / 2;
-    let newCol = snapLike ? Math.round(centerCol - wTiles / 2) : centerCol - wTiles / 2;
-    newRow = clamp(newRow, 0, Math.max(0, rows - hTiles));
-    newCol = clamp(newCol, 0, Math.max(0, cols - wTiles));
-
+    const newRow = clamp(centerRow - hTiles / 2, 0, Math.max(0, rows - hTiles));
+    const newCol = clamp(centerCol - wTiles / 2, 0, Math.max(0, cols - wTiles));
     updateTokenById?.(selectedTokenId, {
       wTiles,
       hTiles,
