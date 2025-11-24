@@ -64,7 +64,8 @@ export default function SelectionOverlay({
                       transform: `translate(-50%, -50%) rotate(${rot}deg)`,
                       transformOrigin: "center",
                       border: "2px dashed #4ade80",
-                      boxShadow: "0 0 0 2px rgba(74,222,128,0.3) inset",
+                      outline: "1px solid rgba(74,222,128,0.35)",
+                      willChange: "transform",
                     }}
                   >
                     {!isMultiSelection &&
@@ -96,7 +97,8 @@ export default function SelectionOverlay({
                         height: ringDiameter,
                         zIndex: baseZ,
                         borderRadius: "50%",
-                        boxShadow: "0 0 0 2px rgba(59,130,246,0.55) inset", // blue-ish ring
+                        border: "2px solid rgba(59,130,246,0.55)", // blue-ish ring
+                        willChange: "transform",
                       }}
                     />
                   )}
