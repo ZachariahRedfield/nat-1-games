@@ -168,6 +168,7 @@ export default function Grid(props) {
         <ActiveSelectionMiniPanel
           selectedObject={getSelectedObject()}
           selectedToken={getSelectedToken()}
+          selectedObjIds={selectedObjIds}
           tileSize={tileSize}
           containerSize={{ w: cssWidth, h: cssHeight }}
           currentLayer={currentLayer}

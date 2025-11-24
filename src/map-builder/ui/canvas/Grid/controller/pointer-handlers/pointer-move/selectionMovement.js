@@ -26,7 +26,7 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
     return true;
   }
 
-  if (dragRef.current.kind === "multi-object" && selection.selectedObjIds?.length > 1) {
+  if (dragRef.current.kind === "multi-object") {
     const { startRow, startCol, bounds, offsets } = dragRef.current;
     const deltaRow = row - startRow;
     const deltaCol = col - startCol;
