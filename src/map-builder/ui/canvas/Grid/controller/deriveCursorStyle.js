@@ -50,7 +50,7 @@ export function deriveCursorStyle({
     return "not-allowed";
   }
 
-  const gridCursor = engine === "grid" ? (gridSettings?.snapToGrid ? "cell" : "crosshair") : "crosshair";
+  const gridCursor = "crosshair";
 
   if (!mousePos) {
     return zoomToolActive ? "zoom-in" : gridCursor;
