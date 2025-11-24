@@ -52,10 +52,10 @@ export function useSelectionPanelPosition({
     const rawMaxY = scrollRect.bottom - contentRect.top - panelHeight - PANEL_PADDING;
 
     return {
-      minX: clamp(rawMinX, fallbackMinX, fallbackMaxX),
-      maxX: clamp(rawMaxX, fallbackMinX, fallbackMaxX),
-      minY: clamp(rawMinY, fallbackMinY, fallbackMaxY),
-      maxY: clamp(rawMaxY, fallbackMinY, fallbackMaxY),
+      minX: Math.min(fallbackMinX, rawMinX),
+      maxX: Math.max(fallbackMaxX, rawMaxX),
+      minY: Math.max(fallbackMinY, rawMinY),
+      maxY: Math.max(fallbackMaxY, rawMaxY),
     };
   }, [containerH, containerW, panelHeight, panelWidth, scrollRef, contentRef]);
 

@@ -32,6 +32,7 @@ function MultiSelectionMiniPanel({
         width: panelSize.width,
         height: panelSize.height,
         zIndex: 10060,
+        willChange: "left, top",
       }}
     >
       <div

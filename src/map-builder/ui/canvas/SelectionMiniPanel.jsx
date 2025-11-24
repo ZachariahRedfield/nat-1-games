@@ -65,6 +65,7 @@ export default function SelectionMiniPanel({
         width: panelSize.width,
         height: panelSize.height,
         zIndex: 10060,
+        willChange: "left, top",
       }}
     >
       <div className="text-[11px] font-semibold mb-2 cursor-move select-none" onPointerDown={onDragStart} title="Drag to move">
