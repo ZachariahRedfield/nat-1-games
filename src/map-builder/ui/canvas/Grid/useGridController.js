@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import useGridSelection from "./selection/useGridSelection.js";
 import {
   hitObjectResizeHandle as baseHitObjectResizeHandle,
@@ -104,6 +104,7 @@ export function useGridController({
   const lastTileRef = useRef({ row: -1, col: -1 });
   const zoomDragRef = useRef(null);
   const dragRef = useRef(null);
+  const [isSelectionDragging, setSelectionDragging] = useState(false);
 
   const pointerLifecycle = usePointerLifecycle({
     mouseDownRef,
@@ -263,6 +264,7 @@ export function useGridController({
       isPanning,
       lastPan,
       panHotkey,
+      setSelectionDragging,
     },
     config: {
       zoomToolActive,
@@ -343,6 +345,7 @@ export function useGridController({
     getTokenById,
     dragRef,
     zoomDragRef,
+    isSelectionDragging,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,

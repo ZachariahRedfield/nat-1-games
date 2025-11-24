@@ -1,7 +1,15 @@
 import { clamp } from "../../../utils.js";
 import { computeGridPosition, getPointerCssPosition } from "../gridPointerUtils.js";
 
-export function handleSelectionMovement({ event, refs, selection, config, geometry, actions }) {
+export function handleSelectionMovement({
+  event,
+  refs,
+  selection,
+  config,
+  geometry,
+  actions,
+  setSelectionDragging,
+}) {
   const { dragRef } = refs;
   if (!dragRef.current) return false;
 
@@ -37,6 +45,7 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
     const newRow = baseRow + clampedRowShift;
     const newCol = baseCol + clampedColShift;
     actions.moveObject(config.currentLayer, obj.id, newRow, newCol);
+    setSelectionDragging?.(true);
     return true;
   }
 
@@ -61,6 +70,7 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
       actions.moveObject(config.currentLayer, offset.id, newRow, newCol);
     }
 
+    setSelectionDragging?.(true);
     return true;
   }
 
@@ -75,6 +85,7 @@ export function handleSelectionMovement({ event, refs, selection, config, geomet
     const newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - nextHeight));
     const newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - nextWidth));
     actions.moveToken?.(tok.id, newRow, newCol);
+    setSelectionDragging?.(true);
     return true;
   }
 

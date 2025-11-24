@@ -10,6 +10,8 @@ export default function SelectionOverlay({
   cssWidth,
   cssHeight,
   layerVisibility,
+  dragState,
+  isDraggingSelection,
 }) {
   const getObjectById = (layer, id) => (objects[layer] || []).find((o) => o.id === id);
 
@@ -21,6 +23,10 @@ export default function SelectionOverlay({
     .filter(Boolean);
 
   const isMultiSelection = ids.length > 1;
+  const hideSelectionDecorations =
+    isDraggingSelection &&
+    dragState &&
+    (dragState.kind === "object" || dragState.kind === "multi-object");
 
   return (
     <>
@@ -33,6 +39,7 @@ export default function SelectionOverlay({
         return (
           <React.Fragment key={`sels-${layer}`}>
             {arr.map((sel) => {
+              if (hideSelectionDecorations) return null;
               const w = sel.wTiles * tileSize;
               const h = sel.hTiles * tileSize;
               const cx = (sel.col + sel.wTiles / 2) * tileSize;

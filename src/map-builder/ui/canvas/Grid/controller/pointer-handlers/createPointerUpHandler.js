@@ -61,7 +61,7 @@ function collectMarqueeSelection({ refs, selection, config, data, actions }) {
 }
 
 export function createPointerUpHandler(context) {
-  const { refs, config, callbacks, data, selection, actions } = context;
+  const { refs, config, callbacks, data, selection, actions, state } = context;
 
   return function handlePointerUp(event) {
     event.target.releasePointerCapture?.(event.pointerId);
@@ -69,6 +69,8 @@ export function createPointerUpHandler(context) {
     if (finalizeZoomTool({ config, refs, callbacks })) return;
 
     finalizeCanvasStroke({ refs, config, data });
+
+    state?.setSelectionDragging?.(false);
 
     if (refs.dragRef.current) {
       collectMarqueeSelection({ refs, selection, config, data, actions });

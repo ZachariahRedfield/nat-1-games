@@ -67,6 +67,7 @@ export default function Grid(props) {
     getTokenById,
     dragRef,
     zoomDragRef,
+    isSelectionDragging,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -125,6 +126,8 @@ export default function Grid(props) {
           cssWidth={cssWidth}
           cssHeight={cssHeight}
           layerVisibility={layerVisibility}
+          dragState={dragRef.current}
+          isDraggingSelection={isSelectionDragging}
         />
 
         {tokensVisible && (
@@ -133,6 +136,8 @@ export default function Grid(props) {
             selectedTokenIds={selectedTokenIds}
             getTokenById={getTokenById}
             tileSize={tileSize}
+            dragState={dragRef.current}
+            isDraggingSelection={isSelectionDragging}
           />
         )}
 

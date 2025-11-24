@@ -29,7 +29,18 @@ export function createPointerMoveHandler(context) {
     if (handleTokenRotation({ event, refs, selection, config, actions })) return;
 
     if (config.interactionMode === "select") {
-      if (handleSelectionMovement({ event, refs, selection, config, geometry, actions })) return;
+      if (
+        handleSelectionMovement({
+          event,
+          refs,
+          selection,
+          config,
+          geometry,
+          actions,
+          setSelectionDragging: state.setSelectionDragging,
+        })
+      )
+        return;
       return;
     }
 
