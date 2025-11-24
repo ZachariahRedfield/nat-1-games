@@ -5,6 +5,8 @@ export default function TokenSelectionOverlay({
   selectedTokenIds,
   getTokenById,
   tileSize,
+  dragState,
+  isDraggingSelection,
 }) {
   const ids =
     selectedTokenIds && selectedTokenIds.length
@@ -14,6 +16,11 @@ export default function TokenSelectionOverlay({
       : [];
 
   if (!ids.length || ids.length > 1) return null;
+
+  const hideSelectionDecorations =
+    isDraggingSelection && dragState && dragState.kind === "token";
+
+  if (hideSelectionDecorations) return null;
 
   const renderSelectionBox = (token) => {
     const left = token.col * tileSize;
@@ -33,7 +40,7 @@ export default function TokenSelectionOverlay({
     <>
       {ids.map((id) => {
         const token = getTokenById(id);
-        if (!token) return null;
+        if (!token || hideSelectionDecorations) return null;
         const { left, top, width, height } = renderSelectionBox(token);
         return (
           <div
