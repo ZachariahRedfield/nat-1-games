@@ -29,6 +29,8 @@ function handleTokenSelection({ token, row, col, selection, actions, dragRef }) 
     baseCol: token.col,
     height: token.hTiles || 1,
     width: token.wTiles || 1,
+    lastRow: token.row,
+    lastCol: token.col,
   };
   return true;
 }
@@ -118,6 +120,8 @@ function handleObjectSelection({
         bounds: { minRow, maxRow, minCol, maxCol },
         startRow: row,
         startCol: col,
+        lastRowShift: 0,
+        lastColShift: 0,
       };
       return true;
     }
@@ -132,6 +136,8 @@ function handleObjectSelection({
       baseCol: object.col,
       height: object.hTiles,
       width: object.wTiles,
+      lastRow: object.row,
+      lastCol: object.col,
     };
     return true;
   }
@@ -174,6 +180,8 @@ function handleObjectSelection({
       bounds: { minRow, maxRow, minCol, maxCol },
       startRow: row,
       startCol: col,
+      lastRowShift: 0,
+      lastColShift: 0,
     };
     return true;
   }
@@ -194,6 +202,8 @@ function handleObjectSelection({
     baseCol: object.col,
     height: object.hTiles,
     width: object.wTiles,
+    lastRow: object.row,
+    lastCol: object.col,
   };
   return true;
 }

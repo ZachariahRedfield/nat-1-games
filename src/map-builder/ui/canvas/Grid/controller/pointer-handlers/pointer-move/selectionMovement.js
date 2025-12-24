@@ -44,7 +44,12 @@ export function handleSelectionMovement({
 
     const newRow = baseRow + clampedRowShift;
     const newCol = baseCol + clampedColShift;
+    if (dragRef.current.lastRow === newRow && dragRef.current.lastCol === newCol) {
+      return true;
+    }
     actions.moveObject(config.currentLayer, obj.id, newRow, newCol);
+    dragRef.current.lastRow = newRow;
+    dragRef.current.lastCol = newCol;
     setSelectionDragging?.(true);
     return true;
   }
@@ -62,6 +67,13 @@ export function handleSelectionMovement({
     const clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
     const clampedColShift = clamp(deltaCol, minColShift, maxColShift);
 
+    if (
+      dragRef.current.lastRowShift === clampedRowShift &&
+      dragRef.current.lastColShift === clampedColShift
+    ) {
+      return true;
+    }
+
     for (const offset of offsets) {
       const baseRow = startRow - offset.offsetRow;
       const baseCol = startCol - offset.offsetCol;
@@ -70,6 +82,8 @@ export function handleSelectionMovement({
       actions.moveObject(config.currentLayer, offset.id, newRow, newCol);
     }
 
+    dragRef.current.lastRowShift = clampedRowShift;
+    dragRef.current.lastColShift = clampedColShift;
     setSelectionDragging?.(true);
     return true;
   }
@@ -84,7 +98,12 @@ export function handleSelectionMovement({
     const nextWidth = width ?? tok.wTiles ?? 1;
     const newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - nextHeight));
     const newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - nextWidth));
+    if (dragRef.current.lastRow === newRow && dragRef.current.lastCol === newCol) {
+      return true;
+    }
     actions.moveToken?.(tok.id, newRow, newCol);
+    dragRef.current.lastRow = newRow;
+    dragRef.current.lastCol = newCol;
     setSelectionDragging?.(true);
     return true;
   }
