@@ -72,22 +72,31 @@ export function useSelectionPanelPosition({
 
   const bounds = React.useMemo(() => normalizeBounds(computeBounds()), [computeBounds]);
 
-  const defaultPosition = React.useMemo(() => {
-    const left = (obj?.col ?? 0) * tileSize;
-    const top = (obj?.row ?? 0) * tileSize;
-    const width = (obj?.wTiles ?? 1) * tileSize;
-    const height = (obj?.hTiles ?? 1) * tileSize;
+  const getAnchorPosition = React.useCallback(() => {
+    const contentEl = contentRef?.current;
+    const zoomControls = document.getElementById("layer-bar-zoom-controls");
+    if (!contentEl || !zoomControls) return null;
 
-    const desiredLeft = left - panelWidth - PANEL_MARGIN;
-    const fallbackLeft = left + width + PANEL_MARGIN;
-    const xCandidate = desiredLeft < bounds.minX ? fallbackLeft : desiredLeft;
-    const yCandidate = top + height / 2 - panelHeight / 2;
+    const contentRect = contentEl.getBoundingClientRect();
+    const zoomRect = zoomControls.getBoundingClientRect();
 
     return {
-      x: clamp(xCandidate, bounds.minX, bounds.maxX),
-      y: clamp(yCandidate, bounds.minY, bounds.maxY),
+      x: zoomRect.left - contentRect.left,
+      y: zoomRect.bottom - contentRect.top + PANEL_MARGIN,
     };
-  }, [bounds, obj, panelHeight, panelWidth, tileSize]);
+  }, [contentRef]);
+
+  const defaultPosition = React.useMemo(() => {
+    const anchor = getAnchorPosition();
+    if (anchor) {
+      return clampToBounds(anchor.x, anchor.y);
+    }
+
+    return {
+      x: bounds.minX,
+      y: bounds.minY,
+    };
+  }, [bounds.minX, bounds.minY, clampToBounds, getAnchorPosition]);
 
   const [position, setPosition] = React.useState(defaultPosition);
   const movedRef = React.useRef(false);

@@ -11,7 +11,7 @@ export function LayerBarZoomControls({ tileSize, setTileSize, onZoomToFit }) {
   );
 
   return (
-    <div className="ml-auto flex items-center gap-2">
+    <div id="layer-bar-zoom-controls" className="ml-auto flex items-center gap-2">
       <button
         type="button"
         className={`p-1 rounded-full border border-white/60 text-white/80 hover:text-white hover:border-white transition ${
