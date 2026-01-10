@@ -142,16 +142,36 @@ export function useObjectSelectionGridSync({
     newRow = clamp(newRow, 0, Math.max(0, rows - nextH));
     newCol = clamp(newCol, 0, Math.max(0, cols - nextW));
 
+    const rotation = gridSettings.rotation || 0;
+    const flipX = !!gridSettings.flipX;
+    const flipY = !!gridSettings.flipY;
+    const opacity = Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1));
+    const linkXY = !!gridSettings.linkXY;
+
+    if (
+      obj.wTiles === nextW &&
+      obj.hTiles === nextH &&
+      obj.row === newRow &&
+      obj.col === newCol &&
+      (obj.rotation || 0) === rotation &&
+      !!obj.flipX === flipX &&
+      !!obj.flipY === flipY &&
+      (obj.opacity ?? 1) === opacity &&
+      !!obj.linkXY === linkXY
+    ) {
+      return;
+    }
+
     updateObjectById(currentLayer, obj.id, {
       wTiles: nextW,
       hTiles: nextH,
       row: newRow,
       col: newCol,
-      rotation: gridSettings.rotation || 0,
-      flipX: !!gridSettings.flipX,
-      flipY: !!gridSettings.flipY,
-      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
-      linkXY: !!gridSettings.linkXY,
+      rotation,
+      flipX,
+      flipY,
+      opacity,
+      linkXY,
     });
 
     prevGridSettingsRef.current = gridSettings;
@@ -204,15 +224,33 @@ export function useTokenSelectionGridSync({
     const centerCol = token.col + (token.wTiles || 1) / 2;
     const newRow = clamp(centerRow - hTiles / 2, 0, Math.max(0, rows - hTiles));
     const newCol = clamp(centerCol - wTiles / 2, 0, Math.max(0, cols - wTiles));
+    const rotation = gridSettings.rotation || 0;
+    const flipX = !!gridSettings.flipX;
+    const flipY = !!gridSettings.flipY;
+    const opacity = Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1));
+
+    if (
+      (token.wTiles || 1) === wTiles &&
+      (token.hTiles || 1) === hTiles &&
+      token.row === newRow &&
+      token.col === newCol &&
+      (token.rotation || 0) === rotation &&
+      !!token.flipX === flipX &&
+      !!token.flipY === flipY &&
+      (token.opacity ?? 1) === opacity
+    ) {
+      return;
+    }
+
     updateTokenById?.(selectedTokenId, {
       wTiles,
       hTiles,
       row: newRow,
       col: newCol,
-      rotation: gridSettings.rotation || 0,
-      flipX: !!gridSettings.flipX,
-      flipY: !!gridSettings.flipY,
-      opacity: Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1)),
+      rotation,
+      flipX,
+      flipY,
+      opacity,
     });
   }, [gridSettings, selectedTokenId, rows, cols, getTokenById, updateTokenById]);
 }
