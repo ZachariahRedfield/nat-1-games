@@ -25,14 +25,12 @@ export function handleSelectionMovement({
   const col = position.col;
 
   if (dragRef.current.kind === "object") {
-    const obj = selection.getObjectById(config.currentLayer, dragRef.current.id);
-    if (!obj) return true;
     const { startRow, startCol, baseRow, baseCol, height, width } = dragRef.current;
     const deltaRow = row - startRow;
     const deltaCol = col - startCol;
 
-    const objHeight = height ?? obj.hTiles ?? 1;
-    const objWidth = width ?? obj.wTiles ?? 1;
+    const objHeight = height ?? 1;
+    const objWidth = width ?? 1;
 
     const minRowShift = -baseRow;
     const maxRowShift = geometry.rows - (baseRow + objHeight);
@@ -47,7 +45,7 @@ export function handleSelectionMovement({
     if (dragRef.current.lastRow === newRow && dragRef.current.lastCol === newCol) {
       return true;
     }
-    actions.moveObject(config.currentLayer, obj.id, newRow, newCol);
+    actions.moveObject(config.currentLayer, dragRef.current.id, newRow, newCol);
     dragRef.current.lastRow = newRow;
     dragRef.current.lastCol = newCol;
     setSelectionDragging?.(true);
@@ -89,19 +87,17 @@ export function handleSelectionMovement({
   }
 
   if (dragRef.current.kind === "token" && selection.selectedTokenId && selection.selectedTokenIds.length <= 1) {
-    const tok = selection.getTokenById(selection.selectedTokenId);
-    if (!tok) return true;
     const { startRow, startCol, baseRow, baseCol, height, width } = dragRef.current;
     const deltaRow = row - startRow;
     const deltaCol = col - startCol;
-    const nextHeight = height ?? tok.hTiles ?? 1;
-    const nextWidth = width ?? tok.wTiles ?? 1;
+    const nextHeight = height ?? 1;
+    const nextWidth = width ?? 1;
     const newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - nextHeight));
     const newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - nextWidth));
     if (dragRef.current.lastRow === newRow && dragRef.current.lastCol === newCol) {
       return true;
     }
-    actions.moveToken?.(tok.id, newRow, newCol);
+    actions.moveToken?.(dragRef.current.id, newRow, newCol);
     dragRef.current.lastRow = newRow;
     dragRef.current.lastCol = newCol;
     setSelectionDragging?.(true);
