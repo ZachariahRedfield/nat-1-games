@@ -55,6 +55,7 @@ export default function ActiveSelectionMiniPanel({
   selectedObject,
   selectedToken,
   selectedObjIds = [],
+  isSelectionDragging,
   tileSize,
   containerSize,
   currentLayer,
@@ -95,6 +96,10 @@ export default function ActiveSelectionMiniPanel({
         contentRef={contentRef}
       />
     );
+  }
+
+  if (isSelectionDragging && (selectedObject || selectedToken)) {
+    return null;
   }
 
   if (selectedObject) {

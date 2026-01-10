@@ -174,6 +174,7 @@ export default function Grid(props) {
           selectedObject={getSelectedObject()}
           selectedToken={getSelectedToken()}
           selectedObjIds={selectedObjIds}
+          isSelectionDragging={isSelectionDragging}
           tileSize={tileSize}
           containerSize={{ w: cssWidth, h: cssHeight }}
           currentLayer={currentLayer}
