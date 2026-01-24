@@ -56,7 +56,7 @@ export function createPointerDownHandler(context) {
     const tokRot = hitTokenRotateRing(pointer.xCss, pointer.yCss);
     if (tokRot && beginTokenRotation({ event, tokRot, dragRef, callbacks })) return;
 
-    const { row, col } = computeGridPosition({
+    const { row, col, rowRaw, colRaw } = computeGridPosition({
       xCss: pointer.xCss,
       yCss: pointer.yCss,
       geometry,
@@ -77,7 +77,16 @@ export function createPointerDownHandler(context) {
       if (hit && beginObjectResize({ event, cornerHit: hit, dragRef, callbacks, config })) return;
 
       const hitTok = selection.getTopMostTokenAt(Math.floor(row), Math.floor(col));
-      if (hitTok && handleTokenSelection({ token: hitTok, row, col, selection, actions, dragRef })) return;
+      if (hitTok && handleTokenSelection({
+        token: hitTok,
+        row,
+        col,
+        rowRaw,
+        colRaw,
+        selection,
+        actions,
+        dragRef,
+      })) return;
 
       const hitObj = selection.getTopMostObjectAt(config.currentLayer, Math.floor(row), Math.floor(col));
       if (
@@ -87,6 +96,8 @@ export function createPointerDownHandler(context) {
           object: hitObj,
           row,
           col,
+          rowRaw,
+          colRaw,
           selection,
           actions,
           dragRef,

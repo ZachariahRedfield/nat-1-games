@@ -21,30 +21,35 @@ export function handleSelectionMovement({
     gridSettings: config.gridSettings,
   });
 
-  const row = position.row;
-  const col = position.col;
+  const rawRow = Number.isFinite(position.rowRaw) ? position.rowRaw : position.row;
+  const rawCol = Number.isFinite(position.colRaw) ? position.colRaw : position.col;
+  const row = rawRow;
+  const col = rawCol;
 
   if (dragRef.current.kind === "object") {
-    const obj = selection.getObjectById(config.currentLayer, dragRef.current.id);
-    if (!obj) return true;
     const { startRow, startCol, baseRow, baseCol, height, width } = dragRef.current;
     const deltaRow = row - startRow;
     const deltaCol = col - startCol;
 
-    const objHeight = height ?? obj.hTiles ?? 1;
-    const objWidth = width ?? obj.wTiles ?? 1;
+    const objHeight = height ?? 1;
+    const objWidth = width ?? 1;
 
     const minRowShift = -baseRow;
     const maxRowShift = geometry.rows - (baseRow + objHeight);
     const minColShift = -baseCol;
     const maxColShift = geometry.cols - (baseCol + objWidth);
 
-    const clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
-    const clampedColShift = clamp(deltaCol, minColShift, maxColShift);
+    let clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
+    let clampedColShift = clamp(deltaCol, minColShift, maxColShift);
 
     const newRow = baseRow + clampedRowShift;
     const newCol = baseCol + clampedColShift;
-    actions.moveObject(config.currentLayer, obj.id, newRow, newCol);
+    if (dragRef.current.lastRow === newRow && dragRef.current.lastCol === newCol) {
+      return true;
+    }
+    actions.moveObject(config.currentLayer, dragRef.current.id, newRow, newCol);
+    dragRef.current.lastRow = newRow;
+    dragRef.current.lastCol = newCol;
     setSelectionDragging?.(true);
     return true;
   }
@@ -59,8 +64,15 @@ export function handleSelectionMovement({
     const minColShift = -bounds.minCol;
     const maxColShift = geometry.cols - bounds.maxCol;
 
-    const clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
-    const clampedColShift = clamp(deltaCol, minColShift, maxColShift);
+    let clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
+    let clampedColShift = clamp(deltaCol, minColShift, maxColShift);
+
+    if (
+      dragRef.current.lastRowShift === clampedRowShift &&
+      dragRef.current.lastColShift === clampedColShift
+    ) {
+      return true;
+    }
 
     for (const offset of offsets) {
       const baseRow = startRow - offset.offsetRow;
@@ -70,21 +82,26 @@ export function handleSelectionMovement({
       actions.moveObject(config.currentLayer, offset.id, newRow, newCol);
     }
 
+    dragRef.current.lastRowShift = clampedRowShift;
+    dragRef.current.lastColShift = clampedColShift;
     setSelectionDragging?.(true);
     return true;
   }
 
   if (dragRef.current.kind === "token" && selection.selectedTokenId && selection.selectedTokenIds.length <= 1) {
-    const tok = selection.getTokenById(selection.selectedTokenId);
-    if (!tok) return true;
     const { startRow, startCol, baseRow, baseCol, height, width } = dragRef.current;
     const deltaRow = row - startRow;
     const deltaCol = col - startCol;
-    const nextHeight = height ?? tok.hTiles ?? 1;
-    const nextWidth = width ?? tok.wTiles ?? 1;
-    const newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - nextHeight));
-    const newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - nextWidth));
-    actions.moveToken?.(tok.id, newRow, newCol);
+    const nextHeight = height ?? 1;
+    const nextWidth = width ?? 1;
+    let newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - nextHeight));
+    let newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - nextWidth));
+    if (dragRef.current.lastRow === newRow && dragRef.current.lastCol === newCol) {
+      return true;
+    }
+    actions.moveToken?.(dragRef.current.id, newRow, newCol);
+    dragRef.current.lastRow = newRow;
+    dragRef.current.lastCol = newCol;
     setSelectionDragging?.(true);
     return true;
   }
