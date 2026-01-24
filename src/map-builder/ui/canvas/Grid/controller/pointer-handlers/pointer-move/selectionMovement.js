@@ -21,10 +21,8 @@ export function handleSelectionMovement({
     gridSettings: config.gridSettings,
   });
 
-  const rawRow = Number.isFinite(position.rowRaw) ? position.rowRaw : position.row;
-  const rawCol = Number.isFinite(position.colRaw) ? position.colRaw : position.col;
-  const row = rawRow;
-  const col = rawCol;
+  const row = position.row;
+  const col = position.col;
 
   if (dragRef.current.kind === "object") {
     const { startRow, startCol, baseRow, baseCol, height, width } = dragRef.current;
@@ -39,8 +37,8 @@ export function handleSelectionMovement({
     const minColShift = -baseCol;
     const maxColShift = geometry.cols - (baseCol + objWidth);
 
-    let clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
-    let clampedColShift = clamp(deltaCol, minColShift, maxColShift);
+    const clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
+    const clampedColShift = clamp(deltaCol, minColShift, maxColShift);
 
     const newRow = baseRow + clampedRowShift;
     const newCol = baseCol + clampedColShift;
@@ -64,15 +62,8 @@ export function handleSelectionMovement({
     const minColShift = -bounds.minCol;
     const maxColShift = geometry.cols - bounds.maxCol;
 
-    let clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
-    let clampedColShift = clamp(deltaCol, minColShift, maxColShift);
-
-    if (
-      dragRef.current.lastRowShift === clampedRowShift &&
-      dragRef.current.lastColShift === clampedColShift
-    ) {
-      return true;
-    }
+    const clampedRowShift = clamp(deltaRow, minRowShift, maxRowShift);
+    const clampedColShift = clamp(deltaCol, minColShift, maxColShift);
 
     if (
       dragRef.current.lastRowShift === clampedRowShift &&
@@ -101,8 +92,8 @@ export function handleSelectionMovement({
     const deltaCol = col - startCol;
     const nextHeight = height ?? 1;
     const nextWidth = width ?? 1;
-    let newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - nextHeight));
-    let newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - nextWidth));
+    const newRow = clamp(baseRow + deltaRow, 0, Math.max(0, geometry.rows - nextHeight));
+    const newCol = clamp(baseCol + deltaCol, 0, Math.max(0, geometry.cols - nextWidth));
     if (dragRef.current.lastRow === newRow && dragRef.current.lastCol === newCol) {
       return true;
     }
