@@ -13,8 +13,9 @@ export function computeGridPosition({ xCss, yCss, geometry, gridSettings }) {
   let rowRaw = (yCss / cssHeight) * rows;
   let colRaw = (xCss / cssWidth) * cols;
 
-  const row = rowRaw;
-  const col = colRaw;
+  const snapToGrid = !!gridSettings?.snapToGrid;
+  const row = snapToGrid ? Math.floor(rowRaw) : rowRaw;
+  const col = snapToGrid ? Math.floor(colRaw) : colRaw;
 
   return { row, col, rowRaw, colRaw };
 }
