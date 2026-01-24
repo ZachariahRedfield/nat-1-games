@@ -134,11 +134,6 @@ export function useObjectSelectionGridSync({
     let newRow = centerRow - nextH / 2;
     let newCol = centerCol - nextW / 2;
 
-    if (gridSettings?.snapToGrid) {
-      newRow = Math.round(newRow);
-      newCol = Math.round(newCol);
-    }
-
     newRow = clamp(newRow, 0, Math.max(0, rows - nextH));
     newCol = clamp(newCol, 0, Math.max(0, cols - nextW));
 

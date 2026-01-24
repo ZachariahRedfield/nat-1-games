@@ -10,9 +10,11 @@ function clearSelection({ selection, actions }) {
   onTokenSelectionChange?.([]);
 }
 
-function handleTokenSelection({ token, row, col, selection, actions, dragRef }) {
+function handleTokenSelection({ token, row, col, rowRaw, colRaw, selection, actions, dragRef }) {
   const { setSelectedObjId, setSelectedObjIds, setSelectedTokenIds, setSelectedTokenId } = selection;
   const { onTokenSelectionChange } = actions;
+  const pointerRow = Number.isFinite(rowRaw) ? rowRaw : row;
+  const pointerCol = Number.isFinite(colRaw) ? colRaw : col;
 
   setSelectedObjId(null);
   setSelectedObjIds([]);
@@ -23,8 +25,8 @@ function handleTokenSelection({ token, row, col, selection, actions, dragRef }) 
   dragRef.current = {
     kind: "token",
     id: token.id,
-    startRow: row,
-    startCol: col,
+    startRow: pointerRow,
+    startCol: pointerCol,
     baseRow: token.row,
     baseCol: token.col,
     height: token.hTiles || 1,
@@ -40,6 +42,8 @@ function handleObjectSelection({
   object,
   row,
   col,
+  rowRaw,
+  colRaw,
   selection,
   actions,
   dragRef,
@@ -57,6 +61,8 @@ function handleObjectSelection({
   const { onSelectionChange } = actions;
   const { onBeginObjectStroke } = callbacks;
   const { currentLayer } = config;
+  const pointerRow = Number.isFinite(rowRaw) ? rowRaw : row;
+  const pointerCol = Number.isFinite(colRaw) ? colRaw : col;
 
   const additive = event?.metaKey || event?.ctrlKey;
 
@@ -84,8 +90,8 @@ function handleObjectSelection({
         if (!current) return null;
         return {
           id,
-          offsetRow: row - current.row,
-          offsetCol: col - current.col,
+          offsetRow: pointerRow - current.row,
+          offsetCol: pointerCol - current.col,
           height: current.hTiles,
           width: current.wTiles,
           row: current.row,
@@ -118,8 +124,8 @@ function handleObjectSelection({
           width,
         })),
         bounds: { minRow, maxRow, minCol, maxCol },
-        startRow: row,
-        startCol: col,
+        startRow: pointerRow,
+        startCol: pointerCol,
         lastRowShift: 0,
         lastColShift: 0,
       };
@@ -130,8 +136,8 @@ function handleObjectSelection({
     dragRef.current = {
       kind: "object",
       id: object.id,
-      startRow: row,
-      startCol: col,
+      startRow: pointerRow,
+      startCol: pointerCol,
       baseRow: object.row,
       baseCol: object.col,
       height: object.hTiles,
@@ -149,8 +155,8 @@ function handleObjectSelection({
         if (!current) return null;
         return {
           id,
-          offsetRow: row - current.row,
-          offsetCol: col - current.col,
+          offsetRow: pointerRow - current.row,
+          offsetCol: pointerCol - current.col,
           height: current.hTiles,
           width: current.wTiles,
           row: current.row,
@@ -178,8 +184,8 @@ function handleObjectSelection({
         width,
       })),
       bounds: { minRow, maxRow, minCol, maxCol },
-      startRow: row,
-      startCol: col,
+      startRow: pointerRow,
+      startCol: pointerCol,
       lastRowShift: 0,
       lastColShift: 0,
     };
@@ -196,8 +202,8 @@ function handleObjectSelection({
   dragRef.current = {
     kind: "object",
     id: object.id,
-    startRow: row,
-    startCol: col,
+    startRow: pointerRow,
+    startCol: pointerCol,
     baseRow: object.row,
     baseCol: object.col,
     height: object.hTiles,
