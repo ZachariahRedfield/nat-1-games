@@ -74,6 +74,13 @@ export function handleSelectionMovement({
       return true;
     }
 
+    if (
+      dragRef.current.lastRowShift === clampedRowShift &&
+      dragRef.current.lastColShift === clampedColShift
+    ) {
+      return true;
+    }
+
     for (const offset of offsets) {
       const baseRow = startRow - offset.offsetRow;
       const baseCol = startCol - offset.offsetCol;
