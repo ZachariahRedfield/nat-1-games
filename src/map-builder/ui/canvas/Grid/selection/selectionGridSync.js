@@ -6,6 +6,7 @@ import {
   getMultiSelectionDeltas,
   getObjectSizeFromGrid,
   getSelectionIdsChange,
+  isMultiSelectionNeutral,
   getTokenSizeFromGrid,
 } from "./selectionGridSyncHelpers.js";
 
@@ -51,6 +52,10 @@ export function useObjectSelectionGridSync({
       });
 
       prevGridSettingsRef.current = gridSettings;
+      return;
+    }
+
+    if (isMultiSelectionNeutral(gridSettings)) {
       return;
     }
 
@@ -127,6 +132,7 @@ export function useTokenSelectionGridSync({
 }) {
   useEffect(() => {
     if (!gridSettings || !selectedTokenId) return;
+    if (isMultiSelectionNeutral(gridSettings)) return;
     const token = getTokenById(selectedTokenId);
     if (!token) return;
 

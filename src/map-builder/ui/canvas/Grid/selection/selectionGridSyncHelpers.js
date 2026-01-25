@@ -50,6 +50,19 @@ export const getMultiSelectionDeltas = (gridSettings, prevGridSettings) => {
   };
 };
 
+export const isMultiSelectionNeutral = (gridSettings) => {
+  if (!gridSettings) return false;
+  return (
+    gridSettings.sizeCols === 0 &&
+    gridSettings.sizeRows === 0 &&
+    gridSettings.sizeTiles === 0 &&
+    gridSettings.rotation === 0 &&
+    gridSettings.opacity === 0 &&
+    !gridSettings.flipX &&
+    !gridSettings.flipY
+  );
+};
+
 export const applyMultiSelectionUpdates = ({
   selectedObjIds,
   currentLayer,
