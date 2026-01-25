@@ -180,7 +180,15 @@ export default function RightAssetsPanel({
     (entry) => {
       if (!entry) return;
       if (entry.kind === "token") {
+        if (selectedToken?.id === entry.id) {
+          clearTokenSelection?.();
+          return;
+        }
         handleTokenSelectionChange?.(entry.token);
+        return;
+      }
+      if (selectedObj?.id === entry.id) {
+        clearObjectSelection?.();
         return;
       }
       if (setCurrentLayer) {
@@ -188,7 +196,15 @@ export default function RightAssetsPanel({
       }
       handleSelectionChange?.(entry.obj);
     },
-    [handleSelectionChange, handleTokenSelectionChange, setCurrentLayer]
+    [
+      clearObjectSelection,
+      clearTokenSelection,
+      handleSelectionChange,
+      handleTokenSelectionChange,
+      selectedObj?.id,
+      selectedToken?.id,
+      setCurrentLayer,
+    ]
   );
 
   const hasSelection =

@@ -56,21 +56,23 @@ export function useZoomToRect({
       rx = clamp(rx, 0, 1);
       ry = clamp(ry, 0, 1);
 
-      const containerRect = container.getBoundingClientRect();
-      const contentRect = content.getBoundingClientRect();
-      const contentOffsetLeft = contentRect.left - containerRect.left + container.scrollLeft;
-      const contentOffsetTop = contentRect.top - containerRect.top + container.scrollTop;
-
       setTileSize(next);
       const centerAfterPaint = () => {
+        const nextContainer = scrollRef.current;
+        const nextContent = gridContentRef.current;
+        if (!nextContainer || !nextContent) return;
+        const containerRect = nextContainer.getBoundingClientRect();
+        const contentRect = nextContent.getBoundingClientRect();
+        const contentOffsetLeft = contentRect.left - containerRect.left + nextContainer.scrollLeft;
+        const contentOffsetTop = contentRect.top - containerRect.top + nextContainer.scrollTop;
         const contentWidthNext = cols * next;
         const contentHeightNext = rows * next;
-        const desiredLeft = contentOffsetLeft + rx * contentWidthNext - container.clientWidth / 2;
+        const desiredLeft = contentOffsetLeft + rx * contentWidthNext - nextContainer.clientWidth / 2;
         const visibleCenterOffset = paddingOffset + availableHeight / 2;
         const desiredTop = contentOffsetTop + ry * contentHeightNext - visibleCenterOffset;
-        const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
-        const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
-        container.scrollTo({
+        const maxLeft = Math.max(0, nextContainer.scrollWidth - nextContainer.clientWidth);
+        const maxTop = Math.max(0, nextContainer.scrollHeight - nextContainer.clientHeight);
+        nextContainer.scrollTo({
           left: clamp(desiredLeft, 0, maxLeft),
           top: clamp(desiredTop, 0, maxTop),
         });
