@@ -10,6 +10,8 @@ export function createLayerBarProps(state) {
     toggleLayerVisibility: state.toggleLayerVisibility,
     showGridLines: state.showGridLines,
     setShowGridLines: state.setShowGridLines,
+    gridSettings: state.gridSettings,
+    setGridSettings: state.setGridSettings,
     tileSize: state.tileSize,
     setTileSize: state.setTileSize,
     reorderLayer: state.reorderLayer,

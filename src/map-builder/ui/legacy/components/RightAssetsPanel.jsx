@@ -54,7 +54,6 @@ export default function RightAssetsPanel({
   const [activeTab, setActiveTab] = useState("assets");
   const [placedSearch, setPlacedSearch] = useState("");
   const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
-  const [multiSelectedKeys, setMultiSelectedKeys] = useState(() => new Set());
   const previousTabRef = useRef(activeTab);
 
   useEffect(() => {
@@ -91,22 +90,34 @@ export default function RightAssetsPanel({
     setCollapsed((value) => !value);
   }, []);
 
-  const handleToggleMultiSelect = useCallback(() => {
-    setMultiSelectEnabled((value) => !value);
-    setMultiSelectedKeys(new Set());
-  }, []);
+  const selectedObjsList = selectionPanelProps?.selectedObjsList ?? [];
+  const selectedTokensList = selectionPanelProps?.selectedTokensList ?? [];
+  const selectionCount = selectedObjsList.length + selectedTokensList.length;
 
-  const handleToggleMultiSelectEntry = useCallback((key) => {
-    setMultiSelectedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
+  const handleToggleMultiSelect = useCallback(() => {
+    setMultiSelectEnabled((value) => {
+      const next = !value;
+      if (!next && selectionCount > 1) {
+        if (selectedToken) {
+          handleTokenSelectionChange?.(selectedToken);
+          handleSelectionChange?.([]);
+        } else if (selectedObj) {
+          handleSelectionChange?.(selectedObj);
+          handleTokenSelectionChange?.([]);
+        } else {
+          handleSelectionChange?.([]);
+          handleTokenSelectionChange?.([]);
+        }
       }
       return next;
     });
-  }, []);
+  }, [
+    handleSelectionChange,
+    handleTokenSelectionChange,
+    selectedObj,
+    selectedToken,
+    selectionCount,
+  ]);
 
   const handleOpenTab = useCallback((tab) => {
     setActiveTab(tab);
@@ -225,25 +236,55 @@ export default function RightAssetsPanel({
   );
 
   useEffect(() => {
-    if (!multiSelectEnabled) return;
-    const selectedEntries = Array.from(multiSelectedKeys)
-      .map((key) => placedAssetsByKey.get(key))
-      .filter(Boolean);
-    const selectedObjects = selectedEntries
-      .filter((entry) => entry.kind === "object")
-      .map((entry) => entry.obj);
-    const selectedTokens = selectedEntries
-      .filter((entry) => entry.kind === "token")
-      .map((entry) => entry.token);
-    handleSelectionChange?.(selectedObjects);
-    handleTokenSelectionChange?.(selectedTokens);
-  }, [
-    handleSelectionChange,
-    handleTokenSelectionChange,
-    multiSelectEnabled,
-    multiSelectedKeys,
-    placedAssetsByKey,
-  ]);
+    if (selectionCount > 1) {
+      setMultiSelectEnabled(true);
+    }
+  }, [selectionCount]);
+
+  const selectedEntryKeys = useMemo(() => {
+    const next = new Set();
+    selectedObjsList.forEach((obj) => {
+      if (obj?.id) {
+        next.add(`object-${obj.id}`);
+      }
+    });
+    selectedTokensList.forEach((token) => {
+      if (token?.id) {
+        next.add(`token-${token.id}`);
+      }
+    });
+    return next;
+  }, [selectedObjsList, selectedTokensList]);
+
+  const handleToggleMultiSelectEntry = useCallback(
+    (key) => {
+      const nextKeys = new Set(selectedEntryKeys);
+      if (nextKeys.has(key)) {
+        nextKeys.delete(key);
+      } else {
+        nextKeys.add(key);
+      }
+
+      const selectedEntries = Array.from(nextKeys)
+        .map((entryKey) => placedAssetsByKey.get(entryKey))
+        .filter(Boolean);
+      const selectedObjects = selectedEntries
+        .filter((entry) => entry.kind === "object")
+        .map((entry) => entry.obj);
+      const selectedTokens = selectedEntries
+        .filter((entry) => entry.kind === "token")
+        .map((entry) => entry.token);
+
+      handleSelectionChange?.(selectedObjects);
+      handleTokenSelectionChange?.(selectedTokens);
+    },
+    [
+      handleSelectionChange,
+      handleTokenSelectionChange,
+      placedAssetsByKey,
+      selectedEntryKeys,
+    ],
+  );
 
   const handleSelectPlacedAsset = useCallback(
     (entry) => {
@@ -292,6 +333,8 @@ export default function RightAssetsPanel({
       return label.includes(query) || base.includes(query) || layer.includes(query);
     });
   }, [placedAssets, placedSearch]);
+
+  const effectiveMultiSelect = multiSelectEnabled || selectionCount > 1;
 
   return (
     <>
@@ -362,7 +405,7 @@ export default function RightAssetsPanel({
                         <label className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-gray-400">
                           <input
                             type="checkbox"
-                            checked={multiSelectEnabled}
+                            checked={effectiveMultiSelect}
                             onChange={handleToggleMultiSelect}
                             className="h-3 w-3 rounded border-gray-600 bg-gray-900 text-blue-500"
                           />
@@ -403,10 +446,10 @@ export default function RightAssetsPanel({
                                   : "border-gray-700 bg-gray-800/70 text-gray-100 hover:border-gray-500"
                               }`}
                             >
-                              {multiSelectEnabled && (
+                              {effectiveMultiSelect && (
                                 <input
                                   type="checkbox"
-                                  checked={multiSelectedKeys.has(entry.key)}
+                                  checked={selectedEntryKeys.has(entry.key)}
                                   onChange={() => handleToggleMultiSelectEntry(entry.key)}
                                   className="mt-1 h-3.5 w-3.5 rounded border-gray-600 bg-gray-900 text-blue-500"
                                   aria-label={`Select ${entry.label}`}

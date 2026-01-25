@@ -23,6 +23,8 @@ export default function LayerBarContainer(props) {
       tileSize={props.tileSize}
       setTileSize={props.setTileSize}
       onZoomToFit={props.onZoomToFit}
+      gridSettings={props.gridSettings}
+      setGridSettings={props.setGridSettings}
       {...layerBarState}
     />
   );
