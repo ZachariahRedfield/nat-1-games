@@ -27,6 +27,7 @@ export default function GridBrushSettings({
   onChangeTokenHighlight,
 }) {
   const linkXY = !!(gridSettings?.linkXY);
+  const snapToGrid = gridSettings?.snapToGrid ?? true;
   const numXYCls = "w-12 pr-5 px-1 py-0.5 text-xs text-black rounded";
 
   const numSmallCls = "w-12 px-1 py-0.5 text-xs text-black rounded";
@@ -34,6 +35,11 @@ export default function GridBrushSettings({
   const handleToggleLink = () => {
     snapshotSettings?.();
     setGridSettings((current) => ({ ...current, linkXY: !current?.linkXY }));
+  };
+
+  const handleToggleSnap = () => {
+    snapshotSettings?.();
+    setGridSettings((current) => ({ ...current, snapToGrid: !current?.snapToGrid }));
   };
 
   const commitCols = (value) => {
@@ -84,6 +90,16 @@ export default function GridBrushSettings({
       <SectionTitle title={titleOverride || "Settings"} />
       <div className="grid gap-2">
         {renderTokenHighlight()}
+
+        <label className="flex items-center justify-between gap-3 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-200">
+          <span className="inline-flex items-center gap-2">
+            <input type="checkbox" checked={snapToGrid} onChange={handleToggleSnap} />
+            Snap to Grid
+          </span>
+          <span className="text-[10px] uppercase tracking-wide text-gray-400">
+            {snapToGrid ? "Grid" : "Free"}
+          </span>
+        </label>
 
         <div className="flex items-end gap-3 mb-1">
           <span className="text-xs">Size</span>
