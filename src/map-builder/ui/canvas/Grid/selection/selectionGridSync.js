@@ -38,6 +38,7 @@ export function useObjectSelectionGridSync({
       prevSelectedIdsRef.current = currentSelectedIds;
       // Establish a neutral baseline when switching selection groups so multi-edit deltas always start at zero.
       prevGridSettingsRef.current = getMultiSelectionBaseline(gridSettings, currentSelectedIds);
+      return;
     }
 
     if (Array.isArray(selectedObjIds) && selectedObjIds.length > 1) {
