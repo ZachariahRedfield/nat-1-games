@@ -1,5 +1,8 @@
 import React from "react";
-import { NumericInput } from "../../../shared/index.js";
+import BlendModeSelect from "./brush-controls/BlendModeSelect.jsx";
+import BrushSizeControl from "./brush-controls/BrushSizeControl.jsx";
+import OpacitySpacingControls from "./brush-controls/OpacitySpacingControls.jsx";
+import SmoothingControl from "./brush-controls/SmoothingControl.jsx";
 
 export default function CanvasBrushControls({
   brushSize,
@@ -17,167 +20,32 @@ export default function CanvasBrushControls({
 }) {
   return (
     <div>
+      <BrushSizeControl
+        brushSize={brushSize}
+        setBrushSize={setBrushSize}
+        tileSize={tileSize}
+        snapshotSettings={snapshotSettings}
+      />
 
-      {/* Brush Size */}
-      <div className="mt-1">
-        <label className="block text-xs mb-1">Brush Size (tiles)</label>
-        <div className="flex items-center gap-2">
-          <NumericInput
-            value={brushSize}
-            min={0.1}
-            max={100}
-            step={0.1}
-            className="w-12 px-1 py-0.5 text-xs text-black rounded"
-            onCommit={(v) => {
-              const n = Math.max(0.1, Math.min(100, parseFloat(v)));
-              snapshotSettings?.();
-              setBrushSize(n);
-            }}
-            title="Brush size in tiles"
-          />
-        </div>
-        <div className="text-xs text-gray-300 mt-1">~{brushSize * tileSize}px</div>
-      </div>
+      <OpacitySpacingControls
+        canvasOpacity={canvasOpacity}
+        setCanvasOpacity={setCanvasOpacity}
+        canvasSpacing={canvasSpacing}
+        setCanvasSpacing={setCanvasSpacing}
+        snapshotSettings={snapshotSettings}
+      />
 
-      {/* Opacity / spacing (tempo) */}
-      <div className="grid grid-cols-2 gap-3 mt-2">
-        <div>
-          <label className="block text-xs mb-1">Opacity</label>
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <style>{`.alpha-range{ -webkit-appearance:none; appearance:none; width:100%; background:transparent; height:20px; margin:0; }
-              .alpha-range:focus{ outline:none; }
-              .alpha-range::-webkit-slider-runnable-track{ height:12px; border-radius:2px; background-color:#e5e7eb; background-image: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1)), linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%); background-size:auto,8px 8px,8px 8px,8px 8px,8px 8px; background-position:0 0,0 0,0 4px,4px -4px,-4px 0px; }
-              .alpha-range::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:4px; margin-top:-2px; background:#ffffff; border:2px solid #374151; box-shadow:0 0 0 1px rgba(0,0,0,0.1); }
-              .alpha-range::-moz-range-track{ height:12px; border-radius:2px; background-color:#e5e7eb; background-image: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1)), linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%); background-size:auto,8px 8px,8px 8px,8px 8px,8px 8px; background-position:0 0,0 0,0 4px,4px -4px,-4px 0px; }
-              .alpha-range::-moz-range-thumb{ width:16px; height:16px; border-radius:4px; background:#ffffff; border:2px solid #374151; }`}</style>
-              <input
-                type="range"
-                min="0.05"
-                max="1"
-                step="0.05"
-                value={canvasOpacity}
-                onChange={(e) => {
-                  snapshotSettings?.();
-                  setCanvasOpacity(parseFloat(e.target.value));
-                }}
-                className="alpha-range"
-                aria-label="Opacity"
-              />
-            </div>
-            <NumericInput
-              value={canvasOpacity}
-              min={0.05}
-              max={1}
-              step={0.05}
-              className="w-12 px-1 py-0.5 text-xs text-black rounded"
-              onCommit={(v) => {
-                const n = Math.max(0.05, Math.min(1, parseFloat(v)));
-                snapshotSettings?.();
-                setCanvasOpacity(n);
-              }}
-              title="Brush opacity"
-            />
-          </div>
-        </div>
+      <SmoothingControl
+        canvasSmoothing={canvasSmoothing}
+        setCanvasSmoothing={setCanvasSmoothing}
+        snapshotSettings={snapshotSettings}
+      />
 
-        <div>
-          <label className="block text-xs mb-1">Spacing / Tempo</label>
-          <div className="flex items-center gap-2 mb-1">
-            <NumericInput
-              value={canvasSpacing}
-              min={0.1}
-              max={5}
-              step={0.05}
-              className="w-12 px-1 py-0.5 text-xs text-black rounded"
-              onCommit={(v) => {
-                const n = Math.max(0.1, Math.min(5, parseFloat(v)));
-                snapshotSettings?.();
-                setCanvasSpacing(n);
-              }}
-              title="Spacing as a fraction of radius"
-            />
-          </div>
-          <input
-            type="range"
-            min="0.1"
-            max="5"
-            step="0.05"
-            value={canvasSpacing}
-            onChange={(e) => {
-              snapshotSettings?.();
-              setCanvasSpacing(parseFloat(e.target.value));
-            }}
-            className="w-full"
-          />
-          <div className="text-xs text-gray-300 mt-1">×{canvasSpacing.toFixed(2)} of brush radius</div>
-        </div>
-      </div>
-
-      {/* Smoothing */}
-      <div className="mt-3">
-        <label className="block text-xs mb-1">Smoothing</label>
-        <input
-          type="range"
-          min="0.05"
-          max="0.95"
-          step="0.01"
-          value={canvasSmoothing}
-          onChange={(e) => {
-            const v = parseFloat(e.target.value);
-            snapshotSettings?.();
-            setCanvasSmoothing?.(v);
-          }}
-          className="w-full"
-        />
-        <div className="mt-1">
-          <NumericInput
-            value={canvasSmoothing}
-            min={0.05}
-            max={0.95}
-            step={0.01}
-            className="w-12 px-1 py-0.5 text-xs text-black rounded"
-            onCommit={(v) => {
-              const n = Math.max(0.05, Math.min(0.95, parseFloat(v)));
-              snapshotSettings?.();
-              setCanvasSmoothing?.(n);
-            }}
-            title="EMA alpha"
-          />
-        </div>
-        <div className="text-xs text-gray-300 mt-1">EMA alpha: {canvasSmoothing.toFixed(2)}</div>
-      </div>
-
-      {/* Blend Mode */}
-      <div className="mt-3">
-        <label className="block text-xs mb-1">Blend Mode</label>
-        <select
-          className="w-full bg-gray-700 text-white text-xs rounded p-1"
-          value={canvasBlendMode}
-          onChange={(e) => {
-            snapshotSettings?.();
-            setCanvasBlendMode?.(e.target.value);
-          }}
-        >
-          {/* Common 2D canvas composite modes */}
-          <option value="source-over">source-over (normal)</option>
-          <option value="multiply">multiply</option>
-          <option value="screen">screen</option>
-          <option value="overlay">overlay</option>
-          <option value="darken">darken</option>
-          <option value="lighten">lighten</option>
-          <option value="color-dodge">color-dodge</option>
-          <option value="color-burn">color-burn</option>
-          <option value="hard-light">hard-light</option>
-          <option value="soft-light">soft-light</option>
-          <option value="difference">difference</option>
-          <option value="exclusion">exclusion</option>
-          <option value="hue">hue</option>
-          <option value="saturation">saturation</option>
-          <option value="color">color</option>
-          <option value="luminosity">luminosity</option>
-        </select>
-      </div>
+      <BlendModeSelect
+        canvasBlendMode={canvasBlendMode}
+        setCanvasBlendMode={setCanvasBlendMode}
+        snapshotSettings={snapshotSettings}
+      />
     </div>
   );
 }
