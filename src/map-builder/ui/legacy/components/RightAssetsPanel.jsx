@@ -136,15 +136,17 @@ export default function RightAssetsPanel({
           </div>
         )}
       </div>
-      <button
-        type="button"
-        onClick={handleToggle}
-        style={tabStyle}
-        title={collapsed ? "Open assets panel" : "Minimize assets panel"}
-        className="fixed z-[10019] px-3 py-2 text-xs font-semibold uppercase tracking-wide rounded-l-lg bg-gray-800 border border-gray-600 text-gray-100 shadow-sm"
-      >
-        Assets
-      </button>
+      {collapsed && (
+        <button
+          type="button"
+          onClick={handleToggle}
+          style={tabStyle}
+          title="Open assets panel"
+          className="fixed z-[10019] px-3 py-2 text-xs font-semibold uppercase tracking-wide rounded-l-lg bg-gray-800 border border-gray-600 text-gray-100 shadow-sm"
+        >
+          Assets
+        </button>
+      )}
     </>
   );
 }
