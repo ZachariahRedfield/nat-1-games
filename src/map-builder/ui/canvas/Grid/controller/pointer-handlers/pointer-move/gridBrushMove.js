@@ -10,13 +10,16 @@ export function handleGridBrushMove({ event, refs, config, geometry, actions }) 
     geometry,
     gridSettings: config.gridSettings,
   });
+  const snapToGrid = !!config.gridSettings?.snapToGrid;
+  const centerRow = snapToGrid ? position.row + 0.5 : position.row;
+  const centerCol = snapToGrid ? position.col + 0.5 : position.col;
 
   if (config.isErasing) {
-    actions.eraseGridStampAt(position.row, position.col);
+    actions.eraseGridStampAt(Math.floor(centerRow), Math.floor(centerCol));
   } else if (config.selectedAsset?.kind === "image" || config.selectedAsset?.kind === "natural") {
-    actions.placeGridImageAt(position.row, position.col);
+    actions.placeGridImageAt(centerRow, centerCol);
   } else {
-    actions.placeGridColorStampAt(position.row, position.col);
+    actions.placeGridColorStampAt(centerRow, centerCol);
   }
 
   return true;
