@@ -1,11 +1,15 @@
 import { clamp, hexToRgba } from "../utils.js";
 
-const computeTileBounds = (centerRow, centerCol, widthTiles, heightTiles) => {
-  const baseRow = centerRow;
-  const baseCol = centerCol;
-  const halfH = heightTiles / 2;
-  const halfW = widthTiles / 2;
-  return { baseRow, baseCol, halfH, halfW };
+const computeStampOrigin = ({ centerRow, centerCol, widthTiles, heightTiles, rows, cols, snapToGrid }) => {
+  let r0 = centerRow - heightTiles / 2;
+  let c0 = centerCol - widthTiles / 2;
+  if (snapToGrid) {
+    r0 = Math.round(r0);
+    c0 = Math.round(c0);
+  }
+  r0 = clamp(r0, 0, Math.max(0, rows - heightTiles));
+  c0 = clamp(c0, 0, Math.max(0, cols - widthTiles));
+  return { r0, c0 };
 };
 
 export const eraseGridStampAt = (centerRow, centerCol, context) => {
@@ -13,8 +17,15 @@ export const eraseGridStampAt = (centerRow, centerCol, context) => {
   const wTiles = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
   const hTiles = Math.max(1, Math.round(gridSettings.sizeRows || gridSettings.sizeTiles || 1));
 
-  const r0 = clamp(centerRow - Math.floor(hTiles / 2), 0, Math.max(0, rows - hTiles));
-  const c0 = clamp(centerCol - Math.floor(wTiles / 2), 0, Math.max(0, cols - wTiles));
+  const { r0, c0 } = computeStampOrigin({
+    centerRow,
+    centerCol,
+    widthTiles: wTiles,
+    heightTiles: hTiles,
+    rows,
+    cols,
+    snapToGrid: !!gridSettings?.snapToGrid,
+  });
 
   const updates = [];
   for (let r = 0; r < hTiles; r++) {
@@ -69,10 +80,15 @@ export const placeGridImageAt = (centerRow, centerCol, context) => {
   const wTiles = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
   const hTiles = Math.max(1, Math.round(stamp.sizeRows ?? Math.round(wTiles / aspect)));
 
-  const { baseRow, baseCol, halfH, halfW } = computeTileBounds(centerRow, centerCol, wTiles, hTiles);
-
-  const r0 = clamp(baseRow - halfH, 0, Math.max(0, rows - hTiles));
-  const c0 = clamp(baseCol - halfW, 0, Math.max(0, cols - wTiles));
+  const { r0, c0 } = computeStampOrigin({
+    centerRow,
+    centerCol,
+    widthTiles: wTiles,
+    heightTiles: hTiles,
+    rows,
+    cols,
+    snapToGrid: !!gridSettings?.snapToGrid,
+  });
 
   const decideRotation = () => stamp.rotation ?? gridSettings.rotation ?? 0;
 
@@ -114,10 +130,15 @@ export const placeGridColorStampAt = (centerRow, centerCol, context) => {
   const wTiles = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
   const hTiles = Math.max(1, Math.round((stamp.sizeRows ?? stamp.sizeTiles ?? gridSettings.sizeRows ?? gridSettings.sizeTiles ?? 1)));
 
-  const { baseRow, baseCol, halfH, halfW } = computeTileBounds(centerRow, centerCol, wTiles, hTiles);
-
-  const r0 = clamp(baseRow - halfH, 0, Math.max(0, rows - hTiles));
-  const c0 = clamp(baseCol - halfW, 0, Math.max(0, cols - wTiles));
+  const { r0, c0 } = computeStampOrigin({
+    centerRow,
+    centerCol,
+    widthTiles: wTiles,
+    heightTiles: hTiles,
+    rows,
+    cols,
+    snapToGrid: !!gridSettings?.snapToGrid,
+  });
 
   const updates = [];
   for (let r = 0; r < hTiles; r++) {
@@ -141,16 +162,15 @@ export const placeTokenAt = (centerRow, centerCol, context) => {
   if (selectedAsset.kind === "token") {
     const wTiles = baseW;
     const hTiles = baseH;
-    const r0 = clamp(
-      centerRow - hTiles / 2,
-      0,
-      Math.max(0, rows - hTiles)
-    );
-    const c0 = clamp(
-      centerCol - wTiles / 2,
-      0,
-      Math.max(0, cols - wTiles)
-    );
+    const { r0, c0 } = computeStampOrigin({
+      centerRow,
+      centerCol,
+      widthTiles: wTiles,
+      heightTiles: hTiles,
+      rows,
+      cols,
+      snapToGrid: !!gridSettings?.snapToGrid,
+    });
     const glow = selectedAsset?.glowDefault || "#7dd3fc";
     addToken?.({
       assetId: selectedAsset.id,
@@ -176,16 +196,15 @@ export const placeTokenAt = (centerRow, centerCol, context) => {
       if (!tokAsset) continue;
       const wTiles = baseW;
       const hTiles = baseH;
-      const r0 = clamp(
-        centerRow - hTiles / 2,
-        0,
-        Math.max(0, rows - hTiles)
-      );
-      const c0 = clamp(
-        cursorCol - wTiles / 2,
-        0,
-        Math.max(0, cols - wTiles)
-      );
+      const { r0, c0 } = computeStampOrigin({
+        centerRow,
+        centerCol: cursorCol,
+        widthTiles: wTiles,
+        heightTiles: hTiles,
+        rows,
+        cols,
+        snapToGrid: !!gridSettings?.snapToGrid,
+      });
       placed.push({ assetId: tokAsset.id, r0, c0, wTiles, hTiles, name: tokAsset.name });
       cursorCol += wTiles;
     }
