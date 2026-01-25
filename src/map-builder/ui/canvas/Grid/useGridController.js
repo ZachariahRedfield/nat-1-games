@@ -1,11 +1,5 @@
 import { useRef, useState } from "react";
 import useGridSelection from "./selection/useGridSelection.js";
-import {
-  hitObjectResizeHandle as baseHitObjectResizeHandle,
-  hitObjectRotateRing as baseHitObjectRotateRing,
-  hitTokenResizeHandle as baseHitTokenResizeHandle,
-  hitTokenRotateRing as baseHitTokenRotateRing,
-} from "./controller/selectionHitTests.js";
 import { createGridPointerHandlers } from "./controller/createGridPointerHandlers.js";
 import { deriveCursorStyle } from "./controller/deriveCursorStyle.js";
 import { cellBackground } from "./controller/cellBackground.js";
@@ -18,15 +12,12 @@ import { useBrushPreview } from "./controller/grid-controller/useBrushPreview.js
 import { createPlacementActions } from "./controller/grid-controller/createPlacementActions.js";
 import { usePointerLifecycle } from "./controller/grid-controller/usePointerLifecycle.js";
 import { useScrollBlocker } from "./controller/grid-controller/useScrollBlocker.js";
-
-const DEFAULT_NATURAL_SETTINGS = {
-  randomRotation: false,
-  randomFlipX: false,
-  randomFlipY: false,
-  randomSize: { enabled: false, min: 1, max: 1 },
-  randomOpacity: { enabled: false, min: 1, max: 1 },
-  randomVariant: true,
-};
+import { DEFAULT_NATURAL_SETTINGS } from "./controller/grid-controller/gridControllerDefaults.js";
+import { createSelectionHitTesters } from "./controller/grid-controller/createSelectionHitTesters.js";
+import {
+  getTopMostObjectAt,
+  getTopMostTokenAt,
+} from "./controller/grid-controller/selectionTargets.js";
 
 export function useGridController({
   layers = [],
@@ -152,17 +143,8 @@ export function useGridController({
     updateTokenById,
   });
 
-  const hitResizeHandle = (xCss, yCss) =>
-    baseHitObjectResizeHandle(xCss, yCss, { getSelectedObject, tileSize });
-
-  const hitRotateRing = (xCss, yCss) =>
-    baseHitObjectRotateRing(xCss, yCss, { getSelectedObject, tileSize });
-
-  const hitTokenResizeHandle = (xCss, yCss) =>
-    baseHitTokenResizeHandle(xCss, yCss, { getSelectedToken, tileSize });
-
-  const hitTokenRotateRing = (xCss, yCss) =>
-    baseHitTokenRotateRing(xCss, yCss, { getSelectedToken, tileSize });
+  const { hitResizeHandle, hitRotateRing, hitTokenResizeHandle, hitTokenRotateRing } =
+    createSelectionHitTesters({ getSelectedObject, getSelectedToken, tileSize });
 
   const { paintTipAt, stampBetweenCanvas } = useBrushPreview({
     canvasRefs,
@@ -183,30 +165,8 @@ export function useGridController({
     canvasSpacing,
   });
 
-  const getTopMostObjectAt = (layer, r, c) => {
-    const arr = objects[layer] || [];
-    for (let i = arr.length - 1; i >= 0; i--) {
-      const o = arr[i];
-      const inside =
-        r >= o.row &&
-        r < o.row + o.hTiles &&
-        c >= o.col &&
-        c < o.col + o.wTiles;
-      if (inside) return o;
-    }
-    return null;
-  };
-
-  const getTopMostTokenAt = (r, c) => {
-    for (let i = tokens.length - 1; i >= 0; i--) {
-      const t = tokens[i];
-      const inside =
-        r >= t.row && r < t.row + (t.hTiles || 1) &&
-        c >= t.col && c < t.col + (t.wTiles || 1);
-      if (inside) return t;
-    }
-    return null;
-  };
+  const topMostObjectAt = (layer, row, col) => getTopMostObjectAt(objects, layer, row, col);
+  const topMostTokenAt = (row, col) => getTopMostTokenAt(tokens, row, col);
 
   const placementActions = createPlacementActions({
     rows,
@@ -253,8 +213,8 @@ export function useGridController({
       selectedTokenIds,
       getObjectById,
       getTokenById,
-      getTopMostObjectAt,
-      getTopMostTokenAt,
+      getTopMostObjectAt: topMostObjectAt,
+      getTopMostTokenAt: topMostTokenAt,
     },
     state: {
       setMousePos,
