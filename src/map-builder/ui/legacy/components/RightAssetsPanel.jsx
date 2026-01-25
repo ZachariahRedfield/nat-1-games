@@ -30,6 +30,9 @@ export default function RightAssetsPanel({
   clearObjectSelection,
   clearTokenSelection,
   setCurrentLayer,
+  canActOnSelection,
+  onSaveSelection,
+  onDeleteSelection,
   topOffset = 0,
 }) {
   const dragState = useRef(null);
@@ -43,6 +46,8 @@ export default function RightAssetsPanel({
   });
   const [activeTab, setActiveTab] = useState("assets");
   const [placedSearch, setPlacedSearch] = useState("");
+  const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
+  const [multiSelectedKeys, setMultiSelectedKeys] = useState(() => new Set());
   const previousTabRef = useRef(activeTab);
 
   useEffect(() => {
@@ -63,6 +68,23 @@ export default function RightAssetsPanel({
 
   const handleToggle = useCallback(() => {
     setCollapsed((value) => !value);
+  }, []);
+
+  const handleToggleMultiSelect = useCallback(() => {
+    setMultiSelectEnabled((value) => !value);
+    setMultiSelectedKeys(new Set());
+  }, []);
+
+  const handleToggleMultiSelectEntry = useCallback((key) => {
+    setMultiSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   }, []);
 
   const handleOpenTab = useCallback((tab) => {
@@ -287,9 +309,20 @@ export default function RightAssetsPanel({
               ) : (
                 <div className="flex flex-col h-full">
                   <div className="flex-1 min-h-0 border-b border-gray-700 pb-6 flex flex-col">
-                    <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
                       <span>Placed Assets</span>
-                      <span>{filteredPlacedAssets.length}</span>
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-gray-400">
+                          <input
+                            type="checkbox"
+                            checked={multiSelectEnabled}
+                            onChange={handleToggleMultiSelect}
+                            className="h-3 w-3 rounded border-gray-600 bg-gray-900 text-blue-500"
+                          />
+                          Multi-select
+                        </label>
+                        <span>{filteredPlacedAssets.length}</span>
+                      </div>
                     </div>
                     <div className="mt-3">
                       <input
@@ -315,19 +348,32 @@ export default function RightAssetsPanel({
                           const subtitle =
                             entry.kind === "token" ? "Token" : `Layer: ${entry.layerId}`;
                           return (
-                            <button
+                            <div
                               key={entry.key}
-                              type="button"
-                              onClick={() => handleSelectPlacedAsset(entry)}
-                              className={`w-full text-left px-2 py-1.5 rounded border ${
+                              className={`w-full flex items-start gap-2 px-2 py-1.5 rounded border ${
                                 isSelected
                                   ? "border-blue-400 bg-blue-500/10 text-blue-100"
                                   : "border-gray-700 bg-gray-800/70 text-gray-100 hover:border-gray-500"
                               }`}
                             >
-                              <div className="text-sm font-medium">{entry.label}</div>
-                              <div className="text-xs text-gray-400">{subtitle}</div>
-                            </button>
+                              {multiSelectEnabled && (
+                                <input
+                                  type="checkbox"
+                                  checked={multiSelectedKeys.has(entry.key)}
+                                  onChange={() => handleToggleMultiSelectEntry(entry.key)}
+                                  className="mt-1 h-3.5 w-3.5 rounded border-gray-600 bg-gray-900 text-blue-500"
+                                  aria-label={`Select ${entry.label}`}
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleSelectPlacedAsset(entry)}
+                                className="flex-1 text-left"
+                              >
+                                <div className="text-sm font-medium">{entry.label}</div>
+                                <div className="text-xs text-gray-400">{subtitle}</div>
+                              </button>
+                            </div>
                           );
                         })
                       )}
@@ -335,7 +381,46 @@ export default function RightAssetsPanel({
                   </div>
                   <div className="flex-1 min-h-0 pt-6 overflow-y-auto">
                     {hasSelection ? (
-                      <SelectionSettingsPanel {...selectionPanelProps} allowInactiveSelection />
+                      <>
+                        <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
+                          <span>Selected Asset</span>
+                        </div>
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!canActOnSelection) return;
+                              onSaveSelection?.();
+                            }}
+                            disabled={!canActOnSelection}
+                            className={`flex-1 rounded border px-2 py-1 text-xs uppercase tracking-wide ${
+                              canActOnSelection
+                                ? "border-blue-400 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30"
+                                : "border-gray-700 bg-gray-800 text-gray-500"
+                            }`}
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!canActOnSelection) return;
+                              onDeleteSelection?.();
+                            }}
+                            disabled={!canActOnSelection}
+                            className={`flex-1 rounded border px-2 py-1 text-xs uppercase tracking-wide ${
+                              canActOnSelection
+                                ? "border-red-500 bg-red-500/20 text-red-100 hover:bg-red-500/30"
+                                : "border-gray-700 bg-gray-800 text-gray-500"
+                            }`}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                        <div className="mt-4">
+                          <SelectionSettingsPanel {...selectionPanelProps} allowInactiveSelection />
+                        </div>
+                      </>
                     ) : (
                       <div className="text-sm text-gray-400">
                         Select a placed asset from the list or the map to edit its settings.

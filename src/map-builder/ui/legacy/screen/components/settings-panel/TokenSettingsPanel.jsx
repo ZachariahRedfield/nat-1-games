@@ -113,7 +113,7 @@ export default function TokenSettingsPanel({
               const next = clamp(Math.round(value), { min: 0, max: 359 });
               commitGridSettings({ rotation: next });
             }}
-            size={72}
+            size={96}
           />
         </div>
         <div className="flex gap-2">

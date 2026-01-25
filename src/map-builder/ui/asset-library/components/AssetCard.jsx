@@ -124,7 +124,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
           <div className="absolute bottom-1 left-1 right-1 flex gap-1">
             <button
               type="button"
-              className="flex-1 px-2 py-0.5 text-[11px] rounded bg-red-700/90 hover:bg-red-600/90"
+              className="flex-1 min-w-0 px-1.5 py-0.5 text-[10px] leading-tight rounded bg-red-700/90 hover:bg-red-600/90 truncate"
               onClick={(event) => {
                 event.stopPropagation();
                 onDelete?.(asset);

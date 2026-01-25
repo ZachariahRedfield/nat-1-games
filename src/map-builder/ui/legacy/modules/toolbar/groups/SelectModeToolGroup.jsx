@@ -13,7 +13,12 @@ export default function SelectModeToolGroup({
   showTip,
   iconClassFor,
   labelClassFor,
+  showSelectionActions = true,
 }) {
+  if (!showSelectionActions) {
+    return null;
+  }
+
   return (
     <div className="absolute left-full ml-2 top-[40px] pointer-events-auto flex items-center gap-2">
       <ToolButton
