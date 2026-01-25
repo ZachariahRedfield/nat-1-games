@@ -30,6 +30,7 @@ export function createLegacySettingsPanelProps(state) {
     tileSize: state.tileSize,
     snapshotSettings: state.snapshotSettings,
     regenerateLabelInstance: state.regenerateLabelInstance,
+    updateObjectById: state.updateObjectById,
     updateTokenById: state.updateTokenById,
     tokenHUDVisible: state.tokenHUDVisible,
     setTokenHUDVisible: state.setTokenHUDVisible,

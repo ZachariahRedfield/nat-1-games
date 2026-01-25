@@ -40,6 +40,7 @@ export default function RightAssetsPanel({
     return stored === "true";
   });
   const [activeTab, setActiveTab] = useState("assets");
+  const [placedSearch, setPlacedSearch] = useState("");
   const previousTabRef = useRef(activeTab);
 
   useEffect(() => {
@@ -132,7 +133,8 @@ export default function RightAssetsPanel({
     Object.entries(objects || {}).forEach(([layerId, layerObjects]) => {
       (layerObjects || []).forEach((obj) => {
         const asset = byId.get(obj.assetId);
-        const baseName = asset?.name || asset?.kind || "Asset";
+        const customName = typeof obj?.name === "string" ? obj.name.trim() : "";
+        const baseName = customName || asset?.name || asset?.kind || "Asset";
         const count = (nameCounts.get(baseName) ?? 0) + 1;
         nameCounts.set(baseName, count);
         list.push({
@@ -140,7 +142,7 @@ export default function RightAssetsPanel({
           obj,
           layerId,
           baseName,
-          label: `${baseName}${count}`,
+          label: customName || `${baseName}${count}`,
         });
       });
     });
@@ -164,6 +166,17 @@ export default function RightAssetsPanel({
     selectionPanelProps?.selectedToken ||
     (selectionPanelProps?.selectedObjsList?.length || 0) > 0 ||
     (selectionPanelProps?.selectedTokensList?.length || 0) > 0;
+
+  const filteredPlacedAssets = useMemo(() => {
+    const query = placedSearch.trim().toLowerCase();
+    if (!query) return placedAssets;
+    return placedAssets.filter((entry) => {
+      const label = entry.label?.toLowerCase() ?? "";
+      const base = entry.baseName?.toLowerCase() ?? "";
+      const layer = entry.layerId?.toLowerCase?.() ?? "";
+      return label.includes(query) || base.includes(query) || layer.includes(query);
+    });
+  }, [placedAssets, placedSearch]);
 
   return (
     <>
@@ -227,16 +240,28 @@ export default function RightAssetsPanel({
                 </>
               ) : (
                 <div className="flex flex-col h-full">
-                  <div className="flex-1 min-h-0 border-b border-gray-700 pb-[14px]">
+                  <div className="flex-1 min-h-0 border-b border-gray-700 pb-6">
                     <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
                       <span>Placed Assets</span>
-                      <span>{placedAssets.length}</span>
+                      <span>{filteredPlacedAssets.length}</span>
+                    </div>
+                    <div className="mt-3">
+                      <input
+                        type="search"
+                        value={placedSearch}
+                        onChange={(event) => setPlacedSearch(event.target.value)}
+                        placeholder="Search placed assets..."
+                        className="w-full rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-100 focus:border-blue-500 focus:outline-none"
+                        aria-label="Search placed assets"
+                      />
                     </div>
                     <div className="mt-3 h-full overflow-y-auto space-y-1 pr-1">
                       {placedAssets.length === 0 ? (
                         <div className="text-sm text-gray-400">No placed assets yet.</div>
+                      ) : filteredPlacedAssets.length === 0 ? (
+                        <div className="text-sm text-gray-400">No placed assets match that search.</div>
                       ) : (
-                        placedAssets.map((entry) => {
+                        filteredPlacedAssets.map((entry) => {
                           const isSelected = selectedObj?.id === entry.id;
                           return (
                             <button
@@ -257,7 +282,7 @@ export default function RightAssetsPanel({
                       )}
                     </div>
                   </div>
-                  <div className="flex-1 min-h-0 pt-[14px] overflow-y-auto">
+                  <div className="flex-1 min-h-0 pt-6 overflow-y-auto">
                     {hasSelection ? (
                       <SelectionSettingsPanel {...selectionPanelProps} allowInactiveSelection />
                     ) : (

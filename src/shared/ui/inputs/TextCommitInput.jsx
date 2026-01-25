@@ -6,6 +6,7 @@ export default function TextCommitInput({
   placeholder = "",
   onCommit, // (val:string) => void
   title,
+  ...rest
 }) {
   const [text, setText] = React.useState(value ?? "");
   const [focused, setFocused] = React.useState(false);
@@ -50,6 +51,7 @@ export default function TextCommitInput({
       className={className}
       value={text}
       placeholder={placeholder}
+      {...rest}
       onFocus={(event) => {
         setFocused(true);
         committedRef.current = false;
@@ -79,4 +81,3 @@ export default function TextCommitInput({
     />
   );
 }
-
