@@ -24,7 +24,9 @@ export default function RightAssetsPanel({
   setNaturalSettings,
   selectionPanelProps,
   selectedObj,
+  selectedToken,
   handleSelectionChange,
+  handleTokenSelectionChange,
   clearObjectSelection,
   clearTokenSelection,
   setCurrentLayer,
@@ -123,42 +125,70 @@ export default function RightAssetsPanel({
     [topOffset]
   );
 
-  const { assets = [], objects = {} } = assetPanelProps ?? {};
+  const { assets = [], objects = {}, tokens = [] } = assetPanelProps ?? {};
 
   const placedAssets = useMemo(() => {
     const list = [];
     const byId = new Map((assets || []).map((asset) => [asset.id, asset]));
     const nameCounts = new Map();
 
+    const incrementCount = (baseName, kind) => {
+      const key = `${kind || "asset"}:${baseName}`;
+      const count = (nameCounts.get(key) ?? 0) + 1;
+      nameCounts.set(key, count);
+      return count;
+    };
+
     Object.entries(objects || {}).forEach(([layerId, layerObjects]) => {
       (layerObjects || []).forEach((obj) => {
         const asset = byId.get(obj.assetId);
         const customName = typeof obj?.name === "string" ? obj.name.trim() : "";
         const baseName = customName || asset?.name || asset?.kind || "Asset";
-        const count = (nameCounts.get(baseName) ?? 0) + 1;
-        nameCounts.set(baseName, count);
+        const count = incrementCount(baseName, asset?.kind || "image");
         list.push({
           id: obj.id,
+          kind: "object",
           obj,
           layerId,
           baseName,
           label: customName || `${baseName}${count}`,
+          key: `object-${obj.id}`,
         });
       });
     });
 
+    (tokens || []).forEach((token) => {
+      const asset = byId.get(token.assetId);
+      const customName = typeof token?.meta?.name === "string" ? token.meta.name.trim() : "";
+      const baseName = customName || asset?.name || "Token";
+      const count = incrementCount(baseName, "token");
+      list.push({
+        id: token.id,
+        kind: "token",
+        token,
+        layerId: "tokens",
+        baseName,
+        label: customName || `${baseName}${count}`,
+        key: `token-${token.id}`,
+      });
+    });
+
     return list;
-  }, [assets, objects]);
+  }, [assets, objects, tokens]);
 
   const handleSelectPlacedAsset = useCallback(
     (entry) => {
       if (!entry) return;
+      if (entry.kind === "token") {
+        handleTokenSelectionChange?.(entry.token);
+        return;
+      }
       if (setCurrentLayer) {
         setCurrentLayer(entry.layerId);
       }
       handleSelectionChange?.(entry.obj);
     },
-    [handleSelectionChange, setCurrentLayer]
+    [handleSelectionChange, handleTokenSelectionChange, setCurrentLayer]
   );
 
   const hasSelection =
@@ -240,7 +270,7 @@ export default function RightAssetsPanel({
                 </>
               ) : (
                 <div className="flex flex-col h-full">
-                  <div className="flex-1 min-h-0 border-b border-gray-700 pb-6">
+                  <div className="flex-1 min-h-0 border-b border-gray-700 pb-6 flex flex-col">
                     <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
                       <span>Placed Assets</span>
                       <span>{filteredPlacedAssets.length}</span>
@@ -255,17 +285,22 @@ export default function RightAssetsPanel({
                         aria-label="Search placed assets"
                       />
                     </div>
-                    <div className="mt-3 h-full overflow-y-auto space-y-1 pr-1">
+                    <div className="mt-3 flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
                       {placedAssets.length === 0 ? (
                         <div className="text-sm text-gray-400">No placed assets yet.</div>
                       ) : filteredPlacedAssets.length === 0 ? (
                         <div className="text-sm text-gray-400">No placed assets match that search.</div>
                       ) : (
                         filteredPlacedAssets.map((entry) => {
-                          const isSelected = selectedObj?.id === entry.id;
+                          const isSelected =
+                            entry.kind === "token"
+                              ? selectedToken?.id === entry.id
+                              : selectedObj?.id === entry.id;
+                          const subtitle =
+                            entry.kind === "token" ? "Token" : `Layer: ${entry.layerId}`;
                           return (
                             <button
-                              key={entry.id}
+                              key={entry.key}
                               type="button"
                               onClick={() => handleSelectPlacedAsset(entry)}
                               className={`w-full text-left px-2 py-1.5 rounded border ${
@@ -275,7 +310,7 @@ export default function RightAssetsPanel({
                               }`}
                             >
                               <div className="text-sm font-medium">{entry.label}</div>
-                              <div className="text-xs text-gray-400">Layer: {entry.layerId}</div>
+                              <div className="text-xs text-gray-400">{subtitle}</div>
                             </button>
                           );
                         })

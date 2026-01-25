@@ -13,9 +13,19 @@ export function handleGridBrushMove({ event, refs, config, geometry, actions }) 
   const snapToGrid = !!config.gridSettings?.snapToGrid;
   const centerRow = snapToGrid ? position.row + 0.5 : position.row;
   const centerCol = snapToGrid ? position.col + 0.5 : position.col;
+  const nextRow = Math.floor(centerRow);
+  const nextCol = Math.floor(centerCol);
+
+  if (refs?.lastTileRef?.current) {
+    const last = refs.lastTileRef.current;
+    if (last.row === nextRow && last.col === nextCol) {
+      return true;
+    }
+    refs.lastTileRef.current = { row: nextRow, col: nextCol };
+  }
 
   if (config.isErasing) {
-    actions.eraseGridStampAt(Math.floor(centerRow), Math.floor(centerCol));
+    actions.eraseGridStampAt(nextRow, nextCol);
   } else if (config.selectedAsset?.kind === "image" || config.selectedAsset?.kind === "natural") {
     actions.placeGridImageAt(centerRow, centerCol);
   } else {
