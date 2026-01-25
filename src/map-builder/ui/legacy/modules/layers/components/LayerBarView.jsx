@@ -29,6 +29,8 @@ export function LayerBarView({
   tileSize,
   setTileSize,
   onZoomToFit,
+  gridSettings,
+  setGridSettings,
   activeLayer,
 }) {
   return (
@@ -107,6 +109,10 @@ export function LayerBarView({
           tileSize={tileSize}
           setTileSize={setTileSize}
           onZoomToFit={onZoomToFit}
+          snapToGrid={gridSettings?.snapToGrid ?? true}
+          onToggleSnap={() => {
+            setGridSettings?.((current) => ({ ...current, snapToGrid: !current?.snapToGrid }));
+          }}
         />
       </div>
     </div>

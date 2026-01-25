@@ -24,7 +24,7 @@ export function useAssetDefaultsManager({
   normalizeNaturalSettings,
   updateAssetById,
 }) {
-  const loadingGridDefaultsRef = useAssetGridDefaultsSync({ selectedAsset, setGridSettings });
+  const loadingGridDefaultsRef = useAssetGridDefaultsSync({ selectedAsset, setGridSettings, hasSelection });
   const loadingAssetStampDefaultsRef = useAssetStampDefaultsSync({
     selectedAsset,
     setAssetStamp,

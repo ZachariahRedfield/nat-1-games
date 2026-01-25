@@ -6,10 +6,11 @@ function markLoadingComplete(ref) {
   }, 0);
 }
 
-export function useAssetGridDefaultsSync({ selectedAsset, setGridSettings }) {
+export function useAssetGridDefaultsSync({ selectedAsset, setGridSettings, hasSelection }) {
   const loadingRef = useRef(false);
 
   useEffect(() => {
+    if (hasSelection) return;
     if (!selectedAsset) return;
     const defaults = selectedAsset.stampDefaults || selectedAsset.defaults || {};
     loadingRef.current = true;
@@ -35,7 +36,7 @@ export function useAssetGridDefaultsSync({ selectedAsset, setGridSettings }) {
       linkXY: defaults.linkXY ?? prev.linkXY ?? false,
     }));
     markLoadingComplete(loadingRef);
-  }, [selectedAsset, setGridSettings]);
+  }, [hasSelection, selectedAsset, setGridSettings]);
 
   return loadingRef;
 }
