@@ -286,9 +286,15 @@ export default function RightAssetsPanel({
     ],
   );
 
+  const effectiveMultiSelect = multiSelectEnabled || selectionCount > 1;
+
   const handleSelectPlacedAsset = useCallback(
     (entry) => {
       if (!entry) return;
+      if (effectiveMultiSelect) {
+        handleToggleMultiSelectEntry(entry.key);
+        return;
+      }
       if (entry.kind === "token") {
         if (selectedToken?.id === entry.id) {
           clearTokenSelection?.();
@@ -309,8 +315,10 @@ export default function RightAssetsPanel({
     [
       clearObjectSelection,
       clearTokenSelection,
+      effectiveMultiSelect,
       handleSelectionChange,
       handleTokenSelectionChange,
+      handleToggleMultiSelectEntry,
       selectedObj?.id,
       selectedToken?.id,
       setCurrentLayer,
@@ -333,8 +341,6 @@ export default function RightAssetsPanel({
       return label.includes(query) || base.includes(query) || layer.includes(query);
     });
   }, [placedAssets, placedSearch]);
-
-  const effectiveMultiSelect = multiSelectEnabled || selectionCount > 1;
 
   return (
     <>
@@ -431,8 +437,9 @@ export default function RightAssetsPanel({
                         <div className="text-sm text-gray-400">No placed assets match that search.</div>
                       ) : (
                         filteredPlacedAssets.map((entry) => {
-                          const isSelected =
-                            entry.kind === "token"
+                          const isSelected = effectiveMultiSelect
+                            ? selectedEntryKeys.has(entry.key)
+                            : entry.kind === "token"
                               ? selectedToken?.id === entry.id
                               : selectedObj?.id === entry.id;
                           const subtitle =
