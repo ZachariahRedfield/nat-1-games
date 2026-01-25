@@ -16,7 +16,6 @@ export default function AssetPanel(props) {
     selectAsset,
     openCreator,
     setCreatorOpen,
-    setEditingAsset,
     setAssets,
     setSelectedAssetId,
     confirmFn,
@@ -31,7 +30,6 @@ export default function AssetPanel(props) {
     handleSelectGroup,
     handleOpenCreator,
     handleSelectAsset,
-    handleEditAsset,
     handleDeleteAsset,
     handleToggleView,
   } = useAssetPanelHandlers({
@@ -39,7 +37,6 @@ export default function AssetPanel(props) {
     setCreatorOpen,
     openCreator,
     selectAsset,
-    setEditingAsset,
     confirmFn,
     visibleAssets,
     setAssets,
@@ -61,7 +58,6 @@ export default function AssetPanel(props) {
         onToggleView={handleToggleView}
         selectedAssetId={selectedAssetId}
         onSelect={handleSelectAsset}
-        onEdit={handleEditAsset}
         onDelete={handleDeleteAsset}
       />
     </div>

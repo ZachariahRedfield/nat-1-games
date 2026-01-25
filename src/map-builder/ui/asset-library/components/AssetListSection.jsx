@@ -8,7 +8,6 @@ export default function AssetListSection({
   onToggleView,
   selectedAssetId,
   onSelect,
-  onEdit,
   onDelete,
 }) {
   return (
@@ -32,7 +31,6 @@ export default function AssetListSection({
             isSelected={selectedAssetId === asset.id}
             showPreview={!!showAssetPreviews}
             onSelect={onSelect}
-            onEdit={onEdit}
             onDelete={onDelete}
           />
         ))}

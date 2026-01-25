@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 function useAssetSelection({
   assets,
@@ -12,6 +12,7 @@ function useAssetSelection({
   setPanToolActive,
   setCanvasColor,
 }) {
+  const skipAutoSelectRef = useRef(false);
   const getAsset = useCallback(
     (id) => assets.find((asset) => asset.id === id) || null,
     [assets]
@@ -24,6 +25,12 @@ function useAssetSelection({
 
   const selectAsset = useCallback(
     (id) => {
+      if (selectedAssetId && id === selectedAssetId) {
+        skipAutoSelectRef.current = true;
+        setSelectedAssetId(null);
+        setCreatorOpen(false);
+        return;
+      }
       const asset = getAsset(id);
       setSelectedAssetId(id);
       setCreatorOpen(false);
@@ -53,6 +60,7 @@ function useAssetSelection({
     },
     [
       getAsset,
+      selectedAssetId,
       setCanvasColor,
       setCreatorOpen,
       setEngine,
@@ -64,6 +72,10 @@ function useAssetSelection({
   );
 
   useEffect(() => {
+    if (!selectedAssetId && skipAutoSelectRef.current) {
+      skipAutoSelectRef.current = false;
+      return;
+    }
     const ensureSelection = (predicate) => {
       const current = selectedAsset;
       if (current && predicate(current)) return;
@@ -84,7 +96,7 @@ function useAssetSelection({
       ensureSelection((asset) => asset.kind === "natural");
       setEngine?.("grid");
     }
-  }, [assetGroup, assets, selectedAsset, setCreatorOpen, setEngine, setSelectedAssetId]);
+  }, [assetGroup, assets, selectedAsset, selectedAssetId, setCreatorOpen, setEngine, setSelectedAssetId]);
 
   return { getAsset, selectedAsset, selectAsset };
 }
