@@ -7,7 +7,6 @@ import CanvasLayers from "./CanvasLayers";
 import BrushPreview from "./BrushPreview";
 import PointerOverlay from "./PointerOverlay";
 import TokenSelectionOverlay from "./overlays/TokenSelectionOverlay.jsx";
-import ActiveSelectionMiniPanel from "./overlays/ActiveSelectionMiniPanel.jsx";
 import MarqueeOverlay from "./overlays/MarqueeOverlay.jsx";
 import ZoomToolOverlay from "./overlays/ZoomToolOverlay.jsx";
 import useGridController from "./useGridController.js";
@@ -63,8 +62,6 @@ export default function Grid(props) {
     selectedObjIds,
     selectedTokenId,
     selectedTokenIds,
-    getSelectedObject,
-    getSelectedToken,
     getTokenById,
     dragRef,
     zoomDragRef,
@@ -171,26 +168,6 @@ export default function Grid(props) {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-        />
-
-        <ActiveSelectionMiniPanel
-          selectedObject={getSelectedObject()}
-          selectedToken={getSelectedToken()}
-          selectedObjIds={selectedObjIds}
-          isSelectionDragging={isSelectionDragging}
-          tileSize={tileSize}
-          containerSize={{ w: cssWidth, h: cssHeight }}
-          currentLayer={currentLayer}
-          rows={rows}
-          cols={cols}
-          gridSettings={gridSettings}
-          setGridSettings={setGridSettings}
-          updateObjectById={updateObjectById}
-          updateTokenById={updateTokenById}
-          assets={assets}
-          objects={objects}
-          scrollRef={scrollRef}
-          contentRef={contentRef}
         />
 
         <MarqueeOverlay dragState={dragRef.current} tileSize={tileSize} />
