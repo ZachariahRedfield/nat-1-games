@@ -73,7 +73,7 @@ function AssetPreview({ asset, showPreview, preview }) {
   );
 }
 
-export default function AssetCard({ asset, isSelected, showPreview, onSelect, onEdit, onDelete }) {
+export default function AssetCard({ asset, isSelected, showPreview, onSelect, onDelete }) {
   if (!asset) return null;
 
   const preview = useMemo(() => resolvePrimaryPreview(asset), [asset]);
@@ -124,17 +124,6 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
           <div className="absolute bottom-1 left-1 right-1 flex gap-1">
             <button
               type="button"
-              className="flex-1 px-2 py-0.5 text-[11px] rounded bg-gray-700/90 hover:bg-gray-600/90"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEdit?.(asset);
-              }}
-              title="Edit asset"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
               className="flex-1 px-2 py-0.5 text-[11px] rounded bg-red-700/90 hover:bg-red-600/90"
               onClick={(event) => {
                 event.stopPropagation();
@@ -164,17 +153,6 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
       </div>
       {isSelected && (
         <div className="mt-auto flex gap-1 overflow-hidden rounded-md">
-          <button
-            type="button"
-            className="flex-1 px-2 py-0.5 text-[11px] bg-gray-700 hover:bg-gray-600"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit?.(asset);
-            }}
-            title="Edit asset"
-          >
-            Edit
-          </button>
           <button
             type="button"
             className="flex-1 px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"

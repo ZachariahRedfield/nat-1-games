@@ -25,6 +25,8 @@ export default function RightAssetsPanel({
   selectionPanelProps,
   selectedObj,
   handleSelectionChange,
+  clearObjectSelection,
+  clearTokenSelection,
   setCurrentLayer,
   topOffset = 0,
 }) {
@@ -38,6 +40,7 @@ export default function RightAssetsPanel({
     return stored === "true";
   });
   const [activeTab, setActiveTab] = useState("assets");
+  const previousTabRef = useRef(activeTab);
 
   useEffect(() => {
     localStorage.setItem(WIDTH_STORAGE_KEY, String(width));
@@ -46,6 +49,14 @@ export default function RightAssetsPanel({
   useEffect(() => {
     localStorage.setItem(COLLAPSED_STORAGE_KEY, String(collapsed));
   }, [collapsed]);
+
+  useEffect(() => {
+    if (previousTabRef.current !== "assets" && activeTab === "assets") {
+      clearObjectSelection?.();
+      clearTokenSelection?.();
+    }
+    previousTabRef.current = activeTab;
+  }, [activeTab, clearObjectSelection, clearTokenSelection]);
 
   const handleToggle = useCallback(() => {
     setCollapsed((value) => !value);

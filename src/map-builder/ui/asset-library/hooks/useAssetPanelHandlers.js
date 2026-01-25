@@ -1,12 +1,9 @@
 import { useCallback } from "react";
-import { determineCreatorKind } from "../assetGrouping.js";
-
 export default function useAssetPanelHandlers({
   setAssetGroup,
   setCreatorOpen,
   openCreator,
   selectAsset,
-  setEditingAsset,
   confirmFn,
   visibleAssets,
   setAssets,
@@ -33,16 +30,6 @@ export default function useAssetPanelHandlers({
       selectAsset?.(assetId);
     },
     [selectAsset],
-  );
-
-  const handleEditAsset = useCallback(
-    (asset) => {
-      if (!asset) return;
-      setEditingAsset?.(asset);
-      const nextKind = determineCreatorKind(asset);
-      openCreator?.(nextKind);
-    },
-    [setEditingAsset, openCreator],
   );
 
   const handleDeleteAsset = useCallback(
@@ -72,7 +59,6 @@ export default function useAssetPanelHandlers({
     handleSelectGroup,
     handleOpenCreator,
     handleSelectAsset,
-    handleEditAsset,
     handleDeleteAsset,
     handleToggleView,
   };

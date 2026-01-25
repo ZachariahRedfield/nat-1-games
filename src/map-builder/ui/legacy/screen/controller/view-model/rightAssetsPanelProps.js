@@ -11,6 +11,8 @@ export function createRightAssetsPanelProps(state) {
     selectionPanelProps: createLegacySettingsPanelProps(state),
     selectedObj: state.selectedObj,
     handleSelectionChange: state.handleSelectionChange,
+    clearObjectSelection: state.clearObjectSelection,
+    clearTokenSelection: state.clearTokenSelection,
     setCurrentLayer: state.setCurrentLayer,
   };
 }
