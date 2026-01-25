@@ -9,11 +9,17 @@ const COLLAPSED_STORAGE_KEY = "mapBuilder.rightAssetsPanel.collapsed.v1";
 
 const DEFAULT_WIDTH = 360;
 const MIN_WIDTH = 260;
-const MAX_WIDTH = 520;
+const MAX_WIDTH_FALLBACK = 520;
+const MAX_WIDTH_PCT = 0.75;
 
-function clampWidth(value) {
+function getMaxWidth() {
+  if (typeof window === "undefined") return MAX_WIDTH_FALLBACK;
+  return Math.max(MIN_WIDTH, Math.round(window.innerWidth * MAX_WIDTH_PCT));
+}
+
+function clampWidth(value, maxWidth) {
   if (Number.isNaN(value)) return DEFAULT_WIDTH;
-  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, value));
+  return Math.min(maxWidth, Math.max(MIN_WIDTH, value));
 }
 
 export default function RightAssetsPanel({
@@ -36,9 +42,10 @@ export default function RightAssetsPanel({
   topOffset = 0,
 }) {
   const dragState = useRef(null);
+  const [maxWidth, setMaxWidth] = useState(() => getMaxWidth());
   const [width, setWidth] = useState(() => {
     const stored = Number.parseInt(localStorage.getItem(WIDTH_STORAGE_KEY), 10);
-    return clampWidth(Number.isFinite(stored) ? stored : DEFAULT_WIDTH);
+    return clampWidth(Number.isFinite(stored) ? stored : DEFAULT_WIDTH, getMaxWidth());
   });
   const [collapsed, setCollapsed] = useState(() => {
     const stored = localStorage.getItem(COLLAPSED_STORAGE_KEY);
@@ -53,6 +60,20 @@ export default function RightAssetsPanel({
   useEffect(() => {
     localStorage.setItem(WIDTH_STORAGE_KEY, String(width));
   }, [width]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setMaxWidth(getMaxWidth());
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    setWidth((prev) => clampWidth(prev, maxWidth));
+  }, [maxWidth]);
 
   useEffect(() => {
     localStorage.setItem(COLLAPSED_STORAGE_KEY, String(collapsed));
@@ -104,7 +125,7 @@ export default function RightAssetsPanel({
     const handleDragMove = (event) => {
       if (!dragState.current) return;
       const delta = dragState.current.startX - event.clientX;
-      setWidth(clampWidth(dragState.current.startWidth + delta));
+      setWidth(clampWidth(dragState.current.startWidth + delta, maxWidth));
     };
 
     const handleDragEnd = () => {
@@ -197,6 +218,32 @@ export default function RightAssetsPanel({
 
     return list;
   }, [assets, objects, tokens]);
+
+  const placedAssetsByKey = useMemo(
+    () => new Map(placedAssets.map((entry) => [entry.key, entry])),
+    [placedAssets],
+  );
+
+  useEffect(() => {
+    if (!multiSelectEnabled) return;
+    const selectedEntries = Array.from(multiSelectedKeys)
+      .map((key) => placedAssetsByKey.get(key))
+      .filter(Boolean);
+    const selectedObjects = selectedEntries
+      .filter((entry) => entry.kind === "object")
+      .map((entry) => entry.obj);
+    const selectedTokens = selectedEntries
+      .filter((entry) => entry.kind === "token")
+      .map((entry) => entry.token);
+    handleSelectionChange?.(selectedObjects);
+    handleTokenSelectionChange?.(selectedTokens);
+  }, [
+    handleSelectionChange,
+    handleTokenSelectionChange,
+    multiSelectEnabled,
+    multiSelectedKeys,
+    placedAssetsByKey,
+  ]);
 
   const handleSelectPlacedAsset = useCallback(
     (entry) => {
@@ -309,7 +356,7 @@ export default function RightAssetsPanel({
               ) : (
                 <div className="flex flex-col h-full">
                   <div className="flex-1 min-h-0 border-b border-gray-700 pb-6 flex flex-col">
-                  <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
+                    <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
                       <span>Placed Assets</span>
                       <div className="flex items-center gap-2">
                         <label className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-gray-400">
