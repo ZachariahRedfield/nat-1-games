@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import { useSelectionAssetGroupSync } from "./selectionAssetGroupSync.js";
 import { useSelectionHotkeys } from "./selectionHotkeys.js";
 import { useSelectionInteractionSync } from "./selectionInteractionSync.js";
@@ -18,6 +19,9 @@ export function useGridSelection({
   dragRef,
   assetGroup,
   interactionMode,
+  selectedObjsList,
+  selectedTokensList,
+  allowInactiveSelection = false,
   onSelectionChange,
   onTokenSelectionChange,
   onBeginObjectStroke,
@@ -55,6 +59,74 @@ export function useGridSelection({
     clearTokenSelection,
     clearSelections,
   } = selectionState;
+
+  const syncSelectionIds = (items) =>
+    (Array.isArray(items) ? items.map((item) => item?.id).filter(Boolean) : []);
+
+  const idsMatch = (left, right) => {
+    if (left.length !== right.length) return false;
+    const rightSet = new Set(right);
+    return left.every((id) => rightSet.has(id));
+  };
+
+  const getActiveId = (ids) => (ids.length ? ids[ids.length - 1] : null);
+
+  const externalObjIds = useMemo(() => syncSelectionIds(selectedObjsList), [selectedObjsList]);
+  const externalTokenIds = useMemo(() => syncSelectionIds(selectedTokensList), [selectedTokensList]);
+
+  useSelectionInteractionSync({ interactionMode, clearSelections, allowInactiveSelection });
+
+  useEffect(() => {
+    if (externalTokenIds.length) {
+      if (!idsMatch(selectedTokenIds, externalTokenIds)) {
+        setSelectedTokenIds(externalTokenIds);
+      }
+      const activeTokenId = getActiveId(externalTokenIds);
+      if (selectedTokenId !== activeTokenId) {
+        setSelectedTokenId(activeTokenId);
+      }
+      if (selectedObjIds.length || selectedObjId) {
+        setSelectedObjIds([]);
+        setSelectedObjId(null);
+      }
+      return;
+    }
+
+    if (externalObjIds.length) {
+      if (!idsMatch(selectedObjIds, externalObjIds)) {
+        setSelectedObjIds(externalObjIds);
+      }
+      const activeObjId = getActiveId(externalObjIds);
+      if (selectedObjId !== activeObjId) {
+        setSelectedObjId(activeObjId);
+      }
+      if (selectedTokenIds.length || selectedTokenId) {
+        setSelectedTokenIds([]);
+        setSelectedTokenId(null);
+      }
+      return;
+    }
+
+    if (selectedObjIds.length || selectedObjId) {
+      setSelectedObjIds([]);
+      setSelectedObjId(null);
+    }
+    if (selectedTokenIds.length || selectedTokenId) {
+      setSelectedTokenIds([]);
+      setSelectedTokenId(null);
+    }
+  }, [
+    externalObjIds,
+    externalTokenIds,
+    selectedObjIds,
+    selectedObjId,
+    selectedTokenIds,
+    selectedTokenId,
+    setSelectedObjIds,
+    setSelectedObjId,
+    setSelectedTokenIds,
+    setSelectedTokenId,
+  ]);
 
   useSelectionHotkeys({
     selectedObjId,
@@ -101,8 +173,6 @@ export function useGridSelection({
     getTokenById,
     updateTokenById,
   });
-
-  useSelectionInteractionSync({ interactionMode, clearSelections });
 
   return {
     selectedObjId,

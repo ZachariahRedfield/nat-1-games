@@ -9,13 +9,15 @@ export default function SelectionSettingsPanel(props) {
     zoomToolActive,
     engine,
     interactionMode,
+    allowInactiveSelection = false,
     selectedToken,
     selectedTokensList,
     selectedObjsList,
   } = props;
 
-  const selectionControlsVisible =
-    !panToolActive && !zoomToolActive && (engine === "grid" || interactionMode === "select");
+  const selectionControlsVisible = allowInactiveSelection
+    ? !panToolActive && !zoomToolActive
+    : !panToolActive && !zoomToolActive && (engine === "grid" || interactionMode === "select");
 
   if (!selectionControlsVisible) {
     return null;

@@ -43,11 +43,14 @@ export function createGridProps(state) {
     removeObjectById: state.removeObjectById,
     updateObjectById: state.updateObjectById,
     onSelectionChange: state.handleSelectionChange,
+    selectedObjsList: state.selectedObjsList,
+    selectedTokensList: state.selectedTokensList,
     tokens: state.tokens,
     addToken: state.addToken,
     moveToken: state.moveToken,
     removeTokenById: state.removeTokenById,
     updateTokenById: state.updateTokenById,
     onTokenSelectionChange: state.handleTokenSelectionChange,
+    allowInactiveSelection: true,
   };
 }

@@ -216,7 +216,7 @@ export default function RightAssetsPanel({
                 </>
               ) : (
                 <div className="flex flex-col h-full">
-                  <div className="flex-1 min-h-0 border-b border-gray-700 pb-3">
+                  <div className="flex-1 min-h-0 border-b border-gray-700 pb-[14px]">
                     <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
                       <span>Placed Assets</span>
                       <span>{placedAssets.length}</span>
@@ -246,9 +246,9 @@ export default function RightAssetsPanel({
                       )}
                     </div>
                   </div>
-                  <div className="flex-1 min-h-0 pt-3 overflow-y-auto">
+                  <div className="flex-1 min-h-0 pt-[14px] overflow-y-auto">
                     {hasSelection ? (
-                      <SelectionSettingsPanel {...selectionPanelProps} />
+                      <SelectionSettingsPanel {...selectionPanelProps} allowInactiveSelection />
                     ) : (
                       <div className="text-sm text-gray-400">
                         Select a placed asset from the list or the map to edit its settings.
