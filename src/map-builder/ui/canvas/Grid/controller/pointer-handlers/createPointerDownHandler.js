@@ -44,17 +44,19 @@ export function createPointerDownHandler(context) {
 
     const { hitResizeHandle, hitRotateRing, hitTokenResizeHandle, hitTokenRotateRing } = selection;
 
-    const cornerHit = hitResizeHandle(pointer.xCss, pointer.yCss);
-    if (cornerHit && beginObjectResize({ event, cornerHit, dragRef, callbacks, config })) return;
+    if (config.interactionMode === "select") {
+      const cornerHit = hitResizeHandle(pointer.xCss, pointer.yCss);
+      if (cornerHit && beginObjectResize({ event, cornerHit, dragRef, callbacks, config })) return;
 
-    const tokenCorner = hitTokenResizeHandle(pointer.xCss, pointer.yCss);
-    if (tokenCorner && beginTokenResize({ event, tokenCorner, dragRef, callbacks })) return;
+      const tokenCorner = hitTokenResizeHandle(pointer.xCss, pointer.yCss);
+      if (tokenCorner && beginTokenResize({ event, tokenCorner, dragRef, callbacks })) return;
 
-    const rotHit = hitRotateRing(pointer.xCss, pointer.yCss);
-    if (rotHit && beginObjectRotation({ event, rotHit, dragRef, callbacks, config })) return;
+      const rotHit = hitRotateRing(pointer.xCss, pointer.yCss);
+      if (rotHit && beginObjectRotation({ event, rotHit, dragRef, callbacks, config })) return;
 
-    const tokRot = hitTokenRotateRing(pointer.xCss, pointer.yCss);
-    if (tokRot && beginTokenRotation({ event, tokRot, dragRef, callbacks })) return;
+      const tokRot = hitTokenRotateRing(pointer.xCss, pointer.yCss);
+      if (tokRot && beginTokenRotation({ event, tokRot, dragRef, callbacks })) return;
+    }
 
     const { row, col } = computeGridPosition({
       xCss: pointer.xCss,

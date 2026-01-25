@@ -34,6 +34,7 @@ export default function Grid(props) {
     updateObjectById,
     updateTokenById,
     zoomToolActive = false,
+    interactionMode = "draw",
     currentLayer: currentLayerProp,
     showGridLines = true,
     contentRef,
@@ -128,6 +129,7 @@ export default function Grid(props) {
           layerVisibility={layerVisibility}
           dragState={dragRef.current}
           isDraggingSelection={isSelectionDragging}
+          showTransformControls={interactionMode === "select"}
         />
 
         {tokensVisible && (
@@ -138,6 +140,7 @@ export default function Grid(props) {
             tileSize={tileSize}
             dragState={dragRef.current}
             isDraggingSelection={isSelectionDragging}
+            showTransformControls={interactionMode === "select"}
           />
         )}
 

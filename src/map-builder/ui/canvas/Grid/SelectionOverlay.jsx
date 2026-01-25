@@ -12,6 +12,7 @@ export default function SelectionOverlay({
   layerVisibility,
   dragState,
   isDraggingSelection,
+  showTransformControls = true,
 }) {
   const getObjectById = (layer, id) => (objects[layer] || []).find((o) => o.id === id);
 
@@ -75,7 +76,8 @@ export default function SelectionOverlay({
                       willChange: "transform",
                     }}
                   >
-                    {!isMultiSelection &&
+                    {showTransformControls &&
+                      !isMultiSelection &&
                       handlePositions.map((pos) => (
                         <div
                           key={`hdl-${sel.id}-${pos.key}`}
@@ -85,7 +87,7 @@ export default function SelectionOverlay({
                             top: pos.top,
                             width: sz,
                             height: sz,
-                            transform: 'translate(-50%, -50%)',
+                            transform: "translate(-50%, -50%)",
                             zIndex: baseZ,
                             borderRadius: 2,
                           }}
@@ -93,7 +95,7 @@ export default function SelectionOverlay({
                       ))}
                   </div>
 
-                  {!isMultiSelection && arr.length === 1 && (
+                  {showTransformControls && !isMultiSelection && arr.length === 1 && (
                     <div
                       key={`rot-ring-${sel.id}`}
                       className="absolute pointer-events-none"

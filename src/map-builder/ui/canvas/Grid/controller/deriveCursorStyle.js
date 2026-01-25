@@ -28,6 +28,7 @@ export function deriveCursorStyle({
   mousePos,
   engine,
   gridSettings,
+  interactionMode,
   hitResizeHandle,
   hitTokenResizeHandle,
   hitRotateRing,
@@ -56,20 +57,22 @@ export function deriveCursorStyle({
     return zoomToolActive ? "zoom-in" : gridCursor;
   }
 
-  const hit =
-    hitResizeHandle(mousePos.x, mousePos.y) ||
-    hitTokenResizeHandle(mousePos.x, mousePos.y);
+  if (interactionMode === "select") {
+    const hit =
+      hitResizeHandle(mousePos.x, mousePos.y) ||
+      hitTokenResizeHandle(mousePos.x, mousePos.y);
 
-  if (hit) {
-    return deriveCornerCursor(hit.corner, hit.sel?.rotation || 0);
-  }
+    if (hit) {
+      return deriveCornerCursor(hit.corner, hit.sel?.rotation || 0);
+    }
 
-  const ring =
-    hitRotateRing(mousePos.x, mousePos.y) ||
-    hitTokenRotateRing(mousePos.x, mousePos.y);
+    const ring =
+      hitRotateRing(mousePos.x, mousePos.y) ||
+      hitTokenRotateRing(mousePos.x, mousePos.y);
 
-  if (ring) {
-    return "grab";
+    if (ring) {
+      return "grab";
+    }
   }
 
   if (zoomToolActive) {
