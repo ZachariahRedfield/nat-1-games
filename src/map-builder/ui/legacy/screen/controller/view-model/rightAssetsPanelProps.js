@@ -1,4 +1,5 @@
 import { createAssetPanelProps } from "./assetPanelProps.js";
+import { createLegacySettingsPanelProps } from "./legacySettingsPanelProps.js";
 
 export function createRightAssetsPanelProps(state) {
   return {
@@ -7,5 +8,9 @@ export function createRightAssetsPanelProps(state) {
     setAssetStamp: state.setAssetStamp,
     naturalSettings: state.naturalSettings,
     setNaturalSettings: state.setNaturalSettings,
+    selectionPanelProps: createLegacySettingsPanelProps(state),
+    selectedObj: state.selectedObj,
+    handleSelectionChange: state.handleSelectionChange,
+    setCurrentLayer: state.setCurrentLayer,
   };
 }
