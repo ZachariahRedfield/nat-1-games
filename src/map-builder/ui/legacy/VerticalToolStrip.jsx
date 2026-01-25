@@ -108,6 +108,7 @@ export default function VerticalToolStrip({
           showTip={showTip}
           iconClassFor={iconClassFor}
           labelClassFor={labelClassFor}
+          showSelectionActions={false}
         />
       )}
     </div>

@@ -16,5 +16,8 @@ export function createRightAssetsPanelProps(state) {
     clearObjectSelection: state.clearObjectSelection,
     clearTokenSelection: state.clearTokenSelection,
     setCurrentLayer: state.setCurrentLayer,
+    canActOnSelection: state.selectedObjsList?.length > 0 || state.selectedTokensList?.length > 0,
+    onSaveSelection: state.openSaveSelectionDialog,
+    onDeleteSelection: state.deleteCurrentSelection,
   };
 }

@@ -152,7 +152,7 @@ export default function GridBrushSettings({
               }
               setGridSettings((current) => ({ ...current, rotation: next }));
             }}
-            size={96}
+            size={128}
           />
         </div>
       </div>

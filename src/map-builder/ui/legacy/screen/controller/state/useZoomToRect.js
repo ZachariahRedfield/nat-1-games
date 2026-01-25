@@ -51,8 +51,12 @@ export function useZoomToRect({
 
       const contentWidthPrev = cols * prevTileSize;
       const contentHeightPrev = rows * prevTileSize;
-      let rx = (left + width / 2) / (contentWidthPrev || 1);
-      let ry = (top + height / 2) / (contentHeightPrev || 1);
+      const scrollLeft = container.scrollLeft || 0;
+      const scrollTop = container.scrollTop || 0;
+      const adjustedLeft = scrollLeft > 0 && left <= container.clientWidth ? left + scrollLeft : left;
+      const adjustedTop = scrollTop > 0 && top <= container.clientHeight ? top + scrollTop : top;
+      let rx = (adjustedLeft + width / 2) / (contentWidthPrev || 1);
+      let ry = (adjustedTop + height / 2) / (contentHeightPrev || 1);
       rx = clamp(rx, 0, 1);
       ry = clamp(ry, 0, 1);
 
