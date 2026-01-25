@@ -4,7 +4,6 @@ import { SiteHeader } from "../../../../../shared/index.js";
 import SaveSelectionDialog from "../../SaveSelectionDialog.jsx";
 import Header from "../../Header.jsx";
 import LayerBar from "../../LayerBar.jsx";
-import BottomAssetsDrawer from "../../BottomAssetsDrawer.jsx";
 import VerticalToolStrip from "../../VerticalToolStrip.jsx";
 import FeedbackLayer from "../../modules/feedback/FeedbackLayer.jsx";
 import AssetCreatorModal from "../components/AssetCreatorModal.jsx";
@@ -31,7 +30,6 @@ export default function LegacyMapBuilderLayout({
   historyControls,
   gridProps,
   mapSizeModalProps,
-  bottomAssetsDrawerProps,
   rightAssetsPanelProps,
   saveSelectionDialogProps,
   session,
@@ -127,7 +125,6 @@ export default function LegacyMapBuilderLayout({
       </main>
 
       <MapSizeModal {...mapSizeModalProps} />
-      <BottomAssetsDrawer {...bottomAssetsDrawerProps} />
       <SaveSelectionDialog {...saveSelectionDialogProps} />
       <AssetsFolderDialog {...assetsFolderDialogProps} />
     </div>
