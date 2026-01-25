@@ -1,13 +1,8 @@
 import { createAssetPanelProps } from "./assetPanelProps.js";
 
-export function createBottomAssetsDrawerProps(state) {
-  const assetPanelProps = createAssetPanelProps(state);
-
+export function createRightAssetsPanelProps(state) {
   return {
-    assetPanelProps,
-    initialHeight: 90,
-    minHeight: 0,
-    maxHeightPct: 0.7,
+    assetPanelProps: createAssetPanelProps(state),
     assetStamp: state.assetStamp,
     setAssetStamp: state.setAssetStamp,
     naturalSettings: state.naturalSettings,

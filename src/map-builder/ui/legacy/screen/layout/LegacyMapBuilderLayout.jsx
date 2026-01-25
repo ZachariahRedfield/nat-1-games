@@ -13,6 +13,7 @@ import MapSizeModal from "../components/MapSizeModal.jsx";
 import AssetsFolderDialog from "../components/AssetsFolderDialog.jsx";
 import LegacySettingsPanel from "../components/LegacySettingsPanel.jsx";
 import LegacyMapBuilderUndoRedoControls from "./LegacyUndoRedoControls.jsx";
+import RightAssetsPanel from "../../components/RightAssetsPanel.jsx";
 
 const GRID_BACKGROUND_IMAGE =
   "radial-gradient(80% 60% at 50% 0%, rgba(255, 243, 210, 0.6), rgba(255, 243, 210, 0.9)), repeating-linear-gradient(0deg, rgba(190,155,90,0.06), rgba(190,155,90,0.06) 2px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 4px)";
@@ -31,6 +32,7 @@ export default function LegacyMapBuilderLayout({
   gridProps,
   mapSizeModalProps,
   bottomAssetsDrawerProps,
+  rightAssetsPanelProps,
   saveSelectionDialogProps,
   session,
   onLogout,
@@ -39,6 +41,7 @@ export default function LegacyMapBuilderLayout({
   onBack,
 }) {
   const { undo, redo, undoStack, redoStack } = historyControls;
+  const rightPanelTopOffset = Math.max(0, layout.fixedBarTop + layout.topControlsHeight);
 
   const headerAllProps = { ...headerProps, onBack, session, onLogout };
 
@@ -57,6 +60,7 @@ export default function LegacyMapBuilderLayout({
         <AssetCreatorModal {...assetCreatorModalProps} />
         <LoadMapsModal {...loadMapsModalProps} />
         <LegacySettingsPanel {...legacySettingsPanelProps} />
+        <RightAssetsPanel {...rightAssetsPanelProps} topOffset={rightPanelTopOffset} />
 
         <div className="flex-1 overflow-hidden">
           <div
