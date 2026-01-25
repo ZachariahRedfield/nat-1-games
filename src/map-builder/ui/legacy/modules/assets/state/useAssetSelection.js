@@ -78,9 +78,13 @@ function useAssetSelection({
     }
     const ensureSelection = (predicate) => {
       const current = selectedAsset;
-      if (current && predicate(current)) return;
+      if (current && predicate(current)) return current;
       const next = assets.find(predicate);
-      if (next) setSelectedAssetId(next.id);
+      if (next) {
+        setSelectedAssetId(next.id);
+        return next;
+      }
+      return null;
     };
 
     setCreatorOpen(false);
@@ -88,7 +92,12 @@ function useAssetSelection({
     if (assetGroup === "image") {
       ensureSelection((asset) => asset.kind === "image");
     } else if (assetGroup === "material") {
-      ensureSelection((asset) => asset.kind === "color");
+      const material = ensureSelection((asset) => asset.kind === "color");
+      if (material?.color) setCanvasColor?.(material.color);
+      if (material?.allowedEngines?.length) {
+        const preferred = material.defaultEngine || material.allowedEngines[0] || "canvas";
+        setEngine?.(material.allowedEngines.includes(preferred) ? preferred : material.allowedEngines[0]);
+      }
     } else if (assetGroup === "token") {
       ensureSelection((asset) => asset.kind === "token" || asset.kind === "tokenGroup");
       setEngine?.("grid");
@@ -96,7 +105,16 @@ function useAssetSelection({
       ensureSelection((asset) => asset.kind === "natural");
       setEngine?.("grid");
     }
-  }, [assetGroup, assets, selectedAsset, selectedAssetId, setCreatorOpen, setEngine, setSelectedAssetId]);
+  }, [
+    assetGroup,
+    assets,
+    selectedAsset,
+    selectedAssetId,
+    setCanvasColor,
+    setCreatorOpen,
+    setEngine,
+    setSelectedAssetId,
+  ]);
 
   return { getAsset, selectedAsset, selectAsset };
 }

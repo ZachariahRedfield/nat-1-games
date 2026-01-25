@@ -20,8 +20,13 @@ export function beginGridBrush({
   const snapToGrid = !!gridSettings?.snapToGrid;
   const centerRow = snapToGrid ? row + 0.5 : row;
   const centerCol = snapToGrid ? col + 0.5 : col;
+  const nextRow = Math.floor(centerRow);
+  const nextCol = Math.floor(centerCol);
 
   const hitObj = getTopMostObjectAt(currentLayer, row, col);
+  if (lastTileRef?.current) {
+    lastTileRef.current = { row: nextRow, col: nextCol };
+  }
 
   if ((selectedAsset?.kind === "token" || selectedAsset?.kind === "tokenGroup") && assetGroup === "token") {
     onBeginTokenStroke?.();
@@ -32,7 +37,7 @@ export function beginGridBrush({
   if (isErasing) {
     if (hitObj) onBeginObjectStroke?.(currentLayer);
     else onBeginTileStroke?.(currentLayer);
-    eraseGridStampAt(Math.floor(centerRow), Math.floor(centerCol));
+    eraseGridStampAt(nextRow, nextCol);
     return true;
   }
 
