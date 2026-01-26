@@ -141,7 +141,7 @@ export const paintBrushTip = (cssPoint, context) => {
 export const stampBetweenCanvas = (a, b, context) => {
   const { brushSize, tileSize, canvasSpacing } = context;
   const radiusCss = (brushSize * tileSize) / 2;
-  const spacing = Math.max(1, radiusCss, radiusCss * canvasSpacing);
+  const spacing = Math.max(1, radiusCss * canvasSpacing);
   const distance = dist(a, b);
   if (distance <= spacing) {
     paintBrushTip(b, context);
