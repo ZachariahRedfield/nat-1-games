@@ -1,4 +1,33 @@
-import { BASE_TILE, hexToRgba, dist, lerp } from "../utils.js";
+import { BASE_TILE, clamp, hexToRgba, dist, lerp } from "../utils.js";
+
+const clipToGridCells = (ctx, point, radius, bufferWidth, bufferHeight) => {
+  const cols = bufferWidth > 0 ? Math.floor(bufferWidth / BASE_TILE) : 0;
+  const rows = bufferHeight > 0 ? Math.floor(bufferHeight / BASE_TILE) : 0;
+  if (!cols || !rows) return;
+
+  const minCol = Math.max(0, Math.floor((point.x - radius) / BASE_TILE));
+  const maxCol = Math.min(cols - 1, Math.floor((point.x + radius) / BASE_TILE));
+  const minRow = Math.max(0, Math.floor((point.y - radius) / BASE_TILE));
+  const maxRow = Math.min(rows - 1, Math.floor((point.y + radius) / BASE_TILE));
+
+  ctx.beginPath();
+  for (let row = minRow; row <= maxRow; row += 1) {
+    const top = row * BASE_TILE;
+    for (let col = minCol; col <= maxCol; col += 1) {
+      const left = col * BASE_TILE;
+      const right = left + BASE_TILE;
+      const bottom = top + BASE_TILE;
+      const closestX = clamp(point.x, left, right);
+      const closestY = clamp(point.y, top, bottom);
+      const dx = point.x - closestX;
+      const dy = point.y - closestY;
+      if (dx * dx + dy * dy <= radius * radius) {
+        ctx.rect(left, top, BASE_TILE, BASE_TILE);
+      }
+    }
+  }
+  ctx.clip();
+};
 
 export const paintBrushTip = (cssPoint, context) => {
   if (!cssPoint) return;
@@ -30,6 +59,9 @@ export const paintBrushTip = (cssPoint, context) => {
       ? (stamp?.opacity ?? gridSettings?.opacity ?? 1)
       : canvasOpacity
   );
+
+  const radius = (brushSize * BASE_TILE) / 2;
+  clipToGridCells(ctx, p, radius, bufferWidth, bufferHeight);
 
   if (selectedAsset?.kind === "image" && selectedAsset.img) {
     const img = selectedAsset.img;
@@ -70,7 +102,7 @@ export const paintBrushTip = (cssPoint, context) => {
 
   ctx.fillStyle = hexToRgba(canvasColor, 1);
   ctx.beginPath();
-  ctx.arc(p.x, p.y, (brushSize * BASE_TILE) / 2, 0, Math.PI * 2);
+  ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 };
