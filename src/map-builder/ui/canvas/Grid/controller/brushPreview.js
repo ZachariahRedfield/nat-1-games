@@ -109,23 +109,33 @@ export const paintBrushTip = (cssPoint, context) => {
     ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
     ctx.clip();
 
+    const stampOrigins = new Set();
     for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
-      const centerY = row * BASE_TILE + BASE_TILE / 2;
+      const startRow = row - (row % hTiles);
       for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
-        const centerX = col * BASE_TILE + BASE_TILE / 2;
+        const startCol = col - (col % wTiles);
+        if (startCol < 0 || startRow < 0) continue;
+        if (startCol + wTiles > bounds.cols || startRow + hTiles > bounds.rows) continue;
+        stampOrigins.add(`${startCol}:${startRow}`);
+      }
+    }
+
+    for (const origin of stampOrigins) {
+      const [startCol, startRow] = origin.split(":").map(Number);
+      const centerX = startCol * BASE_TILE + pxWidth / 2;
+      const centerY = startRow * BASE_TILE + pxHeight / 2;
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(rot);
+      ctx.scale(scaleX, scaleY);
+      if (!isErasing) {
         ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(rot);
-        ctx.scale(scaleX, scaleY);
-        if (!isErasing) {
-          ctx.save();
-          ctx.globalCompositeOperation = "source-over";
-          ctx.clearRect(-pxWidth / 2, -pxHeight / 2, pxWidth, pxHeight);
-          ctx.restore();
-        }
-        ctx.drawImage(img, 0, 0, img.width, img.height, -pxWidth / 2, -pxHeight / 2, pxWidth, pxHeight);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.clearRect(-pxWidth / 2, -pxHeight / 2, pxWidth, pxHeight);
         ctx.restore();
       }
+      ctx.drawImage(img, 0, 0, img.width, img.height, -pxWidth / 2, -pxHeight / 2, pxWidth, pxHeight);
+      ctx.restore();
     }
 
     ctx.restore();
