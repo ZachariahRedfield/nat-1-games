@@ -1,11 +1,14 @@
 export function getPointerCssPosition(event) {
-  const rect = event.currentTarget.getBoundingClientRect();
-  const offsetX = parseFloat(event.currentTarget?.dataset?.offsetX || 0);
-  const offsetY = parseFloat(event.currentTarget?.dataset?.offsetY || 0);
+  const target = event.currentTarget || event.target;
+  const rect = target?.getBoundingClientRect?.() ?? { left: 0, top: 0 };
+  const offsetX = parseFloat(target?.dataset?.offsetX || 0);
+  const offsetY = parseFloat(target?.dataset?.offsetY || 0);
   return {
     rect,
     xCss: event.clientX - rect.left - offsetX,
     yCss: event.clientY - rect.top - offsetY,
+    offsetX,
+    offsetY,
   };
 }
 

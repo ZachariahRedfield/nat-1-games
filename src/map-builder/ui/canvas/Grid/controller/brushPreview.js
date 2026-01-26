@@ -159,14 +159,16 @@ export const stampBetweenCanvas = (a, b, context) => {
   const { brushSize, tileSize, canvasSpacing } = context;
   const radiusCss = (brushSize * tileSize) / 2;
   const spacing = Math.max(1, radiusCss * canvasSpacing);
+  if (!a || !b) return a || b || null;
   const distance = dist(a, b);
-  if (distance <= spacing) {
-    paintBrushTip(b, context);
-    return;
-  }
+  if (distance < spacing) return a;
   const steps = Math.ceil(distance / spacing);
+  let last = a;
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
-    paintBrushTip(lerp(a, b, t), context);
+    const point = lerp(a, b, t);
+    paintBrushTip(point, context);
+    last = point;
   }
+  return last;
 };
