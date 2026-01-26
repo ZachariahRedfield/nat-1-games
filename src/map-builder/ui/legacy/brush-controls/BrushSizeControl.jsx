@@ -13,12 +13,12 @@ export default function BrushSizeControl({
       <div className="flex items-center gap-2">
         <NumericInput
           value={brushSize}
-          min={0.1}
+          min={0.01}
           max={100}
-          step={0.1}
+          step={0.01}
           className="w-12 px-1 py-0.5 text-xs text-black rounded"
           onCommit={(v) => {
-            const n = Math.max(0.1, Math.min(100, parseFloat(v)));
+            const n = Math.max(0.01, Math.min(100, parseFloat(v)));
             snapshotSettings?.();
             setBrushSize(n);
           }}
