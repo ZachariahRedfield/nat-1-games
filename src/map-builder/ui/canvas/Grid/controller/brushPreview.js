@@ -1,15 +1,23 @@
 import { BASE_TILE, clamp, hexToRgba, dist, lerp } from "../utils.js";
 
-const clipToGridCells = (ctx, point, radius, bufferWidth, bufferHeight) => {
+const getBrushCellBounds = (point, radius, bufferWidth, bufferHeight) => {
   const cols = bufferWidth > 0 ? Math.floor(bufferWidth / BASE_TILE) : 0;
   const rows = bufferHeight > 0 ? Math.floor(bufferHeight / BASE_TILE) : 0;
-  if (!cols || !rows) return;
+  if (!cols || !rows) return null;
 
-  const minCol = Math.max(0, Math.floor((point.x - radius) / BASE_TILE));
-  const maxCol = Math.min(cols - 1, Math.floor((point.x + radius) / BASE_TILE));
-  const minRow = Math.max(0, Math.floor((point.y - radius) / BASE_TILE));
-  const maxRow = Math.min(rows - 1, Math.floor((point.y + radius) / BASE_TILE));
+  return {
+    cols,
+    rows,
+    minCol: Math.max(0, Math.floor((point.x - radius) / BASE_TILE)),
+    maxCol: Math.min(cols - 1, Math.floor((point.x + radius) / BASE_TILE)),
+    minRow: Math.max(0, Math.floor((point.y - radius) / BASE_TILE)),
+    maxRow: Math.min(rows - 1, Math.floor((point.y + radius) / BASE_TILE)),
+  };
+};
 
+const clipToGridCells = (ctx, point, radius, bounds) => {
+  if (!bounds) return;
+  const { minRow, maxRow, minCol, maxCol } = bounds;
   ctx.beginPath();
   for (let row = minRow; row <= maxRow; row += 1) {
     const top = row * BASE_TILE;
@@ -27,6 +35,17 @@ const clipToGridCells = (ctx, point, radius, bufferWidth, bufferHeight) => {
     }
   }
   ctx.clip();
+};
+
+const resolveStampTiles = (stamp, gridSettings, selectedAsset) => {
+  const sizeCols = stamp?.sizeCols ?? stamp?.sizeTiles ?? gridSettings?.sizeCols ?? gridSettings?.sizeTiles ?? 1;
+  const sizeRows = stamp?.sizeRows ?? stamp?.sizeTiles ?? gridSettings?.sizeRows ?? gridSettings?.sizeTiles;
+  const wTiles = Math.max(1, Math.round(sizeCols));
+  if (typeof sizeRows === "number") {
+    return { wTiles, hTiles: Math.max(1, Math.round(sizeRows)) };
+  }
+  const aspect = selectedAsset?.aspectRatio || 1;
+  return { wTiles, hTiles: Math.max(1, Math.round(wTiles / aspect)) };
 };
 
 export const paintBrushTip = (cssPoint, context) => {
@@ -61,36 +80,48 @@ export const paintBrushTip = (cssPoint, context) => {
   );
 
   const radius = (brushSize * BASE_TILE) / 2;
-  clipToGridCells(ctx, p, radius, bufferWidth, bufferHeight);
+  const bounds = getBrushCellBounds(p, radius, bufferWidth, bufferHeight);
+  clipToGridCells(ctx, p, radius, bounds);
 
   if (selectedAsset?.kind === "image" && selectedAsset.img) {
     const img = selectedAsset.img;
-    const pxSize = brushSize * BASE_TILE;
-    const half = pxSize / 2;
-    const destLeft = p.x - half;
-    const destTop = p.y - half;
-
-    const scaleX = bufferWidth > 0 ? img.width / bufferWidth : 1;
-    const scaleY = bufferHeight > 0 ? img.height / bufferHeight : 1;
-    const srcX = Math.max(0, Math.min(img.width, destLeft * scaleX));
-    const srcY = Math.max(0, Math.min(img.height, destTop * scaleY));
-    const srcW = Math.max(0, Math.min(img.width - srcX, pxSize * scaleX));
-    const srcH = Math.max(0, Math.min(img.height - srcY, pxSize * scaleY));
-
-    ctx.translate(p.x, p.y);
+    const { wTiles, hTiles } = resolveStampTiles(stamp, gridSettings, selectedAsset);
+    const pxWidth = wTiles * BASE_TILE;
+    const pxHeight = hTiles * BASE_TILE;
     const rot = (((stamp?.rotation ?? gridSettings?.rotation) || 0) * Math.PI) / 180;
-    ctx.rotate(rot);
-    ctx.scale((stamp?.flipX ?? gridSettings?.flipX) ? -1 : 1, (stamp?.flipY ?? gridSettings?.flipY) ? -1 : 1);
-    ctx.beginPath();
-    ctx.arc(0, 0, half, 0, Math.PI * 2);
-    ctx.clip();
-    if (!isErasing) {
-      ctx.save();
-      ctx.globalCompositeOperation = "source-over";
-      ctx.clearRect(-half, -half, pxSize, pxSize);
+    const scaleX = (stamp?.flipX ?? gridSettings?.flipX) ? -1 : 1;
+    const scaleY = (stamp?.flipY ?? gridSettings?.flipY) ? -1 : 1;
+
+    if (!bounds) {
       ctx.restore();
+      return;
     }
-    ctx.drawImage(img, srcX, srcY, srcW, srcH, -half, -half, pxSize, pxSize);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
+      const centerY = row * BASE_TILE + BASE_TILE / 2;
+      for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
+        const centerX = col * BASE_TILE + BASE_TILE / 2;
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(rot);
+        ctx.scale(scaleX, scaleY);
+        if (!isErasing) {
+          ctx.save();
+          ctx.globalCompositeOperation = "source-over";
+          ctx.clearRect(-pxWidth / 2, -pxHeight / 2, pxWidth, pxHeight);
+          ctx.restore();
+        }
+        ctx.drawImage(img, 0, 0, img.width, img.height, -pxWidth / 2, -pxHeight / 2, pxWidth, pxHeight);
+        ctx.restore();
+      }
+    }
+
+    ctx.restore();
     ctx.restore();
     return;
   }
