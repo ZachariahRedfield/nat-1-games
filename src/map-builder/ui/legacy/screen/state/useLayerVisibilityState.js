@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 
-const createInitialVisibility = (layers = []) => {
+const createInitialVisibility = (layers = [], extraKeys = []) => {
   const vis = {};
   layers.forEach((layer) => {
     vis[layer.id] = true;
   });
+  extraKeys.forEach((key) => {
+    vis[key] = true;
+  });
   return vis;
 };
 
-export function useLayerVisibilityState(layers = []) {
+export function useLayerVisibilityState(layers = [], extraKeys = []) {
   const [layerVisibility, setLayerVisibility] = useState(() =>
-    createInitialVisibility(layers)
+    createInitialVisibility(layers, extraKeys)
   );
 
   useEffect(() => {
@@ -23,15 +26,21 @@ export function useLayerVisibilityState(layers = []) {
           changed = true;
         }
       }
+      for (const key of extraKeys) {
+        if (next[key] === undefined) {
+          next[key] = true;
+          changed = true;
+        }
+      }
       for (const key of Object.keys(next)) {
-        if (!layers.some((layer) => layer.id === key)) {
+        if (!layers.some((layer) => layer.id === key) && !extraKeys.includes(key)) {
           delete next[key];
           changed = true;
         }
       }
       return changed ? next : prev;
     });
-  }, [layers]);
+  }, [extraKeys, layers]);
 
   const toggleLayerVisibility = useCallback((layerId) => {
     if (!layerId) return;
@@ -45,16 +54,19 @@ export function useLayerVisibilityState(layers = []) {
   }, []);
 
   const showAllLayers = useCallback(() => {
-    setLayerVisibility(createInitialVisibility(layers));
-  }, [layers]);
+    setLayerVisibility(createInitialVisibility(layers, extraKeys));
+  }, [extraKeys, layers]);
 
   const hideAllLayers = useCallback(() => {
     const next = {};
     layers.forEach((layer) => {
       next[layer.id] = false;
     });
+    extraKeys.forEach((key) => {
+      next[key] = false;
+    });
     setLayerVisibility(next);
-  }, [layers]);
+  }, [extraKeys, layers]);
 
   return {
     layerVisibility,

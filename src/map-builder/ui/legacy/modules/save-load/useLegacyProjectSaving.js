@@ -95,7 +95,7 @@ export function useLegacyProjectSaving({
         snapToGrid: !!gridSettings?.snap,
         engine,
         layerVisibility,
-        tokensVisible,
+        tokensVisible: layerVisibility?.tokens ?? tokensVisible,
         tokenHUDVisible,
         tokenHUDShowInitiative,
         assetGroup,

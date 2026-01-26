@@ -76,7 +76,7 @@ export function useLegacySceneComposition() {
 
   const zoomState = useZoomControls({ setTileSize });
 
-  const layerVisibilityState = useLayerVisibilityState(layerState.layers);
+  const layerVisibilityState = useLayerVisibilityState(layerState.layers, ["tokens"]);
   const layerList = layerState.layers || [];
 
   const {

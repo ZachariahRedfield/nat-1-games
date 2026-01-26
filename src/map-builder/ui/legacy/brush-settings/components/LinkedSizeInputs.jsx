@@ -16,6 +16,8 @@ export default function LinkedSizeInputs({
   inputClassName,
   buttonClassName,
   showAxisLabels = true,
+  placeholderCols = "",
+  placeholderRows = "",
 }) {
   return (
     <>
@@ -26,6 +28,7 @@ export default function LinkedSizeInputs({
           max={100}
           step={1}
           className={inputClassName}
+          placeholder={placeholderCols}
           onCommit={(value) => onCommitCols(clampGridSize(value))}
           title="Width in tiles (columns)"
         />
@@ -43,6 +46,7 @@ export default function LinkedSizeInputs({
           max={100}
           step={1}
           className={inputClassName}
+          placeholder={placeholderRows}
           onCommit={(value) => onCommitRows(clampGridSize(value))}
           title="Height in tiles (rows)"
         />

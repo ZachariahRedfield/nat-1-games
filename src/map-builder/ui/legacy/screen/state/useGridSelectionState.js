@@ -6,6 +6,13 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
   const [selectedObj, setSelectedObj] = useState(null);
   const [selectedObjsList, setSelectedObjsList] = useState([]);
 
+  const getUniformValue = useCallback((items, getValue) => {
+    if (!Array.isArray(items) || items.length === 0) return null;
+    const first = getValue(items[0]);
+    const matches = items.every((item) => getValue(item) === first);
+    return matches ? first : null;
+  }, []);
+
   const handleSelectionChange = useCallback(
     (objOrArr) => {
       const arr = Array.isArray(objOrArr) ? objOrArr : objOrArr ? [objOrArr] : [];
@@ -19,16 +26,24 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
         setSelectedObj(obj);
 
         if (arr.length > 1) {
+          const sizeCols = getUniformValue(arr, (item) => Math.max(1, Math.round(item.wTiles || 1)));
+          const sizeRows = getUniformValue(arr, (item) => Math.max(1, Math.round(item.hTiles || 1)));
+          const rotation = getUniformValue(arr, (item) => item.rotation || 0);
+          const flipX = getUniformValue(arr, (item) => !!item.flipX);
+          const flipY = getUniformValue(arr, (item) => !!item.flipY);
+          const opacity = getUniformValue(arr, (item) => item.opacity ?? 1);
+          const linkXY = getUniformValue(arr, (item) => !!item.linkXY);
+          const sizeTiles = sizeCols !== null && sizeRows !== null && sizeCols === sizeRows ? sizeCols : null;
           setGridSettings((prev) => ({
             ...prev,
-            sizeTiles: 0,
-            sizeCols: 0,
-            sizeRows: 0,
-            rotation: 0,
-            flipX: false,
-            flipY: false,
-            opacity: 0,
-            linkXY: false,
+            sizeTiles,
+            sizeCols,
+            sizeRows,
+            rotation,
+            flipX,
+            flipY,
+            opacity,
+            linkXY,
           }));
         } else {
           setGridSettings((prev) => ({
@@ -54,7 +69,7 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
       setSelectedObj(null);
       setSelectedObjsList([]);
     },
-    [gridSettings, hasSelection, setGridSettings],
+    [getUniformValue, gridSettings, hasSelection, setGridSettings],
   );
 
   const clearObjectSelection = useCallback(() => {

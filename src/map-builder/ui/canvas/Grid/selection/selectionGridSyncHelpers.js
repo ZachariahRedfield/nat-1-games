@@ -9,45 +9,34 @@ export const getSelectionIdsChange = (prevSelectedIds, currentSelectedIds) => {
   return { changed, prevIds, currentIds };
 };
 
-export const getMultiSelectionBaseline = (gridSettings, selectedIds) => {
-  if (!Array.isArray(selectedIds) || selectedIds.length <= 1) return gridSettings;
-  return {
-    ...gridSettings,
-    sizeCols: 0,
-    sizeRows: 0,
-    sizeTiles: 0,
-    rotation: 0,
-    opacity: 0,
-    flipX: false,
-    flipY: false,
-  };
-};
-
-export const getMultiSelectionDeltas = (gridSettings, prevGridSettings) => {
+export const getMultiSelectionUpdates = (gridSettings, prevGridSettings) => {
+  const next = gridSettings || {};
   const prev = prevGridSettings || {};
-  const rawDeltaSizeCols =
-    typeof gridSettings.sizeCols === "number" ? (gridSettings.sizeCols || 0) - (prev.sizeCols || 0) : 0;
-  const rawDeltaSizeRows =
-    typeof gridSettings.sizeRows === "number" ? (gridSettings.sizeRows || 0) - (prev.sizeRows || 0) : 0;
-  const deltaRotation =
-    typeof gridSettings.rotation === "number" ? (gridSettings.rotation || 0) - (prev.rotation || 0) : 0;
-  const deltaOpacity =
-    typeof gridSettings.opacity === "number" ? (gridSettings.opacity || 0) - (prev.opacity || 0) : 0;
-  const flipXChanged = typeof gridSettings.flipX === "boolean" && gridSettings.flipX !== prev.flipX;
-  const flipYChanged = typeof gridSettings.flipY === "boolean" && gridSettings.flipY !== prev.flipY;
+  const updates = {};
 
-  const hasDelta =
-    rawDeltaSizeCols || rawDeltaSizeRows || deltaRotation || deltaOpacity || flipXChanged || flipYChanged;
+  if (typeof next.sizeCols === "number" && next.sizeCols !== prev.sizeCols) {
+    updates.sizeCols = next.sizeCols;
+  }
+  if (typeof next.sizeRows === "number" && next.sizeRows !== prev.sizeRows) {
+    updates.sizeRows = next.sizeRows;
+  }
+  if (typeof next.rotation === "number" && next.rotation !== prev.rotation) {
+    updates.rotation = next.rotation;
+  }
+  if (typeof next.opacity === "number" && next.opacity !== prev.opacity) {
+    updates.opacity = next.opacity;
+  }
+  if (typeof next.flipX === "boolean" && next.flipX !== prev.flipX) {
+    updates.flipX = next.flipX;
+  }
+  if (typeof next.flipY === "boolean" && next.flipY !== prev.flipY) {
+    updates.flipY = next.flipY;
+  }
+  if (typeof next.linkXY === "boolean" && next.linkXY !== prev.linkXY) {
+    updates.linkXY = next.linkXY;
+  }
 
-  return {
-    hasDelta,
-    rawDeltaSizeCols,
-    rawDeltaSizeRows,
-    deltaRotation,
-    deltaOpacity,
-    flipXChanged,
-    flipYChanged,
-  };
+  return updates;
 };
 
 export const isMultiSelectionNeutral = (gridSettings) => {
@@ -69,44 +58,42 @@ export const applyMultiSelectionUpdates = ({
   getObjectById,
   updateObjectById,
   gridSettings,
-  deltas,
+  prevGridSettings,
 }) => {
-  if (!deltas?.hasDelta) return;
-  const uiLinked = !!gridSettings?.linkXY;
+  const updates = getMultiSelectionUpdates(gridSettings, prevGridSettings);
+  if (!updates || Object.keys(updates).length === 0) return;
 
   for (const id of selectedObjIds) {
     const current = getObjectById(currentLayer, id);
     if (!current) continue;
 
-    const linkXY = !!current.linkXY;
-    const primaryDelta = linkXY ? deltas.rawDeltaSizeCols || deltas.rawDeltaSizeRows : null;
-
-    const widthDelta = linkXY ? primaryDelta ?? 0 : deltas.rawDeltaSizeCols;
-    let heightDelta;
-    if (linkXY) {
-      heightDelta = primaryDelta ?? 0;
-    } else if (uiLinked && !linkXY && deltas.rawDeltaSizeCols && deltas.rawDeltaSizeCols === deltas.rawDeltaSizeRows) {
-      // The settings UI mirrors values when its link toggle is on; respect per-object link flags by
-      // ignoring mirrored height deltas for unlinked assets.
-      heightDelta = 0;
-    } else {
-      heightDelta = deltas.rawDeltaSizeRows;
+    const patch = {};
+    if (typeof updates.sizeCols === "number") {
+      patch.wTiles = Math.max(1, Math.round(updates.sizeCols));
+    }
+    if (typeof updates.sizeRows === "number") {
+      patch.hTiles = Math.max(1, Math.round(updates.sizeRows));
+    }
+    if (typeof updates.rotation === "number") {
+      patch.rotation = updates.rotation;
+    }
+    if (typeof updates.opacity === "number") {
+      patch.opacity = Math.max(0.05, Math.min(1, updates.opacity));
+    }
+    if (typeof updates.flipX === "boolean") {
+      patch.flipX = updates.flipX;
+    }
+    if (typeof updates.flipY === "boolean") {
+      patch.flipY = updates.flipY;
+    }
+    if (typeof updates.linkXY === "boolean") {
+      patch.linkXY = updates.linkXY;
     }
 
-    const wTiles = Math.max(1, Math.round((current.wTiles || 1) + widthDelta));
-    const hTiles = Math.max(1, Math.round((current.hTiles || 1) + heightDelta));
-    const rotation = ((current.rotation || 0) + deltas.deltaRotation + 360) % 360;
-    const opacity = Math.max(0.05, Math.min(1, (current.opacity ?? 1) + deltas.deltaOpacity));
+    const hasChanges = Object.entries(patch).some(([key, value]) => current[key] !== value);
+    if (!hasChanges) continue;
 
-    updateObjectById(currentLayer, current.id, {
-      wTiles,
-      hTiles,
-      rotation,
-      flipX: deltas.flipXChanged ? !!gridSettings.flipX : current.flipX,
-      flipY: deltas.flipYChanged ? !!gridSettings.flipY : current.flipY,
-      opacity,
-      linkXY: current.linkXY,
-    });
+    updateObjectById(currentLayer, current.id, patch);
   }
 };
 

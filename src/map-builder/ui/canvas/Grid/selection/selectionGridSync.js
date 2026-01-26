@@ -2,8 +2,6 @@ import { useEffect, useRef } from "react";
 import {
   applyMultiSelectionUpdates,
   getCenteredPosition,
-  getMultiSelectionBaseline,
-  getMultiSelectionDeltas,
   getObjectSizeFromGrid,
   getSelectionIdsChange,
   isMultiSelectionNeutral,
@@ -25,9 +23,8 @@ export function useObjectSelectionGridSync({
   const prevSelectedIdsRef = useRef(selectedObjIds);
 
   useEffect(() => {
-    if (!gridSettings || !selectedObjId) return;
-    const obj = getObjectById(currentLayer, selectedObjId);
-    if (!obj) return;
+    const hasSelection = Boolean(selectedObjId) || (Array.isArray(selectedObjIds) && selectedObjIds.length > 0);
+    if (!gridSettings || !hasSelection) return;
 
     const { changed: selectionChanged, currentIds: currentSelectedIds } = getSelectionIdsChange(
       prevSelectedIdsRef.current,
@@ -36,20 +33,18 @@ export function useObjectSelectionGridSync({
 
     if (selectionChanged) {
       prevSelectedIdsRef.current = currentSelectedIds;
-      // Establish a neutral baseline when switching selection groups so multi-edit deltas always start at zero.
-      prevGridSettingsRef.current = getMultiSelectionBaseline(gridSettings, currentSelectedIds);
+      prevGridSettingsRef.current = gridSettings;
       return;
     }
 
     if (Array.isArray(selectedObjIds) && selectedObjIds.length > 1) {
-      const deltas = getMultiSelectionDeltas(gridSettings, prevGridSettingsRef.current);
       applyMultiSelectionUpdates({
         selectedObjIds,
         currentLayer,
         getObjectById,
         updateObjectById,
         gridSettings,
-        deltas,
+        prevGridSettings: prevGridSettingsRef.current,
       });
 
       prevGridSettingsRef.current = gridSettings;
@@ -59,6 +54,10 @@ export function useObjectSelectionGridSync({
     if (isMultiSelectionNeutral(gridSettings)) {
       return;
     }
+
+    const activeId = selectedObjId ?? selectedObjIds[0];
+    const obj = getObjectById(currentLayer, activeId);
+    if (!obj) return;
 
     const asset = getAssetById(obj.assetId);
     const aspect = asset?.aspectRatio || 1;

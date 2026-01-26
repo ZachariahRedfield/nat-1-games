@@ -76,10 +76,12 @@ export default function Grid(props) {
     currentLayer,
     layerVisibility,
   });
+  const capturePadding = Math.max(16, Math.round(tileSize));
 
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>
-        <div ref={contentRef} style={{ position: "relative", width: cssWidth, height: cssHeight }}>
+      {/* Extend pointer capture beyond the grid so resize/rotate handles work outside the bounds. */}
+      <div ref={contentRef} style={{ position: "relative", width: cssWidth, height: cssHeight }}>
         <TilesLayer
           layers={layers}
           maps={maps}
@@ -168,6 +170,7 @@ export default function Grid(props) {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
+          capturePadding={capturePadding}
         />
 
         <MarqueeOverlay dragState={dragRef.current} tileSize={tileSize} />

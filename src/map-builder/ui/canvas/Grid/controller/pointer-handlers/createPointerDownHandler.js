@@ -41,6 +41,11 @@ export function createPointerDownHandler(context) {
 
     const pointer = getPointerCssPosition(event);
     state.setMousePos({ x: pointer.xCss, y: pointer.yCss });
+    const isInsideGrid =
+      pointer.xCss >= 0 &&
+      pointer.yCss >= 0 &&
+      pointer.xCss <= geometry.cssWidth &&
+      pointer.yCss <= geometry.cssHeight;
 
     const { hitResizeHandle, hitRotateRing, hitTokenResizeHandle, hitTokenRotateRing } = selection;
 
@@ -56,6 +61,11 @@ export function createPointerDownHandler(context) {
 
       const tokRot = hitTokenRotateRing(pointer.xCss, pointer.yCss);
       if (tokRot && beginTokenRotation({ event, tokRot, dragRef, callbacks })) return;
+    }
+
+    if (!isInsideGrid) {
+      mouseDownRef.current = false;
+      return;
     }
 
     const { row, col } = computeGridPosition({

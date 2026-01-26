@@ -33,6 +33,9 @@ export function LayerBarView({
   setGridSettings,
   activeLayer,
 }) {
+  const tokensVisible = layerVisibility?.tokens !== false;
+  const tokensToggleLabel = tokensVisible ? "Hide Tokens" : "Show Tokens";
+
   return (
     <div className="w-full z-[10020] bg-gray-800 text-white px-2 py-1 border-b border-gray-700 shadow">
       <div className="flex items-center gap-3 flex-wrap">
@@ -92,6 +95,15 @@ export function LayerBarView({
           title={toggleLabel}
         >
           {toggleLabel}
+        </button>
+
+        <button
+          type="button"
+          className="px-2 py-0.5 text-[12px] rounded-full border border-white/90 bg-gray-700"
+          onClick={() => toggleLayerVisibility?.("tokens")}
+          title={tokensToggleLabel}
+        >
+          {tokensToggleLabel}
         </button>
 
         <div className="h-4 w-px bg-gray-600 mx-1" />
