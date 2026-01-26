@@ -31,8 +31,10 @@ export default function AssetSettingsPanel({
 }) {
   const brushKind = interactionMode === "select" ? "grid" : assetGroup === "natural" ? "natural" : "grid";
   const titleOverride = interactionMode === "select" ? "Settings" : undefined;
-  const canRenameAsset = Boolean(selectedObj?.id && currentLayer && updateObjectById);
-  const assetDisplayName = selectedObj?.name ?? "";
+  const selectedObjIds = (selectedObjsList ?? []).map((obj) => obj?.id).filter(Boolean);
+  const canRenameAsset = Boolean(currentLayer && updateObjectById && selectedObjIds.length > 0);
+  const isMultiRename = selectedObjIds.length > 1;
+  const assetDisplayName = isMultiRename ? "" : selectedObj?.name ?? "";
 
   return (
     <>
@@ -45,9 +47,11 @@ export default function AssetSettingsPanel({
             id="placed-asset-name-input"
             className="w-full rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-100 focus:border-blue-500 focus:outline-none"
             value={assetDisplayName}
-            placeholder="Name this placed asset"
+            placeholder={isMultiRename ? "Name selected assets" : "Name this placed asset"}
             onCommit={(value) => {
-              updateObjectById?.(currentLayer, selectedObj.id, { name: value });
+              selectedObjIds.forEach((id) => {
+                updateObjectById?.(currentLayer, id, { name: value });
+              });
             }}
           />
         </div>
