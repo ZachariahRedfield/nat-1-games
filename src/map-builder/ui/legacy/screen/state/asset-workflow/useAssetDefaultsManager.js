@@ -2,9 +2,11 @@ import {
   useAssetGridDefaultsSync,
   useAssetNaturalDefaultsSync,
   useAssetStampDefaultsSync,
+  useAssetCanvasBrushDefaultsSync,
 } from "./defaults/assetDefaultsSync.js";
 import {
   usePersistAssetStampDefaults,
+  usePersistCanvasBrushDefaults,
   usePersistGridDefaults,
   usePersistNaturalDefaults,
 } from "./defaults/assetDefaultsPersistence.js";
@@ -23,6 +25,8 @@ export function useAssetDefaultsManager({
   naturalSettings,
   normalizeNaturalSettings,
   updateAssetById,
+  brushSize,
+  setBrushSize,
 }) {
   const loadingGridDefaultsRef = useAssetGridDefaultsSync({ selectedAsset, setGridSettings, hasSelection });
   const loadingAssetStampDefaultsRef = useAssetStampDefaultsSync({
@@ -35,6 +39,11 @@ export function useAssetDefaultsManager({
     getAsset,
     setNaturalSettings,
     normalizeNaturalSettings,
+  });
+  const loadingCanvasBrushDefaultsRef = useAssetCanvasBrushDefaultsSync({
+    selectedAssetId,
+    getAsset,
+    setBrushSize,
   });
 
   usePersistAssetStampDefaults({
@@ -65,6 +74,14 @@ export function useAssetDefaultsManager({
     normalizeNaturalSettings,
     updateAssetById,
     loadingRef: loadingNaturalDefaultsRef,
+  });
+
+  usePersistCanvasBrushDefaults({
+    selectedAssetId,
+    brushSize,
+    getAsset,
+    updateAssetById,
+    loadingRef: loadingCanvasBrushDefaultsRef,
   });
 }
 

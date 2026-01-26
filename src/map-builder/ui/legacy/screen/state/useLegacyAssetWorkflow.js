@@ -54,6 +54,8 @@ export function useLegacyAssetWorkflow({
     naturalSettings: assetLibrary.naturalSettings,
     normalizeNaturalSettings: assetLibrary.normalizeNaturalSettings,
     updateAssetById: assetLibrary.updateAssetById,
+    brushSize: brushSettings.brushSize,
+    setBrushSize: brushSettings.setBrushSize,
   });
 
   useAssetSelectionSafety({

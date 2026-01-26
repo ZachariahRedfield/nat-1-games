@@ -1,5 +1,11 @@
 import { BASE_TILE, clamp, hexToRgba, dist, lerp } from "../utils.js";
 
+const snapPointToTileCenter = (point) => {
+  const offset = BASE_TILE / 2;
+  const snap = (value) => Math.round((value - offset) / BASE_TILE) * BASE_TILE + offset;
+  return { x: snap(point.x), y: snap(point.y) };
+};
+
 const getBrushCellBounds = (point, radius, bufferWidth, bufferHeight) => {
   const cols = bufferWidth > 0 ? Math.floor(bufferWidth / BASE_TILE) : 0;
   const rows = bufferHeight > 0 ? Math.floor(bufferHeight / BASE_TILE) : 0;
@@ -68,7 +74,8 @@ export const paintBrushTip = (cssPoint, context) => {
   const ctx = getActiveCtx?.();
   if (!ctx) return;
 
-  const p = toCanvasCoords(cssPoint.x, cssPoint.y);
+  const rawPoint = toCanvasCoords(cssPoint.x, cssPoint.y);
+  const p = gridSettings?.snapToGrid ? snapPointToTileCenter(rawPoint) : rawPoint;
 
   ctx.save();
   ctx.globalCompositeOperation = isErasing ? "destination-out" : canvasBlendMode || "source-over";
