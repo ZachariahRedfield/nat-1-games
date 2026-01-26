@@ -28,6 +28,12 @@ export default function RightAssetsPanel({
   setAssetStamp,
   naturalSettings,
   setNaturalSettings,
+  engine,
+  interactionMode,
+  brushSize,
+  setBrushSize,
+  tileSize,
+  snapshotSettings,
   selectionPanelProps,
   selectedObj,
   selectedToken,
@@ -393,6 +399,12 @@ export default function RightAssetsPanel({
                         setAssetStamp={setAssetStamp}
                         naturalSettings={naturalSettings}
                         setNaturalSettings={setNaturalSettings}
+                        engine={engine}
+                        interactionMode={interactionMode}
+                        brushSize={brushSize}
+                        setBrushSize={setBrushSize}
+                        tileSize={tileSize}
+                        snapshotSettings={snapshotSettings}
                       />
                       <AssetPreviewSection
                         assetPanelProps={assetPanelProps}

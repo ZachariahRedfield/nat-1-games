@@ -76,3 +76,19 @@ export function useAssetNaturalDefaultsSync({
 
   return loadingRef;
 }
+
+export function useAssetCanvasBrushDefaultsSync({ selectedAssetId, getAsset, setBrushSize }) {
+  const loadingRef = useRef(false);
+
+  useEffect(() => {
+    if (!selectedAssetId) return;
+    const asset = getAsset(selectedAssetId);
+    if (!asset) return;
+    const brushSize = asset.canvasBrushDefaults?.brushSize;
+    loadingRef.current = true;
+    setBrushSize((prev) => (Number.isFinite(brushSize) ? brushSize : prev));
+    markLoadingComplete(loadingRef);
+  }, [getAsset, selectedAssetId, setBrushSize]);
+
+  return loadingRef;
+}

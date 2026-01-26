@@ -32,6 +32,11 @@ function areNaturalDefaultsEqual(previousDefaults, normalized) {
   );
 }
 
+function areCanvasBrushDefaultsEqual(previousDefaults, brushSize) {
+  if (!previousDefaults || !Number.isFinite(previousDefaults.brushSize)) return false;
+  return Math.abs(previousDefaults.brushSize - brushSize) < 0.0001;
+}
+
 export function usePersistAssetStampDefaults({
   selectedAssetId,
   assetStamp,
@@ -106,4 +111,27 @@ export function usePersistNaturalDefaults({
       updateAssetById(selectedAssetId, { naturalDefaults: normalized });
     }
   }, [getAsset, hasSelection, loadingRef, naturalSettings, normalizeNaturalSettings, selectedAssetId, updateAssetById]);
+}
+
+export function usePersistCanvasBrushDefaults({
+  selectedAssetId,
+  brushSize,
+  getAsset,
+  updateAssetById,
+  loadingRef,
+}) {
+  useEffect(() => {
+    if (!selectedAssetId) return;
+    if (loadingRef.current) return;
+
+    const currentAsset = getAsset(selectedAssetId);
+    if (!currentAsset) return;
+    if (!Number.isFinite(brushSize)) return;
+
+    const previousDefaults = currentAsset.canvasBrushDefaults || {};
+    const same = areCanvasBrushDefaultsEqual(previousDefaults, brushSize);
+    if (!same) {
+      updateAssetById(selectedAssetId, { canvasBrushDefaults: { brushSize } });
+    }
+  }, [brushSize, getAsset, loadingRef, selectedAssetId, updateAssetById]);
 }

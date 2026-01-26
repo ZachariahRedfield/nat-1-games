@@ -75,6 +75,12 @@ function useAssetPersistence({
           if (!existing.naturalDefaults && asset.naturalDefaults) {
             existing.naturalDefaults = asset.naturalDefaults;
           }
+          if (!asset.canvasBrushDefaults && existing.canvasBrushDefaults) {
+            asset.canvasBrushDefaults = existing.canvasBrushDefaults;
+          }
+          if (!existing.canvasBrushDefaults && asset.canvasBrushDefaults) {
+            existing.canvasBrushDefaults = asset.canvasBrushDefaults;
+          }
         }
       }
 
