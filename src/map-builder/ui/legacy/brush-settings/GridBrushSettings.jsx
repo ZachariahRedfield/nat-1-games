@@ -30,6 +30,12 @@ export default function GridBrushSettings({
   const numXYCls = "w-12 pr-5 px-1 py-0.5 text-xs text-black rounded";
 
   const numSmallCls = "w-12 px-1 py-0.5 text-xs text-black rounded";
+  const sizeColsValue = gridSettings?.sizeCols ?? gridSettings?.sizeTiles;
+  const sizeRowsValue = gridSettings?.sizeRows ?? gridSettings?.sizeTiles;
+  const sizeColsMixed = typeof sizeColsValue !== "number";
+  const sizeRowsMixed = typeof sizeRowsValue !== "number";
+  const opacityMixed = typeof gridSettings?.opacity !== "number";
+  const rotationMixed = typeof gridSettings?.rotation !== "number";
 
   const handleToggleLink = () => {
     snapshotSettings?.();
@@ -89,14 +95,16 @@ export default function GridBrushSettings({
           <span className="text-xs">Size</span>
           <div className="inline-flex items-center">
             <LinkedSizeInputs
-              valueCols={gridSettings?.sizeCols ?? gridSettings?.sizeTiles}
-              valueRows={gridSettings?.sizeRows ?? gridSettings?.sizeTiles}
+              valueCols={sizeColsValue}
+              valueRows={sizeRowsValue}
               onCommitCols={commitCols}
               onCommitRows={commitRows}
               linkXY={linkXY}
               onToggleLink={handleToggleLink}
               inputClassName={numXYCls}
               buttonClassName={buildLinkButtonClass(linkXY, true)}
+              placeholderCols={sizeColsMixed ? "N/A" : ""}
+              placeholderRows={sizeRowsMixed ? "N/A" : ""}
             />
           </div>
         </div>
@@ -109,22 +117,27 @@ export default function GridBrushSettings({
             max={1}
             step={0.05}
             className={numSmallCls}
+            placeholder={opacityMixed ? "N/A" : ""}
             onCommit={(value) => {
               snapshotSettings?.();
               setGridSettings((current) => ({ ...current, opacity: clampOpacity(value) }));
             }}
           />
         </div>
-        <AlphaSlider
-          value={gridSettings?.opacity}
-          min={0.05}
-          max={1}
-          step={0.05}
-          onChange={(event) => {
-            snapshotSettings?.();
-            setGridSettings((current) => ({ ...current, opacity: parseFloat(event.target.value) }));
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <AlphaSlider
+            value={typeof gridSettings?.opacity === "number" ? gridSettings.opacity : 1}
+            min={0.05}
+            max={1}
+            step={0.05}
+            onChange={(event) => {
+              snapshotSettings?.();
+              setGridSettings((current) => ({ ...current, opacity: parseFloat(event.target.value) }));
+            }}
+            className="flex-1"
+          />
+          {opacityMixed && <span className="text-[10px] text-gray-400 uppercase">N/A</span>}
+        </div>
 
         <label className="block text-xs mt-2">Rotation</label>
         <div className="flex items-center gap-3 mb-2">
@@ -134,6 +147,7 @@ export default function GridBrushSettings({
             max={359}
             step={1}
             className={numSmallCls}
+            placeholder={rotationMixed ? "N/A" : ""}
             onCommit={(value) => {
               snapshotSettings?.();
               setGridSettings((current) => ({ ...current, rotation: clampRotation(value) }));
@@ -143,7 +157,7 @@ export default function GridBrushSettings({
 
         <div className="w-full flex justify-center mt-3">
           <RotationWheel
-            value={gridSettings?.rotation}
+            value={typeof gridSettings?.rotation === "number" ? gridSettings.rotation : 0}
             onStart={() => snapshotSettings?.()}
             onChange={(value) => {
               const next = clampRotation(value);
@@ -155,6 +169,7 @@ export default function GridBrushSettings({
             size={128}
           />
         </div>
+        {rotationMixed && <div className="text-center text-[10px] text-gray-400 uppercase mt-1">N/A</div>}
       </div>
     </div>
   );

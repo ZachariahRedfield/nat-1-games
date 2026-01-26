@@ -24,7 +24,7 @@ export function createGridProps(state) {
     canvasRefs: state.canvasRefs,
     currentLayer: state.currentLayer,
     layerVisibility: state.layerVisibility,
-    tokensVisible: state.tokensVisible,
+    tokensVisible: state.layerVisibility?.tokens ?? state.tokensVisible,
     tokenHUDVisible: state.tokenHUDVisible,
     tokenHUDShowInitiative: state.tokenHUDShowInitiative,
     assetGroup: state.assetGroup,
