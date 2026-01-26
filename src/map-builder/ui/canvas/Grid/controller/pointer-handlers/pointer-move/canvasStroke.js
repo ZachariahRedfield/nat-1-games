@@ -8,13 +8,15 @@ export function handleCanvasStroke({ event, refs, config, data }) {
   const native = event.nativeEvent;
   const events = typeof native.getCoalescedEvents === "function" ? native.getCoalescedEvents() : [native];
   const alpha = clamp(config.canvasSmoothing ?? 0.55, 0.01, 0.99);
+  const offsetX = pointer.offsetX || 0;
+  const offsetY = pointer.offsetY || 0;
 
   let last = refs.lastStampCssRef.current;
   let ema = refs.emaCssRef.current || last;
 
   for (const ev of events) {
-    const px = ev.clientX - pointer.rect.left;
-    const py = ev.clientY - pointer.rect.top;
+    const px = ev.clientX - pointer.rect.left - offsetX;
+    const py = ev.clientY - pointer.rect.top - offsetY;
 
     if (!last || !ema) {
       const init = { x: px, y: py };
@@ -28,8 +30,10 @@ export function handleCanvasStroke({ event, refs, config, data }) {
       x: ema.x + (px - ema.x) * alpha,
       y: ema.y + (py - ema.y) * alpha,
     };
-    data.stampBetweenCanvas(last, ema);
-    last = ema;
+    const nextLast = data.stampBetweenCanvas(last, ema);
+    if (nextLast) {
+      last = nextLast;
+    }
   }
 
   refs.lastStampCssRef.current = last;
