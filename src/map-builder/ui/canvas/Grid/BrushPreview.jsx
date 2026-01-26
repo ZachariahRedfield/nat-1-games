@@ -19,9 +19,6 @@ export default function BrushPreview({
         width: brushSize * tileSize,
         height: brushSize * tileSize,
         zIndex: 99,
-        borderWidth: isErasing ? 1 : 0,
-        borderColor: isErasing ? "rgba(239,68,68,0.9)" : "transparent",
-        borderStyle: isErasing ? "dashed" : "solid",
         backgroundColor:
           isErasing
             ? "rgba(239,68,68,0.12)"
