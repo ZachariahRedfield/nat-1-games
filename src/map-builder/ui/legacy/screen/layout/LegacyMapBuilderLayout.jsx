@@ -97,7 +97,7 @@ export default function LegacyMapBuilderLayout({
               </div>
             </div>
 
-            <div className="relative w-full min-h-full flex justify-center items-start md:items-center p-6">
+            <div className="relative w-full min-h-full flex justify-center items-start md:items-center p-3 sm:p-6">
               <div
                 className="fixed z-[10015] pointer-events-auto"
                 style={{ top: layout.overlayTop, left: layout.overlayLeft }}

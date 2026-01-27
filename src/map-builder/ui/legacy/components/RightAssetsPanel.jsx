@@ -178,7 +178,7 @@ export default function RightAssetsPanel({
   const panelStyle = useMemo(() => {
     if (isMobile) {
       const usableHeight = viewport.height - Math.max(0, topOffset) - 24;
-      const panelHeight = Math.max(280, Math.min(Math.round(viewport.height * 0.68), usableHeight));
+      const panelHeight = Math.max(240, Math.min(Math.round(viewport.height * 0.55), usableHeight));
       return {
         left: 0,
         right: 0,
@@ -210,7 +210,7 @@ export default function RightAssetsPanel({
   const tabWrapStyle = useMemo(() => {
     if (isMobile) {
       return {
-        bottom: 16,
+        bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
         left: 16,
         right: 16,
         top: "auto",
@@ -393,6 +393,7 @@ export default function RightAssetsPanel({
             className={`relative h-full bg-gray-900/95 shadow-2xl flex flex-col pointer-events-auto ${
               isMobile ? "border-t border-gray-700 rounded-t-2xl" : "border-l border-gray-700"
             }`}
+            style={isMobile ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" } : undefined}
           >
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700 text-gray-100 sticky top-0 bg-gray-900/95 backdrop-blur-sm z-10">
               <div className="flex items-center gap-2 flex-1">
@@ -583,7 +584,7 @@ export default function RightAssetsPanel({
             <div
               role="presentation"
               onMouseDown={handleDragStart}
-              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-gray-700/40 hover:bg-gray-500/70"
+              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-gray-700/40 hover:bg-gray-500/70 max-sm:hidden"
             />
           </div>
         )}

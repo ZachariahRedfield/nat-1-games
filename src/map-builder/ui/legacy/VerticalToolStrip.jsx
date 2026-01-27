@@ -28,7 +28,7 @@ export default function VerticalToolStrip({
   const selectActive = !zoomToolActive && !panToolActive && interactionMode === "select";
 
   return (
-    <div className="relative inline-flex flex-col items-center gap-1.5 px-1 py-1 z-[10015] overflow-visible">
+    <div className="relative inline-flex flex-col items-center gap-1.5 px-1 py-1 z-[10015] overflow-visible max-sm:gap-1 max-sm:px-0.5 max-sm:py-0.5">
       <ToolButton
         id="draw"
         label="Draw"
