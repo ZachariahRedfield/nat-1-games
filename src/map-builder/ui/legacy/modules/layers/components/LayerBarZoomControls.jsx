@@ -22,7 +22,7 @@ export function LayerBarZoomControls({ tileSize, setTileSize, onZoomToFit, snapT
           onChange={onToggleSnap}
           className="h-3 w-3 rounded border-white/60 bg-transparent text-white"
         />
-        Snap
+        Snap-to-grid
       </label>
       <button
         type="button"

@@ -27,6 +27,7 @@ export function handleObjectResize({ event, refs, selection, config, geometry, a
     minWidthTiles: dragRef.current.minWidthTiles ?? 1,
     minHeightTiles: dragRef.current.minHeightTiles ?? 1,
     geometry,
+    snapToGrid: config.gridSettings?.snapToGrid ?? true,
   });
 
   if (!result) return true;
@@ -77,6 +78,7 @@ export function handleTokenResize({ event, refs, selection, config, geometry, ac
     minWidthTiles: dragRef.current.minWidthTiles ?? 1,
     minHeightTiles: dragRef.current.minHeightTiles ?? 1,
     geometry,
+    snapToGrid: config.gridSettings?.snapToGrid ?? true,
   });
 
   if (!result) return true;

@@ -53,6 +53,7 @@ export default function NaturalBrushSizeSection({
           onToggleLink={handleToggleLink}
           inputClassName={numXYCls}
           buttonClassName={`mx-1 ${buildLinkButtonClass(linkXY)}`}
+          snapToGrid={gridSettings?.snapToGrid ?? true}
         />
       </div>
     </div>

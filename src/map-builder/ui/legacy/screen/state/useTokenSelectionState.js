@@ -1,12 +1,20 @@
 import { useCallback } from "react";
 import { useTokenState } from "../../modules/tokens/index.js";
 
-export function useTokenSelectionState({ setGridSettings }) {
+export function useTokenSelectionState({ setGridSettings, snapToGrid = true }) {
   const tokenState = useTokenState();
   const {
     setSelectedToken,
     setSelectedTokensList,
   } = tokenState;
+
+  const quantizeSize = useCallback((value) => {
+    const clamped = Math.max(1, value);
+    if (snapToGrid) {
+      return Math.round(clamped);
+    }
+    return Number.parseFloat(clamped.toFixed(2));
+  }, [snapToGrid]);
 
   const handleTokenSelectionChange = useCallback(
     (tokOrArr) => {
@@ -17,9 +25,9 @@ export function useTokenSelectionState({ setGridSettings }) {
         setSelectedToken(tok);
         setGridSettings((prev) => ({
           ...prev,
-          sizeTiles: Math.max(1, Math.round(tok.wTiles || 1)),
-          sizeCols: Math.max(1, Math.round(tok.wTiles || 1)),
-          sizeRows: Math.max(1, Math.round(tok.hTiles || 1)),
+          sizeTiles: quantizeSize(tok.wTiles || 1),
+          sizeCols: quantizeSize(tok.wTiles || 1),
+          sizeRows: quantizeSize(tok.hTiles || 1),
           rotation: tok.rotation || 0,
           flipX: false,
           flipY: false,
@@ -30,7 +38,7 @@ export function useTokenSelectionState({ setGridSettings }) {
         setSelectedTokensList([]);
       }
     },
-    [setGridSettings, setSelectedToken, setSelectedTokensList],
+    [quantizeSize, setGridSettings, setSelectedToken, setSelectedTokensList],
   );
 
   const clearTokenSelection = useCallback(() => {

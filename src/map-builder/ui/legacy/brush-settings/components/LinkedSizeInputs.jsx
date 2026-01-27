@@ -2,8 +2,12 @@ import React from "react";
 import { NumericInput } from "../../../../../shared/index.js";
 import LinkToggleButton from "./LinkToggleButton.jsx";
 
-function clampGridSize(value) {
-  return Math.max(1, Math.min(100, Math.round(value)));
+function clampGridSize(value, snapToGrid) {
+  const clamped = Math.max(1, Math.min(100, value));
+  if (snapToGrid) {
+    return Math.round(clamped);
+  }
+  return Number.parseFloat(clamped.toFixed(2));
 }
 
 export default function LinkedSizeInputs({
@@ -18,6 +22,7 @@ export default function LinkedSizeInputs({
   showAxisLabels = true,
   placeholderCols = "",
   placeholderRows = "",
+  snapToGrid = true,
 }) {
   return (
     <>
@@ -26,10 +31,10 @@ export default function LinkedSizeInputs({
           value={valueCols}
           min={1}
           max={100}
-          step={1}
+          step={snapToGrid ? 1 : 0.1}
           className={inputClassName}
           placeholder={placeholderCols}
-          onCommit={(value) => onCommitCols(clampGridSize(value))}
+          onCommit={(value) => onCommitCols(clampGridSize(value, snapToGrid))}
           title="Width in tiles (columns)"
         />
         {showAxisLabels && (
@@ -44,10 +49,10 @@ export default function LinkedSizeInputs({
           value={valueRows}
           min={1}
           max={100}
-          step={1}
+          step={snapToGrid ? 1 : 0.1}
           className={inputClassName}
           placeholder={placeholderRows}
-          onCommit={(value) => onCommitRows(clampGridSize(value))}
+          onCommit={(value) => onCommitRows(clampGridSize(value, snapToGrid))}
           title="Height in tiles (rows)"
         />
         {showAxisLabels && (

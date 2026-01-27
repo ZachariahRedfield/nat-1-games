@@ -27,13 +27,19 @@ function getAssetTagClasses(tag) {
   return "bg-blue-900/80 text-blue-100";
 }
 
+function formatSizeValue(value) {
+  if (!Number.isFinite(value)) return value;
+  if (Number.isInteger(value)) return value;
+  return Number.parseFloat(value.toFixed(2));
+}
+
 function getAssetSizeLabel(asset) {
   if (!asset) return "—";
   const defaults = asset.defaults || {};
   const sizePx = Number.isFinite(defaults.sizePx) ? Math.round(defaults.sizePx) : null;
-  const sizeCols = Number.isFinite(defaults.sizeCols) ? defaults.sizeCols : null;
-  const sizeRows = Number.isFinite(defaults.sizeRows) ? defaults.sizeRows : null;
-  const sizeTiles = Number.isFinite(defaults.sizeTiles) ? defaults.sizeTiles : null;
+  const sizeCols = Number.isFinite(defaults.sizeCols) ? formatSizeValue(defaults.sizeCols) : null;
+  const sizeRows = Number.isFinite(defaults.sizeRows) ? formatSizeValue(defaults.sizeRows) : null;
+  const sizeTiles = Number.isFinite(defaults.sizeTiles) ? formatSizeValue(defaults.sizeTiles) : null;
 
   if (sizePx !== null) {
     return `${sizePx}px`;
@@ -130,14 +136,15 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
   const tagClasses = typeTag ? getAssetTagClasses(typeTag) : "";
   const sizeLabel = useMemo(() => getAssetSizeLabel(asset), [asset]);
 
-  const previewBaseClasses =
-    "relative w-2/3 mx-auto aspect-square overflow-hidden rounded-none border-2 shadow-sm transition";
-  const previewStateClasses = isSelected
-    ? "border-white/70 ring-1 ring-white/40"
-    : "border-slate-200/30 hover:border-slate-100/50";
   const detailsWrapperClasses = "relative w-full";
   const detailsRowClasses = `grid grid-cols-[minmax(0,1fr)_minmax(0,100px)_minmax(0,80px)] items-center gap-2 px-2 py-1 text-xs ${
     isSelected ? "bg-gray-700/70 text-gray-100" : "bg-gray-900/40 text-gray-200 hover:bg-gray-800/70"
+  }`;
+  const previewRowClasses = `grid grid-cols-[72px_minmax(0,1fr)_minmax(0,100px)_minmax(0,80px)] items-center gap-2 px-2 py-2 text-xs ${
+    isSelected ? "bg-gray-700/70 text-gray-100" : "bg-gray-900/40 text-gray-200 hover:bg-gray-800/70"
+  }`;
+  const previewFrameClasses = `relative h-14 w-14 mx-auto overflow-hidden rounded-md border transition ${
+    isSelected ? "border-white/70 ring-1 ring-white/40" : "border-slate-200/30 hover:border-slate-100/50"
   }`;
 
   const handleKeyPress = (event) => {
@@ -157,30 +164,36 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
         className="group relative cursor-pointer transition"
         title={asset.name}
       >
-        <div className={`${previewBaseClasses} ${previewStateClasses}`}>
-          <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
-          <div className="pointer-events-none absolute top-1 left-1 max-w-[70%]">
-            <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-white/90 shadow">
-              {asset.name}
-            </span>
+        <div className={previewRowClasses}>
+          <div className="flex items-center justify-center">
+            <div className={previewFrameClasses}>
+              <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
+              {preview.type === "naturalStack" && preview.total > 1 ? (
+                <div className="pointer-events-none absolute top-1 right-1">
+                  <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 shadow">
+                    ×{preview.total}
+                  </span>
+                </div>
+              ) : null}
+            </div>
           </div>
-          {typeTag ? (
-            <div className="pointer-events-none absolute bottom-1 right-1">
+          <div className="min-w-0 font-medium truncate" title={asset.name}>
+            {asset.name}
+          </div>
+          <div className="min-w-0">
+            {typeTag ? (
               <span
-                className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
+                className={`inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
               >
                 {typeTag}
               </span>
-            </div>
-          ) : null}
-          {preview.type === "naturalStack" && preview.total > 1 ? (
-            <div className="pointer-events-none absolute top-1 right-1">
-              <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 shadow">
-                ×{preview.total}
-              </span>
-            </div>
-          ) : null}
+            ) : (
+              <span className="text-[10px] uppercase text-gray-400">—</span>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-2 text-[11px] text-gray-300">
+            <span>{sizeLabel}</span>
+          </div>
         </div>
         {isSelected ? (
           <div className="pointer-events-none absolute left-2 right-2 -bottom-4 flex justify-center opacity-0 translate-y-2 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto">

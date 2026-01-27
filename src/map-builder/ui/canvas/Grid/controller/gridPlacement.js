@@ -12,6 +12,14 @@ const computeStampOrigin = ({ centerRow, centerCol, widthTiles, heightTiles, row
   return { r0, c0 };
 };
 
+const quantizeSize = (value, snapToGrid) => {
+  const clamped = Math.max(1, value);
+  if (snapToGrid) {
+    return Math.round(clamped);
+  }
+  return Number.parseFloat(clamped.toFixed(2));
+};
+
 export const eraseGridStampAt = (centerRow, centerCol, context) => {
   const { rows, cols, gridSettings, objects, currentLayer, placeTiles, removeObjectById } = context;
   const wTiles = Math.max(1, Math.round(gridSettings.sizeCols || gridSettings.sizeTiles || 1));
@@ -75,10 +83,14 @@ export const placeGridImageAt = (centerRow, centerCol, context) => {
   const variantAspect = isNatural
     ? variants?.[variantIndex || 0]?.aspectRatio || 1
     : selectedAsset.aspectRatio || 1;
+  const snapToGrid = !!gridSettings?.snapToGrid;
 
   const aspect = variantAspect;
-  const wTiles = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
-  const hTiles = Math.max(1, Math.round(stamp.sizeRows ?? Math.round(wTiles / aspect)));
+  const wTiles = quantizeSize(
+    stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1,
+    snapToGrid
+  );
+  const hTiles = quantizeSize(stamp.sizeRows ?? wTiles / aspect, snapToGrid);
 
   const { r0, c0 } = computeStampOrigin({
     centerRow,
@@ -87,7 +99,7 @@ export const placeGridImageAt = (centerRow, centerCol, context) => {
     heightTiles: hTiles,
     rows,
     cols,
-    snapToGrid: !!gridSettings?.snapToGrid,
+    snapToGrid,
   });
 
   const decideRotation = () => stamp.rotation ?? gridSettings.rotation ?? 0;
@@ -157,8 +169,15 @@ export const placeTokenAt = (centerRow, centerCol, context) => {
   const { selectedAsset, gridSettings, stamp, rows, cols, addToken, assets } = context;
   if (!selectedAsset) return;
 
-  const baseW = Math.max(1, Math.round((stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1)));
-  const baseH = Math.max(1, Math.round((stamp.sizeRows ?? stamp.sizeTiles ?? gridSettings.sizeRows ?? gridSettings.sizeTiles ?? 1)));
+  const snapToGrid = !!gridSettings?.snapToGrid;
+  const baseW = quantizeSize(
+    stamp.sizeCols ?? stamp.sizeTiles ?? gridSettings.sizeCols ?? gridSettings.sizeTiles ?? 1,
+    snapToGrid
+  );
+  const baseH = quantizeSize(
+    stamp.sizeRows ?? stamp.sizeTiles ?? gridSettings.sizeRows ?? gridSettings.sizeTiles ?? 1,
+    snapToGrid
+  );
   if (selectedAsset.kind === "token") {
     const wTiles = baseW;
     const hTiles = baseH;
@@ -169,7 +188,7 @@ export const placeTokenAt = (centerRow, centerCol, context) => {
       heightTiles: hTiles,
       rows,
       cols,
-      snapToGrid: !!gridSettings?.snapToGrid,
+      snapToGrid,
     });
     const glow = selectedAsset?.glowDefault || "#7dd3fc";
     addToken?.({
@@ -203,7 +222,7 @@ export const placeTokenAt = (centerRow, centerCol, context) => {
         heightTiles: hTiles,
         rows,
         cols,
-        snapToGrid: !!gridSettings?.snapToGrid,
+        snapToGrid,
       });
       placed.push({ assetId: tokAsset.id, r0, c0, wTiles, hTiles, name: tokAsset.name });
       cursorCol += wTiles;
