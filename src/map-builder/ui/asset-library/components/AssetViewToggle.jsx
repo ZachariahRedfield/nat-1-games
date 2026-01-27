@@ -4,8 +4,8 @@ export default function AssetViewToggle({ showPreview, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef(null);
   const options = [
-    { label: "Images", value: true },
-    { label: "Names", value: false },
+    { label: "Content", value: true },
+    { label: "Details", value: false },
   ];
 
   useEffect(() => {

@@ -369,6 +369,9 @@ export default function RightAssetsPanel({
         return;
       }
       if (entry.kind === "token") {
+        if (selectedObjsList.length) {
+          clearObjectSelection?.();
+        }
         if (selectedToken?.id === entry.id) {
           clearTokenSelection?.();
           return;
@@ -379,6 +382,9 @@ export default function RightAssetsPanel({
       if (selectedObj?.id === entry.id) {
         clearObjectSelection?.();
         return;
+      }
+      if (selectedTokensList.length) {
+        clearTokenSelection?.();
       }
       if (setCurrentLayer) {
         setCurrentLayer(entry.layerId);
@@ -392,7 +398,9 @@ export default function RightAssetsPanel({
       handleSelectionChange,
       handleTokenSelectionChange,
       handleToggleMultiSelectEntry,
+      selectedObjsList.length,
       selectedObj?.id,
+      selectedTokensList.length,
       selectedToken?.id,
       setCurrentLayer,
     ]

@@ -15,7 +15,11 @@ export default function BrushSizeControl({
   };
 
   return (
-    <div className="mt-1">
+    <div
+      className="mt-1"
+      onPointerDown={(event) => event.stopPropagation()}
+      onPointerUp={(event) => event.stopPropagation()}
+    >
       <label className="block text-xs mb-1">Brush Size (tiles)</label>
       <div className="flex items-center gap-2">
         <NumericInput
