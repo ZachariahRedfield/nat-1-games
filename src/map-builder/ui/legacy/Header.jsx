@@ -17,7 +17,7 @@ export default function Header({
   onOpenMapSize,
 }) {
   return (
-    <header className="p-4 bg-gray-800 grid grid-cols-[1fr_auto_1fr] items-center text-white">
+    <header className="px-3 py-2 sm:p-4 bg-gray-800 grid grid-cols-[1fr_auto_1fr] items-center text-white">
       {/* Left spacer to keep center aligned */}
       <div />
       {/* Center: Save / Save As / Load (aligned under main menu) */}
@@ -25,14 +25,14 @@ export default function Header({
         <div className="flex flex-col items-center gap-1">
           {/* Manage Map toggle button (underline style) */}
           <button
-            className={`${mapsMenuOpen ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-200'} text-sm px-2 pb-0.5 border-b-2 border-white/90`}
+            className={`${mapsMenuOpen ? 'text-white font-semibold' : 'text-gray-400 hover:text-gray-200'} text-xs sm:text-sm px-2 pb-0.5 border-b-2 border-white/90`}
             onClick={onToggleMaps}
             aria-pressed={mapsMenuOpen}
           >
             Manage Map
           </button>
           {showSaveWords && (
-            <div className="flex gap-6 text-sm text-gray-200">
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-200">
               <button onClick={onSave} className="hover:text-white">Save</button>
               <button onClick={onSaveAs} className="hover:text-white">Save As</button>
               <button onClick={onLoad} className="hover:text-white">Load</button>

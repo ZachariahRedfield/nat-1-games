@@ -11,8 +11,11 @@ export function LayerBarZoomControls({ tileSize, setTileSize, onZoomToFit, snapT
   );
 
   return (
-    <div id="layer-bar-zoom-controls" className="ml-auto flex items-center gap-2">
-      <label className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-white/80">
+    <div
+      id="layer-bar-zoom-controls"
+      className="ml-auto flex items-center gap-2 flex-wrap sm:flex-nowrap"
+    >
+      <label className="flex items-center gap-1 text-[10px] sm:text-[11px] uppercase tracking-wide text-white/80">
         <input
           type="checkbox"
           checked={!!snapToGrid}
@@ -35,7 +38,7 @@ export function LayerBarZoomControls({ tileSize, setTileSize, onZoomToFit, snapT
       >
         <FitToScreenIcon />
       </button>
-      <span className="text-[11px] opacity-80">Zoom</span>
+      <span className="text-[10px] sm:text-[11px] opacity-80">Zoom</span>
       <input
         type="range"
         min="8"
@@ -44,8 +47,9 @@ export function LayerBarZoomControls({ tileSize, setTileSize, onZoomToFit, snapT
         value={tileSize}
         onChange={handleZoomChange}
         title="Zoom level"
+        className="w-24 sm:w-32"
       />
-      <span className="text-[11px] w-10 text-right">
+      <span className="text-[10px] sm:text-[11px] w-10 text-right">
         {Math.round((tileSize / 32) * 100)}%
       </span>
     </div>

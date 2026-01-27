@@ -17,7 +17,7 @@ export default function SiteHeader(props) {
   } = useSiteHeaderController(props);
 
   return (
-    <header className="px-4 py-3 bg-gray-800 text-white grid grid-cols-[1fr_auto_1fr] items-center">
+    <header className="px-3 py-2 sm:px-4 sm:py-3 bg-gray-800 text-white grid grid-cols-[1fr_auto_1fr] items-center">
       <div className="justify-self-start">
         <SiteHeaderTitleButton onNavigateHome={navigateHome} />
       </div>
