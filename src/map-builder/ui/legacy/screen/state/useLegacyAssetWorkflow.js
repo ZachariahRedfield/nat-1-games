@@ -1,8 +1,20 @@
+import { useCallback } from "react";
 import { useAssetLibrary } from "../../modules/assets/useAssetLibrary.js";
 import { useAssetExports } from "../../modules/assets/useAssetExports.js";
 import { useAssetBrushSettings } from "./asset-workflow/useAssetBrushSettings.js";
 import { useAssetDefaultsManager } from "./asset-workflow/useAssetDefaultsManager.js";
 import { useAssetSelectionSafety } from "./asset-workflow/useAssetSelectionSafety.js";
+
+function reorderAssetList(assets, sourceId, targetId) {
+  if (!Array.isArray(assets)) return assets;
+  const fromIndex = assets.findIndex((asset) => asset.id === sourceId);
+  const toIndex = assets.findIndex((asset) => asset.id === targetId);
+  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return assets;
+  const next = assets.slice();
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+}
 
 export function useLegacyAssetWorkflow({
   setEngine,
@@ -86,10 +98,24 @@ export function useLegacyAssetWorkflow({
     objects,
   });
 
+  const reorderAssets = useCallback(
+    (sourceId, targetId) => {
+      if (!sourceId || !targetId || sourceId === targetId) return;
+      setUndoStack?.((prev) => [
+        ...prev,
+        { type: "assets", assets: assetLibrary.assets.map((asset) => ({ ...asset })) },
+      ]);
+      setRedoStack?.([]);
+      assetLibrary.setAssets((prev) => reorderAssetList(prev, sourceId, targetId));
+    },
+    [assetLibrary.assets, assetLibrary.setAssets, setRedoStack, setUndoStack],
+  );
+
   return {
     ...assetLibrary,
     ...brushSettings,
     ...assetExports,
+    reorderAssets,
   };
 }
 

@@ -48,6 +48,14 @@ export function pushTokensSnapshot(targetStackSetter, tokens) {
   ]);
 }
 
+export function pushAssetsSnapshot(targetStackSetter, assets) {
+  const snapshot = (assets || []).map((asset) => ({ ...asset }));
+  targetStackSetter?.((prev) => [
+    ...prev,
+    { type: "assets", assets: snapshot },
+  ]);
+}
+
 export function pushLayersSnapshot(targetStackSetter, entry, context) {
   const {
     canvasRefs,

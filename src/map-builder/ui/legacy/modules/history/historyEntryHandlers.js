@@ -15,6 +15,7 @@ import {
   pushCanvasSnapshot,
   pushLayersSnapshot,
   pushObjectsSnapshot,
+  pushAssetsSnapshot,
   pushSettingsSnapshot,
   pushTilemapSnapshot,
   pushTokensSnapshot,
@@ -46,6 +47,10 @@ export function handleUndoEntry(entry, context) {
     case "tokens":
       pushTokensSnapshot(context.setRedoStack, context.tokens);
       context.setTokens?.(cloneTokenList(entry.tokens || []));
+      return;
+    case "assets":
+      pushAssetsSnapshot(context.setRedoStack, context.assets);
+      context.setAssets?.(entry.assets?.map((asset) => ({ ...asset })) || []);
       return;
     case "layers":
       pushLayersSnapshot(context.setRedoStack, entry, context);
@@ -93,6 +98,10 @@ export function handleRedoEntry(entry, context) {
     case "tokens":
       pushTokensSnapshot(context.setUndoStack, context.tokens);
       context.setTokens?.(cloneTokenList(entry.tokens || []));
+      return;
+    case "assets":
+      pushAssetsSnapshot(context.setUndoStack, context.assets);
+      context.setAssets?.(entry.assets?.map((asset) => ({ ...asset })) || []);
       return;
     case "layers":
       pushLayersSnapshot(context.setUndoStack, entry, context);

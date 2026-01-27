@@ -14,12 +14,26 @@ export default function AssetPanel(props) {
     setAssets,
     setSelectedAssetId,
     confirmFn,
+    reorderAssets,
   } = props;
+
+  const [assetSearch, setAssetSearch] = useState("");
 
   const visibleAssets = useMemo(() => {
     const list = Array.isArray(assets) ? assets : [];
     return list.filter((asset) => assetMatchesGroup(asset));
   }, [assets]);
+
+  const filteredAssets = useMemo(() => {
+    const query = assetSearch.trim().toLowerCase();
+    if (!query) return visibleAssets;
+    return visibleAssets.filter((asset) => {
+      const labelText = asset?.labelMeta?.text || "";
+      const kind = asset?.kind || "";
+      const name = asset?.name || "";
+      return `${name} ${kind} ${labelText}`.toLowerCase().includes(query);
+    });
+  }, [assetSearch, visibleAssets]);
 
   const {
     handleOpenCreator,
@@ -56,13 +70,18 @@ export default function AssetPanel(props) {
   return (
     <div className="relative">
       <AssetListSection
-        assets={visibleAssets}
+        assets={filteredAssets}
+        totalAssets={visibleAssets.length}
         showAssetPreviews={showAssetPreviews}
         onToggleView={handleToggleView}
         selectedAssetId={selectedAssetId}
         onSelect={handleSelectAsset}
         onDelete={handleDeleteAsset}
         onCreateAsset={openCreatorPrompt}
+        searchQuery={assetSearch}
+        onSearchChange={setAssetSearch}
+        onClearSearch={() => setAssetSearch("")}
+        onReorder={reorderAssets}
       />
 
       {isCreatorPromptOpen ? (
