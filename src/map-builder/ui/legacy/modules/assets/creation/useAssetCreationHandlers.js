@@ -78,6 +78,7 @@ function useAssetCreationHandlers({
         name,
         kind: "image",
         src,
+        fileSizeBytes: file.size,
         aspectRatio,
         defaultEngine: "grid",
         allowedEngines: ["grid", "canvas"],
@@ -107,7 +108,11 @@ function useAssetCreationHandlers({
           const src = URL.createObjectURL(file);
           const img = new Image();
           img.onload = () => {
-            resolve({ src, aspectRatio: img.width && img.height ? img.width / img.height : 1 });
+            resolve({
+              src,
+              aspectRatio: img.width && img.height ? img.width / img.height : 1,
+              fileSizeBytes: file.size,
+            });
           };
           img.src = src;
         });
@@ -116,12 +121,17 @@ function useAssetCreationHandlers({
       variants = Array.isArray(filesOrVariants) ? filesOrVariants.slice(0, 16) : [];
     }
     if (!variants.length) return;
+    const totalSize = variants.reduce((sum, variant) => {
+      const size = Number.isFinite(variant?.fileSizeBytes) ? variant.fileSizeBytes : 0;
+      return sum + size;
+    }, 0);
 
     const asset = {
       id: uid(),
       name,
       kind: "natural",
       variants,
+      fileSizeBytes: totalSize || undefined,
       defaultEngine: "grid",
       allowedEngines: [],
       defaults: { sizeTiles: 1, opacity: 1, snap: true },

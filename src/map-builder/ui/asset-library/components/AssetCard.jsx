@@ -33,8 +33,19 @@ function formatSizeValue(value) {
   return Number.parseFloat(value.toFixed(2));
 }
 
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return null;
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** exponent;
+  const formatted = value >= 10 || exponent === 0 ? Math.round(value) : Number.parseFloat(value.toFixed(1));
+  return `${formatted} ${units[exponent]}`;
+}
+
 function getAssetSizeLabel(asset) {
   if (!asset) return "—";
+  const fileSize = formatFileSize(asset.fileSizeBytes ?? asset.fileSize);
+  if (fileSize) return fileSize;
   const defaults = asset.defaults || {};
   const sizePx = Number.isFinite(defaults.sizePx) ? Math.round(defaults.sizePx) : null;
   const sizeCols = Number.isFinite(defaults.sizeCols) ? formatSizeValue(defaults.sizeCols) : null;
@@ -155,7 +166,9 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
   };
 
   const deleteWrapperClasses = `overflow-hidden transition-all duration-200 ${
-    isSelected ? "max-h-12 opacity-100 translate-y-0" : "max-h-0 opacity-0 -translate-y-2 pointer-events-none"
+    isSelected
+      ? "max-h-0 opacity-0 -translate-y-2 pointer-events-none group-hover:max-h-12 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto"
+      : "max-h-0 opacity-0 -translate-y-2 pointer-events-none"
   }`;
 
   if (showPreview) {

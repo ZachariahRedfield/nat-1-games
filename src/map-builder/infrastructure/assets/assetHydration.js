@@ -51,7 +51,7 @@ export async function hydrateAssetsFromFS(projectJson, projectDirHandle, parentD
           const src = URL.createObjectURL(blob);
           const img = new Image();
           img.src = src;
-          hydrated.push({ ...merged, src, img });
+          hydrated.push({ ...merged, src, img, fileSizeBytes: file.size });
           continue;
         } catch {
           // ignore and fallback
@@ -61,6 +61,7 @@ export async function hydrateAssetsFromFS(projectJson, projectDirHandle, parentD
     } else if (asset.kind === "natural") {
       const variants = Array.isArray(asset.variants) ? asset.variants : [];
       const variantOutput = [];
+      let totalSizeBytes = 0;
       for (let i = 0; i < variants.length; i += 1) {
         const variant = variants[i];
         if (variant?.path) {
@@ -80,7 +81,8 @@ export async function hydrateAssetsFromFS(projectJson, projectDirHandle, parentD
             const file = await fileHandle.getFile();
             const blob = file;
             const src = URL.createObjectURL(blob);
-            variantOutput.push({ ...variant, src });
+            totalSizeBytes += file.size;
+            variantOutput.push({ ...variant, src, fileSizeBytes: file.size });
             continue;
           } catch {
             // ignore and fallback
@@ -88,7 +90,11 @@ export async function hydrateAssetsFromFS(projectJson, projectDirHandle, parentD
         }
         variantOutput.push(variant);
       }
-      hydrated.push({ ...merged, variants: variantOutput });
+      hydrated.push({
+        ...merged,
+        variants: variantOutput,
+        fileSizeBytes: totalSizeBytes || merged.fileSizeBytes,
+      });
     } else {
       hydrated.push(merged);
     }
