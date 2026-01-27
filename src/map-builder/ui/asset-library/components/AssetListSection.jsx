@@ -9,11 +9,23 @@ export default function AssetListSection({
   selectedAssetId,
   onSelect,
   onDelete,
+  onCreateAsset,
 }) {
   return (
     <div className="mb-2 border border-gray-600 rounded overflow-hidden resize-y min-h-[240px] max-h-[70vh] flex flex-col">
       <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
-        <span className="text-xs uppercase tracking-wide">Assets</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wide">Assets</span>
+          <div className="rounded border border-gray-500/80 bg-gray-800/70 px-1 py-0.5">
+            <button
+              type="button"
+              className="px-2 py-0.5 text-[11px] font-semibold text-gray-100 hover:text-white"
+              onClick={onCreateAsset}
+            >
+              Create Asset
+            </button>
+          </div>
+        </div>
         <AssetViewToggle showPreview={!!showAssetPreviews} onChange={onToggleView} />
       </div>
 

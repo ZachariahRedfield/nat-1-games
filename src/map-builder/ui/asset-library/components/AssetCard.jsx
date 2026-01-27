@@ -131,7 +131,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
   const sizeLabel = useMemo(() => getAssetSizeLabel(asset), [asset]);
 
   const previewBaseClasses =
-    "group relative w-2/3 mx-auto aspect-square overflow-hidden rounded-none border-2 shadow-sm transition";
+    "relative w-2/3 mx-auto aspect-square overflow-hidden rounded-none border-2 shadow-sm transition";
   const previewStateClasses = isSelected
     ? "border-white/70 ring-1 ring-white/40"
     : "border-slate-200/30 hover:border-slate-100/50";
@@ -154,37 +154,39 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
         tabIndex={0}
         onClick={() => onSelect?.(asset.id)}
         onKeyPress={handleKeyPress}
-        className={`relative cursor-pointer transition ${previewBaseClasses} ${previewStateClasses}`}
+        className="group relative cursor-pointer transition"
         title={asset.name}
       >
-        <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
-        <div className="pointer-events-none absolute top-1 left-1 max-w-[70%]">
-          <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-white/90 shadow">
-            {asset.name}
-          </span>
+        <div className={`${previewBaseClasses} ${previewStateClasses}`}>
+          <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
+          <div className="pointer-events-none absolute top-1 left-1 max-w-[70%]">
+            <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-white/90 shadow">
+              {asset.name}
+            </span>
+          </div>
+          {typeTag ? (
+            <div className="pointer-events-none absolute bottom-1 right-1">
+              <span
+                className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
+              >
+                {typeTag}
+              </span>
+            </div>
+          ) : null}
+          {preview.type === "naturalStack" && preview.total > 1 ? (
+            <div className="pointer-events-none absolute top-1 right-1">
+              <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 shadow">
+                ×{preview.total}
+              </span>
+            </div>
+          ) : null}
         </div>
-        {typeTag ? (
-          <div className="pointer-events-none absolute bottom-1 right-1">
-            <span
-              className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
-            >
-              {typeTag}
-            </span>
-          </div>
-        ) : null}
-        {preview.type === "naturalStack" && preview.total > 1 ? (
-          <div className="pointer-events-none absolute top-1 right-1">
-            <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 shadow">
-              ×{preview.total}
-            </span>
-          </div>
-        ) : null}
-        {isSelected && (
-          <div className="absolute bottom-1 left-1 right-1 flex gap-1">
+        {isSelected ? (
+          <div className="pointer-events-none absolute left-2 right-2 -bottom-4 flex justify-center opacity-0 translate-y-2 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto">
             <button
               type="button"
-              className="flex-1 min-w-0 px-1.5 py-0.5 text-[10px] leading-tight rounded bg-red-700/90 hover:bg-red-600/90 truncate"
+              className="pointer-events-auto rounded-md bg-red-700/95 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/95"
               onClick={(event) => {
                 event.stopPropagation();
                 onDelete?.(asset);
@@ -194,7 +196,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
               Delete
             </button>
           </div>
-        )}
+        ) : null}
       </div>
     );
   }
@@ -205,7 +207,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
       tabIndex={0}
       onClick={() => onSelect?.(asset.id)}
       onKeyPress={handleKeyPress}
-      className={`relative cursor-pointer ${detailsWrapperClasses}`}
+      className={`group relative cursor-pointer ${detailsWrapperClasses}`}
       title={asset.name}
     >
       <div className={detailsRowClasses}>
@@ -225,21 +227,23 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
         </div>
         <div className="flex items-center justify-between gap-2 text-[11px] text-gray-300">
           <span>{sizeLabel}</span>
-          {isSelected && (
-            <button
-              type="button"
-              className="rounded-sm bg-red-700/80 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white hover:bg-red-600/90"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDelete?.(asset);
-              }}
-              title="Delete asset"
-            >
-              Delete
-            </button>
-          )}
         </div>
       </div>
+      {isSelected ? (
+        <div className="pointer-events-none absolute left-2 right-2 -bottom-4 flex justify-center opacity-0 translate-y-2 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto">
+          <button
+            type="button"
+            className="pointer-events-auto rounded-md bg-red-700/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/90"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete?.(asset);
+            }}
+            title="Delete asset"
+          >
+            Delete
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
