@@ -78,7 +78,7 @@ export default function LegacyMapBuilderLayout({
               style={{
                 top: -9999,
                 left: -9999,
-                width: layout.fixedBarWidth || undefined,
+                width: "100%",
               }}
             >
               <div className="flex flex-col">
@@ -88,8 +88,8 @@ export default function LegacyMapBuilderLayout({
             </div>
 
             <div
-              className="fixed z-[10020]"
-              style={{ top: layout.fixedBarTop, left: layout.fixedBarLeft, width: layout.fixedBarWidth }}
+              className="fixed inset-x-0 z-[10020]"
+              style={{ top: layout.fixedBarTop }}
             >
               <div className="flex flex-col">
                 <Header {...headerAllProps} />
