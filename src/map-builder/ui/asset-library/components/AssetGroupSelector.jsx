@@ -4,7 +4,6 @@ import { ASSET_GROUPS } from "../assetGrouping.js";
 const GROUP_OPTIONS = [
   { id: ASSET_GROUPS.IMAGE, label: "Image" },
   { id: ASSET_GROUPS.TOKEN, label: "Token" },
-  { id: ASSET_GROUPS.MATERIAL, label: "Materials" },
   { id: ASSET_GROUPS.NATURAL, label: "Natural" },
 ];
 
