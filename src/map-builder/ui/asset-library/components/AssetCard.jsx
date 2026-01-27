@@ -4,6 +4,7 @@ import { resolvePrimaryPreview } from "../assetGrouping.js";
 function getAssetTypeTag(asset) {
   if (!asset) return null;
   if (asset.kind === "color") return "Material";
+  if (asset.kind === "image" && asset.labelMeta) return "Label";
   if (asset.kind === "image") return "Image";
   if (asset.kind === "natural") return "Natural";
   if (asset.kind === "token" || asset.kind === "tokenGroup") return "Token";
@@ -19,6 +20,9 @@ function getAssetTagClasses(tag) {
   }
   if (tag === "Token") {
     return "bg-fuchsia-900/80 text-fuchsia-100";
+  }
+  if (tag === "Label") {
+    return "bg-cyan-900/80 text-cyan-100";
   }
   return "bg-blue-900/80 text-blue-100";
 }
@@ -108,7 +112,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
     ? "border-white/70 ring-1 ring-white/40"
     : "border-white/10 hover:border-white/30";
   const nameBaseClasses =
-    "relative inline-flex h-full min-w-[160px] max-w-[220px] flex-col items-stretch gap-2 px-2 py-2 text-xs rounded-lg border shadow-sm transition";
+    "relative inline-flex h-full min-w-[130px] max-w-[200px] flex-col items-stretch gap-1 px-2 py-1 text-xs rounded-lg border shadow-sm transition";
   const nameStateClasses = isSelected
     ? "border-white/90 ring-1 ring-white/70 bg-gray-700/80"
     : "border-gray-600 bg-gray-800/60 hover:bg-gray-700/60";
@@ -181,7 +185,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
       className={`relative cursor-pointer ${nameBaseClasses} ${nameStateClasses}`}
       title={asset.name}
     >
-      <div className="flex-1 min-w-0 py-1">
+      <div className="flex-1 min-w-0 py-0.5">
         <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
       </div>
       {typeTag ? (
