@@ -1,3 +1,5 @@
+import { computeLinkedResizeUpdate, oppositeCorner } from "../resizeMath.js";
+
 function finalizeZoomTool({ config, refs, callbacks }) {
   const { zoomToolActive } = config;
   if (!zoomToolActive) return false;
@@ -60,8 +62,86 @@ function collectMarqueeSelection({ refs, selection, config, data, actions }) {
   }
 }
 
+function finalizeLinkedResize({ refs, config, selection, actions, geometry }) {
+  const drag = refs.dragRef.current;
+  if (!drag || !config?.gridSettings) return;
+  if (!config.gridSettings.linkXY) return;
+
+  const snapToGrid = config.gridSettings?.snapToGrid ?? true;
+  const anchorCorner = oppositeCorner(drag.corner);
+
+  if (drag.kind === "resize-obj") {
+    const obj = selection.getObjectById(config.currentLayer, drag.id);
+    if (!obj) return;
+    const startW = drag.startW ?? obj.wTiles ?? 1;
+    const startH = drag.startH ?? obj.hTiles ?? 1;
+    const deltaW = Math.abs(startW - (obj.wTiles || 1));
+    const deltaH = Math.abs(startH - (obj.hTiles || 1));
+    const base = deltaW >= deltaH ? obj.wTiles || 1 : obj.hTiles || 1;
+    const linkedResult = computeLinkedResizeUpdate({
+      anchorRow: drag.anchorRow,
+      anchorCol: drag.anchorCol,
+      rotation: drag.rotation ?? obj.rotation ?? 0,
+      anchorCorner,
+      sizeTiles: base,
+      geometry,
+      snapToGrid,
+    });
+    if (!linkedResult) return;
+    if (
+      obj.row === linkedResult.row &&
+      obj.col === linkedResult.col &&
+      obj.wTiles === linkedResult.wTiles &&
+      obj.hTiles === linkedResult.hTiles
+    ) {
+      return;
+    }
+    actions.updateObjectById?.(config.currentLayer, obj.id, linkedResult);
+    config.setGridSettings?.((settings) => ({
+      ...settings,
+      sizeCols: linkedResult.wTiles,
+      sizeRows: linkedResult.hTiles,
+    }));
+    return;
+  }
+
+  if (drag.kind === "resize-token") {
+    const token = selection.getTokenById(drag.id);
+    if (!token) return;
+    const startW = drag.startW ?? token.wTiles ?? 1;
+    const startH = drag.startH ?? token.hTiles ?? 1;
+    const deltaW = Math.abs(startW - (token.wTiles || 1));
+    const deltaH = Math.abs(startH - (token.hTiles || 1));
+    const base = deltaW >= deltaH ? token.wTiles || 1 : token.hTiles || 1;
+    const linkedResult = computeLinkedResizeUpdate({
+      anchorRow: drag.anchorRow,
+      anchorCol: drag.anchorCol,
+      rotation: drag.rotation ?? token.rotation ?? 0,
+      anchorCorner,
+      sizeTiles: base,
+      geometry,
+      snapToGrid,
+    });
+    if (!linkedResult) return;
+    if (
+      token.row === linkedResult.row &&
+      token.col === linkedResult.col &&
+      (token.wTiles || 1) === linkedResult.wTiles &&
+      (token.hTiles || 1) === linkedResult.hTiles
+    ) {
+      return;
+    }
+    actions.updateTokenById?.(drag.id, linkedResult);
+    config.setGridSettings?.((settings) => ({
+      ...settings,
+      sizeCols: linkedResult.wTiles,
+      sizeRows: linkedResult.hTiles,
+    }));
+  }
+}
+
 export function createPointerUpHandler(context) {
-  const { refs, config, callbacks, data, selection, actions, state } = context;
+  const { refs, config, callbacks, data, selection, actions, state, geometry } = context;
 
   return function handlePointerUp(event) {
     event.target.releasePointerCapture?.(event.pointerId);
@@ -73,6 +153,7 @@ export function createPointerUpHandler(context) {
     state?.setSelectionDragging?.(false);
 
     if (refs.dragRef.current) {
+      finalizeLinkedResize({ refs, config, selection, actions, geometry });
       collectMarqueeSelection({ refs, selection, config, data, actions });
       refs.dragRef.current = null;
     }

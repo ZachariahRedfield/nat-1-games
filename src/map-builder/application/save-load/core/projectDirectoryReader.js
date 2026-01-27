@@ -1,6 +1,7 @@
 import { readAssetsManifest } from "../../../infrastructure/assets/assetLibrary.js";
 import { hydrateAssetsFromFS } from "../../../infrastructure/assets/assetHydration.js";
 import { buildProjectStateSnapshot } from "../../../domain/project/projectSerialization.js";
+import { applyPlacedAssetSettingsFromDirectory } from "./placedAssetSettings.js";
 
 async function readJsonFromHandle(dirHandle, fileName) {
   const file = await (await dirHandle.getFileHandle(fileName)).getFile();
@@ -58,6 +59,9 @@ export async function loadProjectSnapshotFromDirectory(dirHandle, parentHandle) 
   const tiles = await readJsonFromHandle(dirHandle, "tiles.json");
   const objects = await readJsonFromHandle(dirHandle, "objects.json");
   const tokens = await readOptionalTokens(dirHandle);
+  const placedSettings = await applyPlacedAssetSettingsFromDirectory({ dirHandle, objectsDoc: objects, tokens });
+  const objectsWithSettings = placedSettings.objectsDoc || objects;
+  const tokensWithSettings = Array.isArray(tokens) ? placedSettings.tokens : null;
 
   const { canvases, single } = await resolveCanvasFiles(dirHandle);
 
@@ -66,8 +70,8 @@ export async function loadProjectSnapshotFromDirectory(dirHandle, parentHandle) 
   const projectAssets = await hydrateAssetsFromFS(project, dirHandle, parentHandle);
   const mergedAssets = mergeAssetLists(libraryAssets, projectAssets);
 
-  const raw = { project: { ...project, assets: mergedAssets }, tiles, objects };
-  if (tokens) raw.tokens = tokens;
+  const raw = { project: { ...project, assets: mergedAssets }, tiles, objects: objectsWithSettings };
+  if (tokensWithSettings) raw.tokens = tokensWithSettings;
 
   const canvasSources = canvases.background || canvases.base || canvases.sky ? canvases : single;
   const snapshot = await buildProjectStateSnapshot(raw, canvasSources);

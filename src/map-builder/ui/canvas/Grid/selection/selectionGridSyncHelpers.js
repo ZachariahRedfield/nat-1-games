@@ -35,6 +35,9 @@ export const getMultiSelectionUpdates = (gridSettings, prevGridSettings) => {
   if (typeof next.linkXY === "boolean" && next.linkXY !== prev.linkXY) {
     updates.linkXY = next.linkXY;
   }
+  if (typeof next.snapToGrid === "boolean" && next.snapToGrid !== prev.snapToGrid) {
+    updates.snapToGrid = next.snapToGrid;
+  }
 
   return updates;
 };
@@ -98,6 +101,9 @@ export const applyMultiSelectionUpdates = ({
     }
     if (typeof updates.linkXY === "boolean") {
       patch.linkXY = updates.linkXY;
+    }
+    if (typeof updates.snapToGrid === "boolean") {
+      patch.snapToGrid = updates.snapToGrid;
     }
 
     const hasChanges = Object.entries(patch).some(([key, value]) => current[key] !== value);

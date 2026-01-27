@@ -82,6 +82,7 @@ export function useObjectSelectionGridSync({
     const flipY = !!gridSettings.flipY;
     const opacity = Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1));
     const linkXY = !!gridSettings.linkXY;
+    const snapToGrid = gridSettings?.snapToGrid ?? true;
 
     if (
       obj.wTiles === nextW &&
@@ -92,7 +93,8 @@ export function useObjectSelectionGridSync({
       !!obj.flipX === flipX &&
       !!obj.flipY === flipY &&
       (obj.opacity ?? 1) === opacity &&
-      !!obj.linkXY === linkXY
+      !!obj.linkXY === linkXY &&
+      (obj.snapToGrid ?? true) === snapToGrid
     ) {
       return;
     }
@@ -107,6 +109,7 @@ export function useObjectSelectionGridSync({
       flipY,
       opacity,
       linkXY,
+      snapToGrid,
     });
 
     prevGridSettingsRef.current = gridSettings;
@@ -154,6 +157,7 @@ export function useTokenSelectionGridSync({
     const flipX = !!gridSettings.flipX;
     const flipY = !!gridSettings.flipY;
     const opacity = Math.max(0.05, Math.min(1, gridSettings.opacity ?? 1));
+    const snapToGrid = gridSettings?.snapToGrid ?? true;
 
     if (
       (token.wTiles || 1) === wTiles &&
@@ -163,7 +167,8 @@ export function useTokenSelectionGridSync({
       (token.rotation || 0) === rotation &&
       !!token.flipX === flipX &&
       !!token.flipY === flipY &&
-      (token.opacity ?? 1) === opacity
+      (token.opacity ?? 1) === opacity &&
+      (token.snapToGrid ?? true) === snapToGrid
     ) {
       return;
     }
@@ -177,6 +182,7 @@ export function useTokenSelectionGridSync({
       flipX,
       flipY,
       opacity,
+      snapToGrid,
     });
   }, [gridSettings, selectedTokenId, rows, cols, getTokenById, updateTokenById]);
 }

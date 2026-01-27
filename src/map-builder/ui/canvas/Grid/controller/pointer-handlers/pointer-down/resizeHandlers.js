@@ -21,6 +21,8 @@ export function beginObjectResize({ event, cornerHit, dragRef, callbacks, config
     signY: sign.y,
     minWidthTiles: 1,
     minHeightTiles: 1,
+    startW: o.wTiles || 1,
+    startH: o.hTiles || 1,
   };
   setPointerCapture(event);
   return true;
@@ -45,6 +47,8 @@ export function beginTokenResize({ event, tokenCorner, dragRef, callbacks }) {
     signY: sign.y,
     minWidthTiles: 1,
     minHeightTiles: 1,
+    startW: token.wTiles || 1,
+    startH: token.hTiles || 1,
   };
   setPointerCapture(event);
   return true;

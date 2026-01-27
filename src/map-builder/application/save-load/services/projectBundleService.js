@@ -3,7 +3,9 @@ import { sanitizeFolderName } from "../../../infrastructure/filesystem/directory
 import { capturePerLayerPNGs } from "../../../infrastructure/canvas/canvasCapture.js";
 import { blobFromSrc } from "../../../infrastructure/assets/assetData.js";
 import { stripAssetInMemoryFields, extFromType } from "../../../infrastructure/assets/assetSerialization.js";
+import { extractAssetSettings } from "../../../infrastructure/assets/assetSettings.js";
 import { ASSETS_DIR_NAME, ASSETS_MANIFEST_FILE } from "../../../infrastructure/persistence/persistenceKeys.js";
+import { settingsFilenameForId } from "../../../infrastructure/persistence/settingsFiles.js";
 import {
   buildProjectStateSnapshot,
   toObjectsJson,
@@ -11,6 +13,8 @@ import {
   toTilesJson,
   toTokensJson,
 } from "../../../domain/project/projectSerialization.js";
+
+const PLACED_ASSET_SETTINGS_DIR = "asset-settings";
 
 async function addImageAssetToZip(zip, asset, assetsOut) {
   const base = stripAssetInMemoryFields(asset);
@@ -61,6 +65,42 @@ async function serializeAssetsForBundle(zip, assets = []) {
   return assetsOut;
 }
 
+function serializeAssetSettingsForBundle(zip, assets = []) {
+  for (const asset of assets || []) {
+    const settings = extractAssetSettings(asset);
+    if (!settings || !asset?.id) continue;
+    const filename = settingsFilenameForId(asset.id);
+    zip.file(`${ASSETS_DIR_NAME}/${filename}`, JSON.stringify(settings, null, 2));
+  }
+}
+
+function serializePlacedAssetSettingsForBundle(zip, projectState) {
+  const objects = projectState?.objects || {};
+  const tokens = projectState?.tokens || [];
+
+  for (const [, layerObjects] of Object.entries(objects)) {
+    for (const obj of layerObjects || []) {
+      if (!obj?.id) continue;
+      const filename = settingsFilenameForId(obj.id);
+      const snapToGrid = typeof obj.snapToGrid === "boolean" ? obj.snapToGrid : true;
+      zip.file(
+        `${PLACED_ASSET_SETTINGS_DIR}/objects/${filename}`,
+        JSON.stringify({ snapToGrid }, null, 2)
+      );
+    }
+  }
+
+  for (const token of tokens || []) {
+    if (!token?.id) continue;
+    const filename = settingsFilenameForId(token.id);
+    const snapToGrid = typeof token.snapToGrid === "boolean" ? token.snapToGrid : true;
+    zip.file(
+      `${PLACED_ASSET_SETTINGS_DIR}/tokens/${filename}`,
+      JSON.stringify({ snapToGrid }, null, 2)
+    );
+  }
+}
+
 export async function exportBundle(projectState, { canvasRefs, silent = false, mapName } = {}) {
   const zip = new JSZip();
   const assetsOut = await serializeAssetsForBundle(zip, projectState.assets);
@@ -75,6 +115,8 @@ export async function exportBundle(projectState, { canvasRefs, silent = false, m
     `${ASSETS_DIR_NAME}/${ASSETS_MANIFEST_FILE}`,
     JSON.stringify({ version: 1, assets: assetsOut }, null, 2),
   );
+  serializeAssetSettingsForBundle(zip, projectState.assets);
+  serializePlacedAssetSettingsForBundle(zip, projectState);
   zip.file("project.json", JSON.stringify(projectJson, null, 2));
   zip.file("tiles.json", JSON.stringify(tilesJson, null, 2));
   zip.file("objects.json", JSON.stringify(objectsJson, null, 2));
@@ -142,11 +184,22 @@ async function hydrateAssetFromZip(zip, asset) {
   return asset;
 }
 
+async function readAssetSettingsFromZip(zip, assetId) {
+  if (!assetId) return null;
+  const entry = zip.file(`${ASSETS_DIR_NAME}/${settingsFilenameForId(assetId)}`);
+  if (!entry) return null;
+  const text = await entry.async("text");
+  return JSON.parse(text || "{}");
+}
+
 async function hydrateAssetsFromZip(zip, assets = []) {
   const hydrated = [];
   for (const asset of assets) {
     // eslint-disable-next-line no-await-in-loop
-    hydrated.push(await hydrateAssetFromZip(zip, asset));
+    const settings = await readAssetSettingsFromZip(zip, asset.id);
+    // eslint-disable-next-line no-await-in-loop
+    const hydratedAsset = await hydrateAssetFromZip(zip, asset);
+    hydrated.push(settings ? { ...hydratedAsset, ...settings } : hydratedAsset);
   }
   return hydrated;
 }
@@ -156,6 +209,52 @@ async function readJsonEntry(zip, name) {
   if (!entry) return null;
   const text = await entry.async("text");
   return JSON.parse(text || "{}");
+}
+
+async function readPlacedSettingsFromZip(zip, subdir, id) {
+  if (!id) return null;
+  const entry = zip.file(`${PLACED_ASSET_SETTINGS_DIR}/${subdir}/${settingsFilenameForId(id)}`);
+  if (!entry) return null;
+  const text = await entry.async("text");
+  return JSON.parse(text || "{}");
+}
+
+async function applyPlacedAssetSettingsFromZip(zip, objectsDoc, tokens) {
+  const objects = objectsDoc?.objects || {};
+  const tokensList = Array.isArray(tokens)
+    ? tokens
+    : Array.isArray(objectsDoc?.tokens)
+      ? objectsDoc.tokens
+      : [];
+
+  const nextObjects = {};
+  for (const [layerId, layerObjects] of Object.entries(objects || {})) {
+    const updatedLayer = [];
+    for (const obj of layerObjects || []) {
+      // eslint-disable-next-line no-await-in-loop
+      const settings = await readPlacedSettingsFromZip(zip, "objects", obj.id);
+      const snapToGrid = typeof (settings?.snapToGrid ?? obj.snapToGrid) === "boolean"
+        ? settings?.snapToGrid ?? obj.snapToGrid
+        : true;
+      updatedLayer.push({ ...obj, snapToGrid });
+    }
+    nextObjects[layerId] = updatedLayer;
+  }
+
+  const nextTokens = [];
+  for (const token of tokensList || []) {
+    // eslint-disable-next-line no-await-in-loop
+    const settings = await readPlacedSettingsFromZip(zip, "tokens", token.id);
+    const snapToGrid = typeof (settings?.snapToGrid ?? token.snapToGrid) === "boolean"
+      ? settings?.snapToGrid ?? token.snapToGrid
+      : true;
+    nextTokens.push({ ...token, snapToGrid });
+  }
+
+  return {
+    objectsDoc: { ...(objectsDoc || {}), objects: nextObjects, tokens: nextTokens },
+    tokens: nextTokens,
+  };
 }
 
 export async function importBundle(file) {
@@ -218,8 +317,11 @@ export async function importBundle(file) {
   }
 
   const hydratedAssets = await hydrateAssetsFromZip(zip, assetsIn);
-  const raw = { project: { ...(project || {}), assets: hydratedAssets }, tiles, objects };
-  if (tokensDoc && Array.isArray(tokensDoc.tokens)) raw.tokens = tokensDoc.tokens;
+  const placedSettings = await applyPlacedAssetSettingsFromZip(zip, objects, tokensDoc?.tokens);
+  const objectsWithSettings = placedSettings.objectsDoc || objects;
+  const tokensWithSettings = Array.isArray(tokensDoc?.tokens) ? placedSettings.tokens : null;
+  const raw = { project: { ...(project || {}), assets: hydratedAssets }, tiles, objects: objectsWithSettings };
+  if (tokensWithSettings) raw.tokens = tokensWithSettings;
   const canvasSources = canvases.background || canvases.base || canvases.sky ? canvases : singleCanvas;
   const snapshot = await buildProjectStateSnapshot(raw, canvasSources);
   return snapshot;
