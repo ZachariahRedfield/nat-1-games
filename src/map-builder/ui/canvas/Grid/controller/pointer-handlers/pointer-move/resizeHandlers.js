@@ -43,12 +43,6 @@ export function handleObjectResize({ event, refs, selection, config, geometry, a
     wTiles,
     hTiles,
   });
-  const linkXY = config.gridSettings?.linkXY;
-  if (!linkXY) {
-    config.setGridSettings?.((settings) => {
-      return { ...settings, sizeCols: wTiles, sizeRows: hTiles };
-    });
-  }
   const anchorCorner = oppositeCorner(dragRef.current.corner);
   const updated = { ...o, row, col, wTiles, hTiles };
   const anchorPos = getCornerWorldPosition(updated, anchorCorner);
@@ -103,12 +97,6 @@ export function handleTokenResize({ event, refs, selection, config, geometry, ac
     wTiles,
     hTiles,
   });
-  const linkXY = config.gridSettings?.linkXY;
-  if (!linkXY) {
-    config.setGridSettings?.((settings) => {
-      return { ...settings, sizeCols: wTiles, sizeRows: hTiles };
-    });
-  }
   const anchorCorner = oppositeCorner(dragRef.current.corner);
   const updated = { ...token, row, col, wTiles, hTiles };
   const anchorPos = getCornerWorldPosition(updated, anchorCorner);

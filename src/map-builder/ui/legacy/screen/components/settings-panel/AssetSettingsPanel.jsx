@@ -1,5 +1,4 @@
 import React from "react";
-import { TextCommitInput } from "../../../../../../shared/index.js";
 import BrushSettings from "../../../BrushSettings.jsx";
 import AssetLabelSettings from "./AssetLabelSettings.jsx";
 
@@ -26,36 +25,11 @@ export default function AssetSettingsPanel({
   selectedObjsList,
   assets,
   regenerateLabelInstance,
-  updateObjectById,
-  currentLayer,
 }) {
   const brushKind = interactionMode === "select" ? "grid" : assetGroup === "natural" ? "natural" : "grid";
   const titleOverride = interactionMode === "select" ? "Settings" : undefined;
-  const selectedObjIds = (selectedObjsList ?? []).map((obj) => obj?.id).filter(Boolean);
-  const canRenameAsset = Boolean(currentLayer && updateObjectById && selectedObjIds.length > 0);
-  const isMultiRename = selectedObjIds.length > 1;
-  const assetDisplayName = isMultiRename ? "" : selectedObj?.name ?? "";
-
   return (
     <>
-      {canRenameAsset ? (
-        <div className="space-y-1">
-          <label className="text-xs uppercase tracking-wide text-gray-400" htmlFor="placed-asset-name-input">
-            Placed Asset Name
-          </label>
-          <TextCommitInput
-            id="placed-asset-name-input"
-            className="w-full rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-100 focus:border-blue-500 focus:outline-none"
-            value={assetDisplayName}
-            placeholder={isMultiRename ? "Name selected assets" : "Name this placed asset"}
-            onCommit={(value) => {
-              selectedObjIds.forEach((id) => {
-                updateObjectById?.(currentLayer, id, { name: value });
-              });
-            }}
-          />
-        </div>
-      ) : null}
       <BrushSettings
         kind={brushKind}
         titleOverride={titleOverride}
