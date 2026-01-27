@@ -463,32 +463,34 @@ export default function RightAssetsPanel({
                 <>
                   <AssetPanel {...assetPanelProps} />
 
-                  <div className="mt-4 pt-3 border-t border-gray-700">
-                    <div className="grid gap-4">
-                      <AssetDrawerSettings
-                        assetPanelProps={assetPanelProps}
-                        assetStamp={assetStamp}
-                        setAssetStamp={setAssetStamp}
-                        naturalSettings={naturalSettings}
-                        setNaturalSettings={setNaturalSettings}
-                        engine={engine}
-                        interactionMode={interactionMode}
-                        brushSize={brushSize}
-                        setBrushSize={setBrushSize}
-                        tileSize={tileSize}
-                        snapshotSettings={snapshotSettings}
-                      />
-                      <AssetPreviewSection
-                        assetPanelProps={assetPanelProps}
-                        assetStamp={assetStamp}
-                        setAssetStamp={setAssetStamp}
-                      />
+                  {assetPanelProps?.selectedAssetId ? (
+                    <div className="mt-4 pt-3 border-t border-gray-700">
+                      <div className="grid gap-4">
+                        <AssetDrawerSettings
+                          assetPanelProps={assetPanelProps}
+                          assetStamp={assetStamp}
+                          setAssetStamp={setAssetStamp}
+                          naturalSettings={naturalSettings}
+                          setNaturalSettings={setNaturalSettings}
+                          engine={engine}
+                          interactionMode={interactionMode}
+                          brushSize={brushSize}
+                          setBrushSize={setBrushSize}
+                          tileSize={tileSize}
+                          snapshotSettings={snapshotSettings}
+                        />
+                        <AssetPreviewSection
+                          assetPanelProps={assetPanelProps}
+                          assetStamp={assetStamp}
+                          setAssetStamp={setAssetStamp}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </>
               ) : (
                 <div className="flex flex-col h-full">
-                  <div className="flex-1 min-h-0 border-b border-gray-700 pb-6 flex flex-col">
+                  <div className="flex-[1.4] min-h-[260px] max-h-[65vh] border-b border-gray-700 pb-6 flex flex-col resize-y overflow-hidden">
                     <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
                       <span>Placed Assets</span>
                       <div className="flex items-center gap-2">

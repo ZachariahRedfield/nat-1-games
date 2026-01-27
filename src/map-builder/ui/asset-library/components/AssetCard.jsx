@@ -27,6 +27,29 @@ function getAssetTagClasses(tag) {
   return "bg-blue-900/80 text-blue-100";
 }
 
+function getAssetSizeLabel(asset) {
+  if (!asset) return "—";
+  const defaults = asset.defaults || {};
+  const sizePx = Number.isFinite(defaults.sizePx) ? Math.round(defaults.sizePx) : null;
+  const sizeCols = Number.isFinite(defaults.sizeCols) ? defaults.sizeCols : null;
+  const sizeRows = Number.isFinite(defaults.sizeRows) ? defaults.sizeRows : null;
+  const sizeTiles = Number.isFinite(defaults.sizeTiles) ? defaults.sizeTiles : null;
+
+  if (sizePx !== null) {
+    return `${sizePx}px`;
+  }
+
+  if (sizeCols !== null && sizeRows !== null) {
+    return `${sizeCols}x${sizeRows} tiles`;
+  }
+
+  if (sizeTiles !== null) {
+    return `${sizeTiles} tile${sizeTiles === 1 ? "" : "s"}`;
+  }
+
+  return "—";
+}
+
 function AssetPreview({ asset, showPreview, preview }) {
   const resolvedPreview = preview ?? resolvePrimaryPreview(asset);
 
@@ -57,7 +80,7 @@ function AssetPreview({ asset, showPreview, preview }) {
                 key={`${item.src || "variant"}-${index}`}
                 src={item.src || undefined}
                 alt={item.alt || resolvedPreview.alt || asset.name}
-                className="absolute inset-0 w-full h-full object-cover rounded-md shadow-md"
+                className="absolute inset-0 w-full h-full object-cover rounded-none shadow-md"
                 style={{ transform: `translate(${-offset}px, ${-offset}px)` }}
               />
             );
@@ -105,17 +128,17 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
   const preview = useMemo(() => resolvePrimaryPreview(asset), [asset]);
   const typeTag = getAssetTypeTag(asset);
   const tagClasses = typeTag ? getAssetTagClasses(typeTag) : "";
+  const sizeLabel = useMemo(() => getAssetSizeLabel(asset), [asset]);
 
   const previewBaseClasses =
-    "group relative w-2/3 mx-auto aspect-square overflow-hidden rounded-xl border shadow-sm transition";
+    "group relative w-2/3 mx-auto aspect-square overflow-hidden rounded-none border-2 shadow-sm transition";
   const previewStateClasses = isSelected
     ? "border-white/70 ring-1 ring-white/40"
-    : "border-white/10 hover:border-white/30";
-  const nameBaseClasses =
-    "relative inline-flex h-full min-w-[130px] max-w-[200px] flex-col items-stretch gap-1 px-2 py-1 text-xs rounded-lg border shadow-sm transition";
-  const nameStateClasses = isSelected
-    ? "border-white/90 ring-1 ring-white/70 bg-gray-700/80"
-    : "border-gray-600 bg-gray-800/60 hover:bg-gray-700/60";
+    : "border-slate-200/30 hover:border-slate-100/50";
+  const detailsWrapperClasses = "relative w-full";
+  const detailsRowClasses = `grid grid-cols-[minmax(0,1fr)_minmax(0,100px)_minmax(0,80px)] items-center gap-2 px-2 py-1 text-xs ${
+    isSelected ? "bg-gray-700/70 text-gray-100" : "bg-gray-900/40 text-gray-200 hover:bg-gray-800/70"
+  }`;
 
   const handleKeyPress = (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -142,7 +165,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
           </span>
         </div>
         {typeTag ? (
-          <div className="pointer-events-none absolute top-1 right-1">
+          <div className="pointer-events-none absolute bottom-1 right-1">
             <span
               className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
             >
@@ -182,36 +205,41 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
       tabIndex={0}
       onClick={() => onSelect?.(asset.id)}
       onKeyPress={handleKeyPress}
-      className={`relative cursor-pointer ${nameBaseClasses} ${nameStateClasses}`}
+      className={`relative cursor-pointer ${detailsWrapperClasses}`}
       title={asset.name}
     >
-      <div className="flex-1 min-w-0 py-0.5">
-        <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
+      <div className={detailsRowClasses}>
+        <div className="min-w-0 font-medium truncate" title={asset.name}>
+          {asset.name}
+        </div>
+        <div className="min-w-0">
+          {typeTag ? (
+            <span
+              className={`inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
+            >
+              {typeTag}
+            </span>
+          ) : (
+            <span className="text-[10px] uppercase text-gray-400">—</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-2 text-[11px] text-gray-300">
+          <span>{sizeLabel}</span>
+          {isSelected && (
+            <button
+              type="button"
+              className="rounded-sm bg-red-700/80 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white hover:bg-red-600/90"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete?.(asset);
+              }}
+              title="Delete asset"
+            >
+              Delete
+            </button>
+          )}
+        </div>
       </div>
-      {typeTag ? (
-        <div className="px-2 pb-1">
-          <span
-            className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
-          >
-            {typeTag}
-          </span>
-        </div>
-      ) : null}
-      {isSelected && (
-        <div className="mt-auto flex gap-1 overflow-hidden rounded-md">
-          <button
-            type="button"
-            className="flex-1 px-2 py-0.5 text-[11px] bg-red-700 hover:bg-red-600"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete?.(asset);
-            }}
-            title="Delete asset"
-          >
-            Delete
-          </button>
-        </div>
-      )}
     </div>
   );
 }
