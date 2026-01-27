@@ -25,7 +25,6 @@ export function useAssetLibrary({
 
   const selection = useAssetSelection({
     assets: state.assets,
-    assetGroup: state.assetGroup,
     selectedAssetId: state.selectedAssetId,
     setSelectedAssetId: state.setSelectedAssetId,
     setCreatorOpen: state.setCreatorOpen,
@@ -34,12 +33,12 @@ export function useAssetLibrary({
     setZoomToolActive,
     setPanToolActive,
     setCanvasColor,
+    setAssetGroup: state.setAssetGroup,
   });
 
   const creation = useAssetCreationHandlers({
     setAssets: state.setAssets,
     setSelectedAssetId: state.setSelectedAssetId,
-    setAssetGroup: state.setAssetGroup,
     setEngine,
     setCreatorOpen: state.setCreatorOpen,
     setCreatorKind: state.setCreatorKind,

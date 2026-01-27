@@ -1,7 +1,5 @@
 import { useCallback } from "react";
 export default function useAssetPanelHandlers({
-  setAssetGroup,
-  setCreatorOpen,
   openCreator,
   selectAsset,
   confirmFn,
@@ -10,14 +8,6 @@ export default function useAssetPanelHandlers({
   setSelectedAssetId,
   setShowAssetPreviews,
 }) {
-  const handleSelectGroup = useCallback(
-    (group) => {
-      setAssetGroup?.(group);
-      setCreatorOpen?.(false);
-    },
-    [setAssetGroup, setCreatorOpen],
-  );
-
   const handleOpenCreator = useCallback(
     (kind) => {
       openCreator?.(kind);
@@ -56,7 +46,6 @@ export default function useAssetPanelHandlers({
   );
 
   return {
-    handleSelectGroup,
     handleOpenCreator,
     handleSelectAsset,
     handleDeleteAsset,
