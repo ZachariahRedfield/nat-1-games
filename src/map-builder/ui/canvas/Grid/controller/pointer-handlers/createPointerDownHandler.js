@@ -88,10 +88,13 @@ export function createPointerDownHandler(context) {
       const hit = selection.hitResizeHandle(pointer.xCss, pointer.yCss);
       if (hit && beginObjectResize({ event, cornerHit: hit, dragRef, callbacks, config })) return;
 
-      const hitTok = selection.getTopMostTokenAt(Math.floor(row), Math.floor(col));
+      const snapToGrid = config.gridSettings?.snapToGrid ?? true;
+      const selectionRow = snapToGrid ? Math.floor(row) : row;
+      const selectionCol = snapToGrid ? Math.floor(col) : col;
+      const hitTok = selection.getTopMostTokenAt(selectionRow, selectionCol);
       if (hitTok && handleTokenSelection({ token: hitTok, row, col, selection, actions, dragRef })) return;
 
-      const hitObj = selection.getTopMostObjectAt(config.currentLayer, Math.floor(row), Math.floor(col));
+      const hitObj = selection.getTopMostObjectAt(config.currentLayer, selectionRow, selectionCol);
       if (
         hitObj &&
         handleObjectSelection({

@@ -54,20 +54,20 @@ export default function AssetCreator({
   };
 
   return (
-    <div className="mb-3 p-2 border border-gray-600 rounded space-y-3">
+    <div className="space-y-4">
       <AssetCreatorForm state={state} />
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 justify-end">
         {mode === "edit" ? (
           <>
             <button
-              className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm"
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium"
               onClick={handleSave}
               type="button"
             >
               Save
             </button>
             <button
-              className="px-2 py-1 bg-amber-600 hover:bg-amber-500 rounded text-sm"
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded text-sm font-medium"
               title="Save as a new asset"
               onClick={handleSaveCopy}
               type="button"
@@ -77,14 +77,18 @@ export default function AssetCreator({
           </>
         ) : (
           <button
-            className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm"
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium"
             onClick={handleSave}
             type="button"
           >
             Save Asset
           </button>
         )}
-        <button className="px-2 py-1 bg-gray-700 rounded text-sm" onClick={onClose} type="button">
+        <button
+          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm font-medium"
+          onClick={onClose}
+          type="button"
+        >
           Close
         </button>
       </div>
