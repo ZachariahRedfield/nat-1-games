@@ -11,10 +11,22 @@ const DEFAULT_WIDTH = 360;
 const MIN_WIDTH = 260;
 const MAX_WIDTH_FALLBACK = 520;
 const MAX_WIDTH_PCT = 0.75;
+const MOBILE_BREAKPOINT = 640;
 
 function getMaxWidth() {
   if (typeof window === "undefined") return MAX_WIDTH_FALLBACK;
   return Math.max(MIN_WIDTH, Math.round(window.innerWidth * MAX_WIDTH_PCT));
+}
+
+function getViewport() {
+  if (typeof window === "undefined") {
+    return { width: MAX_WIDTH_FALLBACK, height: 800 };
+  }
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
+function getIsMobile(viewport) {
+  return (viewport?.width ?? MAX_WIDTH_FALLBACK) < MOBILE_BREAKPOINT;
 }
 
 function clampWidth(value, maxWidth) {
@@ -49,6 +61,8 @@ export default function RightAssetsPanel({
 }) {
   const dragState = useRef(null);
   const [maxWidth, setMaxWidth] = useState(() => getMaxWidth());
+  const [viewport, setViewport] = useState(() => getViewport());
+  const [isMobile, setIsMobile] = useState(() => getIsMobile(getViewport()));
   const [width, setWidth] = useState(() => {
     const stored = Number.parseInt(localStorage.getItem(WIDTH_STORAGE_KEY), 10);
     return clampWidth(Number.isFinite(stored) ? stored : DEFAULT_WIDTH, getMaxWidth());
@@ -68,7 +82,10 @@ export default function RightAssetsPanel({
 
   useEffect(() => {
     const handleResize = () => {
+      const nextViewport = getViewport();
       setMaxWidth(getMaxWidth());
+      setViewport(nextViewport);
+      setIsMobile(getIsMobile(nextViewport));
     };
     window.addEventListener("resize", handleResize);
     return () => {
@@ -158,32 +175,52 @@ export default function RightAssetsPanel({
     };
   }, []);
 
-  const panelStyle = useMemo(
-    () => ({
+  const panelStyle = useMemo(() => {
+    if (isMobile) {
+      const usableHeight = viewport.height - Math.max(0, topOffset) - 24;
+      const panelHeight = Math.max(280, Math.min(Math.round(viewport.height * 0.68), usableHeight));
+      return {
+        left: 0,
+        right: 0,
+        bottom: 0,
+        top: "auto",
+        width: "100%",
+        height: collapsed ? 0 : panelHeight,
+      };
+    }
+    return {
       top: Math.max(0, topOffset),
       right: 0,
       bottom: 0,
       width: collapsed ? 0 : width,
-    }),
-    [collapsed, topOffset, width]
-  );
+    };
+  }, [collapsed, isMobile, topOffset, viewport.height, width]);
 
-  const tabStyle = useMemo(
-    () => ({
+  const tabStyle = useMemo(() => {
+    if (isMobile) {
+      return {};
+    }
+    return {
       right: 0,
       writingMode: "vertical-rl",
       textOrientation: "mixed",
-    }),
-    []
-  );
+    };
+  }, [isMobile]);
 
-  const tabWrapStyle = useMemo(
-    () => ({
+  const tabWrapStyle = useMemo(() => {
+    if (isMobile) {
+      return {
+        bottom: 16,
+        left: 16,
+        right: 16,
+        top: "auto",
+      };
+    }
+    return {
       top: Math.max(16, topOffset + 16),
       right: 0,
-    }),
-    [topOffset]
-  );
+    };
+  }, [isMobile, topOffset]);
 
   const { assets = [], objects = {}, tokens = [] } = assetPanelProps ?? {};
 
@@ -352,13 +389,17 @@ export default function RightAssetsPanel({
     <>
       <div className="fixed z-[10018] pointer-events-none" style={panelStyle}>
         {!collapsed && (
-          <div className="relative h-full bg-gray-900/95 border-l border-gray-700 shadow-2xl flex flex-col pointer-events-auto">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700 text-gray-100">
-              <div className="flex items-center gap-2">
+          <div
+            className={`relative h-full bg-gray-900/95 shadow-2xl flex flex-col pointer-events-auto ${
+              isMobile ? "border-t border-gray-700 rounded-t-2xl" : "border-l border-gray-700"
+            }`}
+          >
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700 text-gray-100 sticky top-0 bg-gray-900/95 backdrop-blur-sm z-10">
+              <div className="flex items-center gap-2 flex-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab("assets")}
-                  className={`text-xs uppercase tracking-wide px-2 py-1 rounded border border-gray-600 ${
+                  className={`flex-1 text-[11px] sm:text-xs uppercase tracking-wide px-3 py-1.5 sm:px-2 sm:py-1 rounded border border-gray-600 ${
                     activeTab === "assets" ? "bg-gray-700 text-gray-100" : "bg-gray-800 text-gray-300"
                   }`}
                 >
@@ -367,7 +408,7 @@ export default function RightAssetsPanel({
                 <button
                   type="button"
                   onClick={() => setActiveTab("placed")}
-                  className={`text-xs uppercase tracking-wide px-2 py-1 rounded border border-gray-600 ${
+                  className={`flex-1 text-[11px] sm:text-xs uppercase tracking-wide px-3 py-1.5 sm:px-2 sm:py-1 rounded border border-gray-600 ${
                     activeTab === "placed" ? "bg-gray-700 text-gray-100" : "bg-gray-800 text-gray-300"
                   }`}
                 >
@@ -377,13 +418,13 @@ export default function RightAssetsPanel({
               <button
                 type="button"
                 onClick={handleToggle}
-                className="text-xs uppercase tracking-wide bg-gray-800 border border-gray-600 px-2 py-1 rounded"
+                className="ml-3 text-[11px] sm:text-xs uppercase tracking-wide bg-gray-800 border border-gray-600 px-3 py-1.5 sm:px-2 sm:py-1 rounded"
               >
                 Minimize
               </button>
             </div>
             <div
-              className={`flex-1 p-3 text-gray-100 ${
+              className={`flex-1 p-2 sm:p-3 text-gray-100 ${
                 activeTab === "assets" ? "overflow-y-auto" : "overflow-hidden"
               }`}
             >
@@ -548,13 +589,18 @@ export default function RightAssetsPanel({
         )}
       </div>
       {collapsed && (
-        <div className="fixed z-[10019] flex flex-col gap-2" style={tabWrapStyle}>
+        <div
+          className={`fixed z-[10019] flex gap-2 ${isMobile ? "flex-row justify-center" : "flex-col"}`}
+          style={tabWrapStyle}
+        >
           <button
             type="button"
             onClick={() => handleOpenTab("assets")}
             style={tabStyle}
             title="Open assets panel"
-            className="px-3 py-2 text-xs font-semibold uppercase tracking-wide rounded-l-lg bg-gray-800 border border-gray-600 text-gray-100 shadow-sm"
+            className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide bg-gray-800 border border-gray-600 text-gray-100 shadow-sm ${
+              isMobile ? "rounded-full" : "rounded-l-lg"
+            }`}
           >
             Assets
           </button>
@@ -563,7 +609,9 @@ export default function RightAssetsPanel({
             onClick={() => handleOpenTab("placed")}
             style={tabStyle}
             title="Open placed assets panel"
-            className="px-3 py-2 text-xs font-semibold uppercase tracking-wide rounded-l-lg bg-gray-800 border border-gray-600 text-gray-100 shadow-sm"
+            className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide bg-gray-800 border border-gray-600 text-gray-100 shadow-sm ${
+              isMobile ? "rounded-full" : "rounded-l-lg"
+            }`}
           >
             Placed
           </button>

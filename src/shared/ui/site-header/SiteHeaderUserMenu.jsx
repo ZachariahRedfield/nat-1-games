@@ -10,7 +10,7 @@ export default function SiteHeaderUserMenu({
 }) {
   return (
     <div className="relative flex items-center gap-2">
-      <span className="text-xs opacity-90">{username}</span>
+      <span className="text-xs opacity-90 hidden sm:inline">{username}</span>
       <button
         className="w-7 h-7 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded flex items-center justify-center"
         onClick={onToggleMenu}
