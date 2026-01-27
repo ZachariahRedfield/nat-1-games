@@ -63,7 +63,7 @@ export default function LegacyMapBuilderLayout({
         <div className="flex-1 overflow-hidden">
           <div
             ref={layout.scrollRef}
-            className="w-full h-full overflow-auto overflow-x-hidden"
+            className="w-full h-full overflow-hidden"
             style={{
               backgroundImage: GRID_BACKGROUND_IMAGE,
               backgroundPosition: "50% 0, 2px 0",

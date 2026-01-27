@@ -34,6 +34,32 @@ function clampWidth(value, maxWidth) {
   return Math.min(maxWidth, Math.max(MIN_WIDTH, value));
 }
 
+function getAssetTypeTag(asset, fallbackKind) {
+  const kind = asset?.kind ?? fallbackKind;
+  if (kind === "color") return "Material";
+  if (kind === "image" && asset?.labelMeta) return "Label";
+  if (kind === "image") return "Image";
+  if (kind === "natural") return "Natural";
+  if (kind === "token" || kind === "tokenGroup" || fallbackKind === "token") return "Token";
+  return null;
+}
+
+function getAssetTagClasses(tag) {
+  if (tag === "Material") {
+    return "bg-emerald-900/80 text-emerald-100";
+  }
+  if (tag === "Natural") {
+    return "bg-amber-900/80 text-amber-100";
+  }
+  if (tag === "Token") {
+    return "bg-fuchsia-900/80 text-fuchsia-100";
+  }
+  if (tag === "Label") {
+    return "bg-cyan-900/80 text-cyan-100";
+  }
+  return "bg-blue-900/80 text-blue-100";
+}
+
 export default function RightAssetsPanel({
   assetPanelProps,
   assetStamp,
@@ -250,6 +276,8 @@ export default function RightAssetsPanel({
           baseName,
           label: customName || `${baseName}${count}`,
           key: `object-${obj.id}`,
+          asset,
+          assetTag: getAssetTypeTag(asset, asset?.kind),
         });
       });
     });
@@ -267,6 +295,8 @@ export default function RightAssetsPanel({
         baseName,
         label: customName || `${baseName}${count}`,
         key: `token-${token.id}`,
+        asset,
+        assetTag: getAssetTypeTag(asset, "token"),
       });
     });
 
@@ -496,6 +526,7 @@ export default function RightAssetsPanel({
                             : entry.kind === "token"
                               ? selectedToken?.id === entry.id
                               : selectedObj?.id === entry.id;
+                          const tagClasses = entry.assetTag ? getAssetTagClasses(entry.assetTag) : "";
                           const subtitle =
                             entry.kind === "token" ? "Token" : `Layer: ${entry.layerId}`;
                           return (
@@ -521,7 +552,16 @@ export default function RightAssetsPanel({
                                 onClick={() => handleSelectPlacedAsset(entry)}
                                 className="flex-1 text-left"
                               >
-                                <div className="text-sm font-medium">{entry.label}</div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="text-sm font-medium">{entry.label}</div>
+                                  {entry.assetTag ? (
+                                    <span
+                                      className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
+                                    >
+                                      {entry.assetTag}
+                                    </span>
+                                  ) : null}
+                                </div>
                                 <div className="text-xs text-gray-400">{subtitle}</div>
                               </button>
                             </div>
