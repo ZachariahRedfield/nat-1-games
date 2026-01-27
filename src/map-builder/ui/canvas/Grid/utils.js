@@ -4,11 +4,6 @@ export const BASE_TILE = 32; // canvas buffer px per tile (zoom-safe)
 
 export const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-export const normalizeTileCount = (value, fallback = 1) => {
-  if (!Number.isFinite(value) || value <= 0) return fallback;
-  return value;
-};
-
 export const hexToRgba = (hex, a) => {
   if (!hex || typeof hex !== "string") return `rgba(0,0,0,${a ?? 1})`;
   const n = parseInt(hex.replace("#", ""), 16);
@@ -20,3 +15,4 @@ export const lerp = (a, b, t) => ({
   x: a.x + (b.x - a.x) * t,
   y: a.y + (b.y - a.y) * t,
 });
+

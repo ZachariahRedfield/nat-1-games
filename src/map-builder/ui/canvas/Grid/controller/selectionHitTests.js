@@ -1,5 +1,3 @@
-import { normalizeTileCount } from "../utils.js";
-
 const HANDLE_SIZE = 10;
 
 const withinHandle = (targetX, targetY, xCss, yCss) =>
@@ -37,12 +35,10 @@ export const hitObjectResizeHandle = (xCss, yCss, { getSelectedObject, tileSize 
   const sel = getSelectedObject?.();
   if (!sel) return null;
 
-  const widthTiles = normalizeTileCount(sel.wTiles);
-  const heightTiles = normalizeTileCount(sel.hTiles);
   const left = sel.col * tileSize;
   const top = sel.row * tileSize;
-  const w = widthTiles * tileSize;
-  const h = heightTiles * tileSize;
+  const w = sel.wTiles * tileSize;
+  const h = sel.hTiles * tileSize;
   const cx = left + w / 2;
   const cy = top + h / 2;
 
@@ -57,8 +53,8 @@ export const hitTokenResizeHandle = (xCss, yCss, { getSelectedToken, tileSize })
   const sel = getSelectedToken?.();
   if (!sel) return null;
 
-  const widthTiles = normalizeTileCount(sel.wTiles);
-  const heightTiles = normalizeTileCount(sel.hTiles);
+  const widthTiles = sel.wTiles || 1;
+  const heightTiles = sel.hTiles || 1;
 
   const left = sel.col * tileSize;
   const top = sel.row * tileSize;
@@ -88,12 +84,10 @@ export const hitObjectRotateRing = (xCss, yCss, { getSelectedObject, tileSize })
   const sel = getSelectedObject?.();
   if (!sel) return null;
 
-  const widthTiles = normalizeTileCount(sel.wTiles);
-  const heightTiles = normalizeTileCount(sel.hTiles);
-  const cx = (sel.col + widthTiles / 2) * tileSize;
-  const cy = (sel.row + heightTiles / 2) * tileSize;
-  const rx = (widthTiles * tileSize) / 2;
-  const ry = (heightTiles * tileSize) / 2;
+  const cx = (sel.col + sel.wTiles / 2) * tileSize;
+  const cy = (sel.row + sel.hTiles / 2) * tileSize;
+  const rx = (sel.wTiles * tileSize) / 2;
+  const ry = (sel.hTiles * tileSize) / 2;
   const radius = Math.sqrt(rx * rx + ry * ry) + ROTATE_TOLERANCE;
   const angle = hitRotateRingBase(xCss, yCss, { cx, cy, radius });
   if (angle == null) return null;

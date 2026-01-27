@@ -1,5 +1,4 @@
 import React from "react";
-import { normalizeTileCount } from "./utils.js";
 
 export default function SelectionOverlay({
   layers = [],
@@ -42,12 +41,10 @@ export default function SelectionOverlay({
           <React.Fragment key={`sels-${layer}`}>
             {arr.map((sel) => {
               if (hideSelectionDecorations) return null;
-              const widthTiles = normalizeTileCount(sel.wTiles);
-              const heightTiles = normalizeTileCount(sel.hTiles);
-              const w = widthTiles * tileSize;
-              const h = heightTiles * tileSize;
-              const cx = (sel.col + widthTiles / 2) * tileSize;
-              const cy = (sel.row + heightTiles / 2) * tileSize;
+              const w = sel.wTiles * tileSize;
+              const h = sel.hTiles * tileSize;
+              const cx = (sel.col + sel.wTiles / 2) * tileSize;
+              const cy = (sel.row + sel.hTiles / 2) * tileSize;
               const rot = sel.rotation || 0;
               const baseZ = 12 + i * 20;
               const sz = 8; // px handle square
