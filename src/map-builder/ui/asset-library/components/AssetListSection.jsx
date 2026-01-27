@@ -9,11 +9,15 @@ export default function AssetListSection({
   onToggleView,
   selectedAssetId,
   onSelect,
+  onEdit,
   onDelete,
   onCreateAsset,
   searchQuery,
   onSearchChange,
   onClearSearch,
+  tagFilter,
+  onTagFilterChange,
+  tagOptions = [],
   onReorder,
 }) {
   const [draggedId, setDraggedId] = useState(null);
@@ -56,7 +60,7 @@ export default function AssetListSection({
   }, [assets.length, hasSearch, totalAssets]);
 
   return (
-    <div className="mb-2 border border-gray-600 rounded overflow-hidden resize-y min-h-[240px] max-h-[70vh] flex flex-col">
+    <div className="mb-2 border border-gray-600 rounded overflow-hidden resize-y min-h-[5vh] max-h-[95vh] flex flex-col">
       <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
         <div className="flex items-center gap-2">
           <span className="text-xs uppercase tracking-wide">Assets</span>
@@ -67,14 +71,14 @@ export default function AssetListSection({
         <AssetViewToggle showPreview={!!showAssetPreviews} onChange={onToggleView} />
       </div>
 
-      <div className="flex items-center gap-2 border-b border-gray-700 bg-gray-900/60 px-2 py-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-700 bg-gray-900/60 px-2 py-2">
         <div className="relative flex-1">
           <input
-            type="search"
+            type="text"
             value={searchQuery}
             onChange={(event) => onSearchChange?.(event.target.value)}
             placeholder="Search saved assets..."
-            className="w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs text-gray-100 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+            className="w-full appearance-none rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs text-gray-100 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
             aria-label="Search saved assets"
           />
           {hasSearch ? (
@@ -87,6 +91,21 @@ export default function AssetListSection({
             </button>
           ) : null}
         </div>
+        <label className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-gray-400">
+          Filter
+          <select
+            value={tagFilter}
+            onChange={(event) => onTagFilterChange?.(event.target.value)}
+            className="rounded-md border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 focus:border-blue-500 focus:outline-none"
+          >
+            <option value="all">All</option>
+            {tagOptions.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           className="rounded-md bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow hover:bg-blue-500"
@@ -124,6 +143,7 @@ export default function AssetListSection({
                       isSelected={selectedAssetId === asset.id}
                       showPreview={!!showAssetPreviews}
                       onSelect={onSelect}
+                      onEdit={onEdit}
                       onDelete={onDelete}
                     />
                   </div>
@@ -158,6 +178,7 @@ export default function AssetListSection({
                       isSelected={selectedAssetId === asset.id}
                       showPreview={!!showAssetPreviews}
                       onSelect={onSelect}
+                      onEdit={onEdit}
                       onDelete={onDelete}
                     />
                   </div>

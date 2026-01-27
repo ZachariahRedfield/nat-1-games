@@ -1,31 +1,6 @@
 import React, { useMemo } from "react";
 import { resolvePrimaryPreview } from "../assetGrouping.js";
-
-function getAssetTypeTag(asset) {
-  if (!asset) return null;
-  if (asset.kind === "color") return "Material";
-  if (asset.kind === "image" && asset.labelMeta) return "Label";
-  if (asset.kind === "image") return "Image";
-  if (asset.kind === "natural") return "Natural";
-  if (asset.kind === "token" || asset.kind === "tokenGroup") return "Token";
-  return null;
-}
-
-function getAssetTagClasses(tag) {
-  if (tag === "Material") {
-    return "bg-emerald-900/80 text-emerald-100";
-  }
-  if (tag === "Natural") {
-    return "bg-amber-900/80 text-amber-100";
-  }
-  if (tag === "Token") {
-    return "bg-fuchsia-900/80 text-fuchsia-100";
-  }
-  if (tag === "Label") {
-    return "bg-cyan-900/80 text-cyan-100";
-  }
-  return "bg-blue-900/80 text-blue-100";
-}
+import { getAssetTagClasses, getAssetTypeTag } from "../assetTags.js";
 
 function formatSizeValue(value) {
   if (!Number.isFinite(value)) return value;
@@ -139,7 +114,7 @@ function AssetPreview({ asset, showPreview, preview }) {
   );
 }
 
-export default function AssetCard({ asset, isSelected, showPreview, onSelect, onDelete }) {
+export default function AssetCard({ asset, isSelected, showPreview, onSelect, onDelete, onEdit }) {
   if (!asset) return null;
 
   const preview = useMemo(() => resolvePrimaryPreview(asset), [asset]);
@@ -214,17 +189,30 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
         </div>
         <div className={deleteWrapperClasses}>
           <div className="px-2 pb-2 pt-1">
-            <button
-              type="button"
-              className="w-full rounded-md bg-red-700/95 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/95"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDelete?.(asset);
-              }}
-              title="Delete asset"
-            >
-              Delete
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="w-full rounded-md bg-gray-700/95 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-100 shadow-lg hover:bg-gray-600/95"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEdit?.(asset);
+                }}
+                title="Edit asset"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="w-full rounded-md bg-red-700/95 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/95"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete?.(asset);
+                }}
+                title="Delete asset"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -261,17 +249,30 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
       </div>
       <div className={deleteWrapperClasses}>
         <div className="px-2 pb-2 pt-1">
-          <button
-            type="button"
-            className="w-full rounded-md bg-red-700/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/90"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete?.(asset);
-            }}
-            title="Delete asset"
-          >
-            Delete
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="w-full rounded-md bg-gray-700/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-100 shadow-lg hover:bg-gray-600/95"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit?.(asset);
+              }}
+              title="Edit asset"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="w-full rounded-md bg-red-700/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/90"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete?.(asset);
+              }}
+              title="Delete asset"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
     </div>

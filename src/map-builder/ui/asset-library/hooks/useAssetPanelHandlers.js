@@ -2,6 +2,7 @@ import { useCallback } from "react";
 export default function useAssetPanelHandlers({
   openCreator,
   selectAsset,
+  openEditAsset,
   confirmFn,
   visibleAssets,
   setAssets,
@@ -38,6 +39,15 @@ export default function useAssetPanelHandlers({
     [confirmFn, visibleAssets, setAssets, setSelectedAssetId],
   );
 
+  const handleEditAsset = useCallback(
+    (asset) => {
+      if (!asset) return;
+      selectAsset?.(asset.id);
+      openEditAsset?.(asset);
+    },
+    [openEditAsset, selectAsset],
+  );
+
   const handleToggleView = useCallback(
     (show) => {
       setShowAssetPreviews?.(show);
@@ -48,6 +58,7 @@ export default function useAssetPanelHandlers({
   return {
     handleOpenCreator,
     handleSelectAsset,
+    handleEditAsset,
     handleDeleteAsset,
     handleToggleView,
   };
