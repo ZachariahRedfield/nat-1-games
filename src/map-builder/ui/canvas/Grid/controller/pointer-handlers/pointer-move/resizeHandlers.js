@@ -1,9 +1,4 @@
-import {
-  computeLinkedResizeUpdate,
-  computeResizeUpdate,
-  getCornerWorldPosition,
-  oppositeCorner,
-} from "../../resizeMath.js";
+import { computeResizeUpdate, getCornerWorldPosition, oppositeCorner } from "../../resizeMath.js";
 import { computeGridPosition, getPointerCssPosition } from "../gridPointerUtils.js";
 
 export function handleObjectResize({ event, refs, selection, config, geometry, actions }) {
@@ -37,26 +32,7 @@ export function handleObjectResize({ event, refs, selection, config, geometry, a
 
   if (!result) return true;
 
-  let { row, col, wTiles, hTiles } = result;
-  const linkXY = !!config.gridSettings?.linkXY;
-  if (linkXY) {
-    const deltaW = Math.abs((o.wTiles || 1) - wTiles);
-    const deltaH = Math.abs((o.hTiles || 1) - hTiles);
-    const base = deltaW >= deltaH ? wTiles : hTiles;
-    const anchorCorner = oppositeCorner(dragRef.current.corner);
-    const linkedResult = computeLinkedResizeUpdate({
-      anchorRow: dragRef.current.anchorRow,
-      anchorCol: dragRef.current.anchorCol,
-      rotation: dragRef.current.rotation ?? o.rotation ?? 0,
-      anchorCorner,
-      sizeTiles: base,
-      geometry,
-      snapToGrid: config.gridSettings?.snapToGrid ?? true,
-    });
-    if (linkedResult) {
-      ({ row, col, wTiles, hTiles } = linkedResult);
-    }
-  }
+  const { row, col, wTiles, hTiles } = result;
   if (row === o.row && col === o.col && wTiles === o.wTiles && hTiles === o.hTiles) {
     return true;
   }
@@ -68,9 +44,6 @@ export function handleObjectResize({ event, refs, selection, config, geometry, a
     hTiles,
   });
   config.setGridSettings?.((settings) => {
-    if (linkXY) {
-      return { ...settings, sizeCols: wTiles, sizeRows: wTiles };
-    }
     return { ...settings, sizeCols: wTiles, sizeRows: hTiles };
   });
   const anchorCorner = oppositeCorner(dragRef.current.corner);

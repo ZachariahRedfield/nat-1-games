@@ -8,37 +8,38 @@ export function useTokenSelectionState({ setGridSettings, snapToGrid = true }) {
     setSelectedTokensList,
   } = tokenState;
 
-  const quantizeSize = useCallback((value) => {
-    const clamped = Math.max(1, value);
-    if (snapToGrid) {
-      return Math.round(clamped);
-    }
-    return Number.parseFloat(clamped.toFixed(2));
-  }, [snapToGrid]);
-
   const handleTokenSelectionChange = useCallback(
     (tokOrArr) => {
       const arr = Array.isArray(tokOrArr) ? tokOrArr : tokOrArr ? [tokOrArr] : [];
       if (arr.length) {
         setSelectedTokensList(arr);
         const tok = arr[arr.length - 1];
+        const tokenSnap = typeof tok.snapToGrid === "boolean" ? tok.snapToGrid : snapToGrid;
+        const quantizeValue = (value) => {
+          const clamped = Math.max(1, value);
+          if (tokenSnap) {
+            return Math.round(clamped);
+          }
+          return Number.parseFloat(clamped.toFixed(2));
+        };
         setSelectedToken(tok);
         setGridSettings((prev) => ({
           ...prev,
-          sizeTiles: quantizeSize(tok.wTiles || 1),
-          sizeCols: quantizeSize(tok.wTiles || 1),
-          sizeRows: quantizeSize(tok.hTiles || 1),
+          sizeTiles: quantizeValue(tok.wTiles || 1),
+          sizeCols: quantizeValue(tok.wTiles || 1),
+          sizeRows: quantizeValue(tok.hTiles || 1),
           rotation: tok.rotation || 0,
           flipX: false,
           flipY: false,
           opacity: tok.opacity ?? 1,
+          snapToGrid: tokenSnap,
         }));
       } else {
         setSelectedToken(null);
         setSelectedTokensList([]);
       }
     },
-    [quantizeSize, setGridSettings, setSelectedToken, setSelectedTokensList],
+    [setGridSettings, setSelectedToken, setSelectedTokensList, snapToGrid],
   );
 
   const clearTokenSelection = useCallback(() => {

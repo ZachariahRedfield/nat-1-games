@@ -8,6 +8,7 @@ import {
   stripRuntimeFields,
 } from "./assetSerialization.js";
 import { blobFromSrc } from "./assetData.js";
+import { writeAssetSettings } from "./assetSettings.js";
 
 export async function readAssetsManifest(parentHandle) {
   try {
@@ -53,6 +54,7 @@ export async function writeAssetsLibrary(parentHandle, assetsList) {
       }
       const entry = { ...base, path: `${ASSETS_DIR_NAME}/${filename}` };
       output.set(entry.id, entry);
+      await writeAssetSettings(assetsDir, asset);
     } else if (asset.kind === "natural") {
       const variants = Array.isArray(asset.variants) ? asset.variants : [];
       const variantOutput = [];
@@ -72,8 +74,10 @@ export async function writeAssetsLibrary(parentHandle, assetsList) {
       }
       const entry = { ...base, variants: variantOutput };
       output.set(entry.id, entry);
+      await writeAssetSettings(assetsDir, asset);
     } else {
       output.set(base.id, base);
+      await writeAssetSettings(assetsDir, asset);
     }
   }
 

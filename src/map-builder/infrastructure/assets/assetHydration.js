@@ -1,10 +1,36 @@
 import { ASSETS_DIR_NAME } from "../persistence/persistenceKeys.js";
+import { mergeAssetSettings, readAssetSettings } from "./assetSettings.js";
+
+async function resolveAssetSettings({ asset, projectDirHandle, parentDirHandle }) {
+  if (!asset?.id) return null;
+  if (parentDirHandle) {
+    try {
+      const assetsDir = await parentDirHandle.getDirectoryHandle(ASSETS_DIR_NAME);
+      const settings = await readAssetSettings(assetsDir, asset.id);
+      if (settings) return settings;
+    } catch {
+      // ignore missing assets dir
+    }
+  }
+  if (projectDirHandle) {
+    try {
+      const assetsDir = await projectDirHandle.getDirectoryHandle(ASSETS_DIR_NAME);
+      const settings = await readAssetSettings(assetsDir, asset.id);
+      if (settings) return settings;
+    } catch {
+      // ignore missing assets dir
+    }
+  }
+  return null;
+}
 
 export async function hydrateAssetsFromFS(projectJson, projectDirHandle, parentDirHandle) {
   const assets = Array.isArray(projectJson?.assets) ? projectJson.assets : [];
   const hydrated = [];
   for (const asset of assets) {
     const base = { ...asset };
+    const settings = await resolveAssetSettings({ asset, projectDirHandle, parentDirHandle });
+    const merged = settings ? mergeAssetSettings(base, settings) : base;
     if (asset.kind === "image" || asset.kind === "token") {
       if (asset.path) {
         try {
@@ -25,13 +51,13 @@ export async function hydrateAssetsFromFS(projectJson, projectDirHandle, parentD
           const src = URL.createObjectURL(blob);
           const img = new Image();
           img.src = src;
-          hydrated.push({ ...base, src, img });
+          hydrated.push({ ...merged, src, img });
           continue;
         } catch {
           // ignore and fallback
         }
       }
-      hydrated.push(base);
+      hydrated.push(merged);
     } else if (asset.kind === "natural") {
       const variants = Array.isArray(asset.variants) ? asset.variants : [];
       const variantOutput = [];
@@ -62,9 +88,9 @@ export async function hydrateAssetsFromFS(projectJson, projectDirHandle, parentD
         }
         variantOutput.push(variant);
       }
-      hydrated.push({ ...base, variants: variantOutput });
+      hydrated.push({ ...merged, variants: variantOutput });
     } else {
-      hydrated.push(base);
+      hydrated.push(merged);
     }
   }
   return hydrated;

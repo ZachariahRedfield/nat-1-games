@@ -132,6 +132,7 @@ export const placeGridImageAt = (centerRow, centerCol, context) => {
     flipX,
     flipY,
     opacity,
+    snapToGrid,
     ...(isNatural ? { variantIndex: variantIndex || 0 } : {}),
   });
 };
@@ -202,6 +203,7 @@ export const placeTokenAt = (centerRow, centerCol, context) => {
       flipY: !!(stamp.flipY ?? gridSettings.flipY),
       opacity: Math.max(0.05, Math.min(1, stamp.opacity ?? gridSettings.opacity ?? 1)),
       glowColor: glow,
+      snapToGrid,
       meta: { name: selectedAsset?.name || "Token", hp: 0, initiative: 0 },
     });
     return;
@@ -241,6 +243,7 @@ export const placeTokenAt = (centerRow, centerCol, context) => {
         flipY: !!(stamp.flipY ?? gridSettings.flipY),
         opacity: Math.max(0.05, Math.min(1, stamp.opacity ?? gridSettings.opacity ?? 1)),
         glowColor: glow,
+        snapToGrid,
         meta: { name: p.name || "Token", hp: 0, initiative: 0 },
       });
     }

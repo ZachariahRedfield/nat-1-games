@@ -5,6 +5,7 @@ import {
   toTilesJson,
   toTokensJson,
 } from "../../../domain/project/projectSerialization.js";
+import { writePlacedAssetSettings } from "./placedAssetSettings.js";
 
 async function writeJsonFile(projectDirHandle, pathSegments, data) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -21,6 +22,8 @@ export async function writeProjectFiles(projectDirHandle, projectState, layerBlo
   await writeJsonFile(projectDirHandle, ["tiles.json"], tilesJson);
   await writeJsonFile(projectDirHandle, ["objects.json"], objectsJson);
   await writeJsonFile(projectDirHandle, ["tokens.json"], tokensJson);
+
+  await writePlacedAssetSettings(projectDirHandle, projectState);
 
   const entries = Object.entries(layerBlobs || {});
   let ordinal = 0;

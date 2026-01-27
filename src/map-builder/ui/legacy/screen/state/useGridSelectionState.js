@@ -42,6 +42,9 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
           const flipY = getUniformValue(arr, (item) => !!item.flipY);
           const opacity = getUniformValue(arr, (item) => item.opacity ?? 1);
           const linkXY = getUniformValue(arr, (item) => !!item.linkXY);
+          const snapToGridValue = getUniformValue(arr, (item) =>
+            typeof item.snapToGrid === "boolean" ? item.snapToGrid : null
+          );
           const sizeTiles = sizeCols !== null && sizeRows !== null && sizeCols === sizeRows ? sizeCols : null;
           setGridSettings((prev) => ({
             ...prev,
@@ -53,6 +56,7 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
             flipY,
             opacity,
             linkXY,
+            snapToGrid: typeof snapToGridValue === "boolean" ? snapToGridValue : prev.snapToGrid ?? true,
           }));
         } else {
           setGridSettings((prev) => ({
@@ -65,6 +69,7 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
             flipY: !!obj.flipY,
             opacity: obj.opacity ?? 1,
             linkXY: !!obj.linkXY,
+            snapToGrid: typeof obj.snapToGrid === "boolean" ? obj.snapToGrid : prev.snapToGrid ?? true,
           }));
         }
         return;
