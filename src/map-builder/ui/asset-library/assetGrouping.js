@@ -1,26 +1,8 @@
-export const ASSET_GROUPS = {
-  IMAGE: "image",
-  TOKEN: "token",
-  MATERIAL: "material",
-  NATURAL: "natural",
-};
-
 const TOKEN_KINDS = new Set(["token", "tokenGroup"]);
 
-export function assetMatchesGroup(asset, group) {
+export function assetMatchesGroup(asset) {
   if (!asset || asset.hiddenFromUI) return false;
-  switch (group) {
-    case ASSET_GROUPS.IMAGE:
-      return asset.kind === "image" || asset.kind === "color";
-    case ASSET_GROUPS.TOKEN:
-      return TOKEN_KINDS.has(asset.kind);
-    case ASSET_GROUPS.MATERIAL:
-      return asset.kind === "color";
-    case ASSET_GROUPS.NATURAL:
-      return asset.kind === "natural";
-    default:
-      return true;
-  }
+  return true;
 }
 
 export function determineCreatorKind(asset) {

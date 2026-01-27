@@ -5,7 +5,6 @@ import { saveGlobalAssets } from "../../../../../application/save-load/index.js"
 function useAssetCreationHandlers({
   setAssets,
   setSelectedAssetId,
-  setAssetGroup,
   setEngine,
   setCreatorOpen,
   setCreatorKind,
@@ -38,13 +37,10 @@ function useAssetCreationHandlers({
       }
       return next;
     });
-    if (group === "natural") setAssetGroup("natural");
-    else if (group === "token") setAssetGroup("token");
-    else setAssetGroup("image");
     setSelectedAssetId(withId.id);
     setEngine?.("grid");
     setCreatorOpen(false);
-  }, [setAssetGroup, setAssets, setCreatorOpen, setEngine, setSelectedAssetId]);
+  }, [setAssets, setCreatorOpen, setEngine, setSelectedAssetId]);
 
   const updateAssetById = useCallback(
     (id, patch) => {
@@ -132,9 +128,8 @@ function useAssetCreationHandlers({
     };
     setAssets((prev) => [asset, ...prev]);
     setSelectedAssetId(asset.id);
-    setAssetGroup("natural");
     setEngine?.("grid");
-  }, [setAssetGroup, setAssets, setEngine, setSelectedAssetId]);
+  }, [setAssets, setEngine, setSelectedAssetId]);
 
   const createTextLabelAsset = useCallback((promptUser) => {
     const text = (newLabelText || "Label").trim();

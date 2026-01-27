@@ -1,5 +1,4 @@
 import React from "react";
-import { ASSET_GROUPS } from "../assetGrouping.js";
 
 function CreationButton({ children, onClick }) {
   return (
@@ -13,26 +12,16 @@ function CreationButton({ children, onClick }) {
   );
 }
 
-export default function AssetCreationToolbar({ activeGroup, onOpenCreator }) {
-  if (!activeGroup) return null;
-
+export default function AssetCreationToolbar({ onOpenCreator }) {
   const open = (kind) => () => onOpenCreator?.(kind);
 
   return (
     <div className="mt-1 mb-3 flex flex-wrap items-center gap-2">
-      {activeGroup === ASSET_GROUPS.IMAGE && (
-        <>
-          <CreationButton onClick={open("image")}>Create Image</CreationButton>
-          <CreationButton onClick={open("text")}>Text/Label</CreationButton>
-          <CreationButton onClick={open("material")}>Add Color</CreationButton>
-        </>
-      )}
-      {activeGroup === ASSET_GROUPS.NATURAL && (
-        <CreationButton onClick={open("natural")}>Add Natural</CreationButton>
-      )}
-      {activeGroup === ASSET_GROUPS.TOKEN && (
-        <CreationButton onClick={open("token")}>Add Token</CreationButton>
-      )}
+      <CreationButton onClick={open("image")}>Create Image</CreationButton>
+      <CreationButton onClick={open("text")}>Text/Label</CreationButton>
+      <CreationButton onClick={open("material")}>Add Color</CreationButton>
+      <CreationButton onClick={open("natural")}>Add Natural</CreationButton>
+      <CreationButton onClick={open("token")}>Add Token</CreationButton>
     </div>
   );
 }

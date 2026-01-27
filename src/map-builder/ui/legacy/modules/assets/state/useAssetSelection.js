@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 function useAssetSelection({
   assets,
-  assetGroup,
   selectedAssetId,
   setSelectedAssetId,
   setCreatorOpen,
@@ -11,6 +10,7 @@ function useAssetSelection({
   setZoomToolActive,
   setPanToolActive,
   setCanvasColor,
+  setAssetGroup,
 }) {
   const skipAutoSelectRef = useRef(false);
   const getAsset = useCallback(
@@ -21,6 +21,63 @@ function useAssetSelection({
   const selectedAsset = useMemo(
     () => (selectedAssetId ? getAsset(selectedAssetId) : null),
     [getAsset, selectedAssetId]
+  );
+
+  const resolveGroupForAsset = useCallback((asset) => {
+    if (!asset) return "image";
+    if (asset.kind === "token" || asset.kind === "tokenGroup") return "token";
+    if (asset.kind === "natural") return "natural";
+    return "image";
+  }, []);
+
+  const applySelectionEffects = useCallback(
+    (asset) => {
+      if (!asset) return;
+      setAssetGroup?.(resolveGroupForAsset(asset));
+
+      if (asset.kind === "token" || asset.kind === "tokenGroup") {
+        try {
+          setZoomToolActive?.(false);
+          setPanToolActive?.(false);
+        } catch (err) {
+          console.warn("Failed to disable zoom/pan tools", err);
+        }
+        setInteractionMode?.("draw");
+        setEngine?.("grid");
+        return;
+      }
+
+      if (asset.kind === "natural") {
+        setEngine?.("grid");
+        return;
+      }
+
+      if (asset.kind === "color") {
+        if (asset.color) setCanvasColor?.(asset.color);
+        return;
+      }
+
+      if (asset.allowedEngines?.length) {
+        const preferred = asset.defaultEngine || asset.allowedEngines[0] || "canvas";
+        if (asset.allowedEngines.includes(preferred)) {
+          setEngine?.(preferred);
+        } else {
+          setEngine?.(asset.allowedEngines[0]);
+        }
+        return;
+      }
+
+      setEngine?.(asset.defaultEngine || "canvas");
+    },
+    [
+      resolveGroupForAsset,
+      setAssetGroup,
+      setCanvasColor,
+      setEngine,
+      setInteractionMode,
+      setPanToolActive,
+      setZoomToolActive,
+    ]
   );
 
   const selectAsset = useCallback(
@@ -34,41 +91,9 @@ function useAssetSelection({
       const asset = getAsset(id);
       setSelectedAssetId(id);
       setCreatorOpen(false);
-      if (!asset) return;
-
-      if (asset.kind === "token" || asset.kind === "tokenGroup") {
-        try {
-          setZoomToolActive?.(false);
-          setPanToolActive?.(false);
-        } catch (err) {
-          console.warn("Failed to disable zoom/pan tools", err);
-        }
-        setInteractionMode?.("draw");
-        setEngine?.("grid");
-      } else if (asset.kind === "color") {
-        if (asset.color) setCanvasColor?.(asset.color);
-      } else if (asset.allowedEngines?.length) {
-        const preferred = asset.defaultEngine || asset.allowedEngines[0] || "canvas";
-        if (asset.allowedEngines.includes(preferred)) {
-          setEngine?.(preferred);
-        } else {
-          setEngine?.(asset.allowedEngines[0]);
-        }
-      } else {
-        setEngine?.(asset.defaultEngine || "canvas");
-      }
+      applySelectionEffects(asset);
     },
-    [
-      getAsset,
-      selectedAssetId,
-      setCanvasColor,
-      setCreatorOpen,
-      setEngine,
-      setInteractionMode,
-      setPanToolActive,
-      setSelectedAssetId,
-      setZoomToolActive,
-    ]
+    [applySelectionEffects, getAsset, selectedAssetId, setCreatorOpen, setSelectedAssetId]
   );
 
   useEffect(() => {
@@ -76,46 +101,21 @@ function useAssetSelection({
       skipAutoSelectRef.current = false;
       return;
     }
-    const ensureSelection = (predicate) => {
-      const current = selectedAsset;
-      if (current && predicate(current)) return current;
-      const next = assets.find(predicate);
-      if (next) {
-        setSelectedAssetId(next.id);
-        return next;
-      }
-      return null;
-    };
-
     setCreatorOpen(false);
 
-    if (assetGroup === "image") {
-      const asset = ensureSelection((entry) => entry.kind === "image" || entry.kind === "color");
-      if (asset?.kind === "color" && asset.color) {
-        setCanvasColor?.(asset.color);
-      }
-    } else if (assetGroup === "material") {
-      const material = ensureSelection((asset) => asset.kind === "color");
-      if (material?.color) setCanvasColor?.(material.color);
-      if (material?.allowedEngines?.length) {
-        const preferred = material.defaultEngine || material.allowedEngines[0] || "canvas";
-        setEngine?.(material.allowedEngines.includes(preferred) ? preferred : material.allowedEngines[0]);
-      }
-    } else if (assetGroup === "token") {
-      ensureSelection((asset) => asset.kind === "token" || asset.kind === "tokenGroup");
-      setEngine?.("grid");
-    } else if (assetGroup === "natural") {
-      ensureSelection((asset) => asset.kind === "natural");
-      setEngine?.("grid");
+    const visibleAssets = assets.filter((asset) => asset && !asset.hiddenFromUI);
+    let nextAsset = selectedAsset;
+    if (!nextAsset && visibleAssets.length) {
+      nextAsset = visibleAssets[0];
+      setSelectedAssetId(nextAsset.id);
     }
+    applySelectionEffects(nextAsset);
   }, [
-    assetGroup,
     assets,
+    applySelectionEffects,
     selectedAsset,
     selectedAssetId,
-    setCanvasColor,
     setCreatorOpen,
-    setEngine,
     setSelectedAssetId,
   ]);
 
