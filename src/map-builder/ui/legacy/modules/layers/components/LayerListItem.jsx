@@ -32,7 +32,7 @@ export function LayerListItem({
 
   return (
     <div
-      className={`relative flex items-center gap-1 ${draggingId === layer.id ? "opacity-70" : ""}`}
+      className={`relative flex items-center gap-1 max-sm:shrink-0 ${draggingId === layer.id ? "opacity-70" : ""}`}
       draggable={!isEditing}
       onDragStart={(event) => onDragStart(event, layer.id)}
       onDragOver={(event) => onDragOver(event, layer.id)}
@@ -42,7 +42,7 @@ export function LayerListItem({
       {showBefore && <span className={dropIndicatorClass} style={{ left: -4 }} />}
       {isEditing ? (
         <input
-          className="px-2 py-0.5 text-sm rounded-full border border-blue-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="px-2 py-0.5 text-[11px] sm:text-sm rounded-full border border-blue-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
           value={draftName}
           onChange={(event) => setDraftName(event.target.value)}
           onBlur={() => finishRename(true)}
@@ -61,7 +61,7 @@ export function LayerListItem({
             finishRename(false);
             onBeginRename(layer);
           }}
-          className={`${buttonClasses} cursor-grab active:cursor-grabbing`}
+          className={`${buttonClasses} cursor-grab active:cursor-grabbing text-[11px] sm:text-sm`}
           title={isHidden ? `${layer.name} (hidden)` : layer.name}
         >
           {layer.name}

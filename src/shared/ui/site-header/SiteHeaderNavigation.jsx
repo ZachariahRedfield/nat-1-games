@@ -2,7 +2,7 @@ import React from "react";
 
 export default function SiteHeaderNavigation({ items, onNavigate }) {
   return (
-    <nav className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm whitespace-nowrap overflow-x-auto">
+    <nav className="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-sm whitespace-nowrap overflow-x-auto px-1">
       {items.map(({ key, label, active }) => (
         <button
           key={key}

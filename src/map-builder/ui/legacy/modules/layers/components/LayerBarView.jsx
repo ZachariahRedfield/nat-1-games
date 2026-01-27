@@ -37,14 +37,14 @@ export function LayerBarView({
   const tokensToggleLabel = tokensVisible ? "Hide Tokens" : "Show Tokens";
 
   return (
-    <div className="w-full z-[10020] bg-gray-800 text-white px-2 py-2 sm:py-1 border-b border-gray-700 shadow">
-      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+    <div className="w-full z-[10020] bg-gray-800 text-white px-2 py-1 sm:py-2 border-b border-gray-700 shadow">
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pb-1 max-sm:pr-2">
         <span className="hidden sm:inline text-[11px] uppercase opacity-80 mr-2">Layers</span>
 
         {canRemoveActiveLayer && (
           <button
             type="button"
-            className="ml-1 px-2 py-1 sm:py-0.5 text-[11px] sm:text-xs rounded border border-red-400 text-red-300 hover:text-red-200 hover:border-red-300 transition"
+            className="ml-1 px-2 py-1 sm:py-0.5 text-[11px] sm:text-xs rounded border border-red-400 text-red-300 hover:text-red-200 hover:border-red-300 transition whitespace-nowrap shrink-0"
             title={`Remove ${activeLayer?.name || "layer"}`}
             onClick={handleRemoveActiveLayer}
           >
@@ -54,7 +54,7 @@ export function LayerBarView({
 
         <button
           type="button"
-          className="px-2 py-1 sm:py-0.5 text-[11px] sm:text-xs rounded-full border border-dashed border-white/60 text-white/80 hover:border-white/90 hover:text-white transition"
+          className="px-2 py-1 sm:py-0.5 text-[11px] sm:text-xs rounded-full border border-dashed border-white/60 text-white/80 hover:border-white/90 hover:text-white transition whitespace-nowrap shrink-0"
           onClick={handleAddLayer}
         >
           + Add Layer
@@ -88,7 +88,7 @@ export function LayerBarView({
         <button
           type="button"
           disabled={!currentLayer}
-          className={`px-2 py-1 sm:py-0.5 text-[11px] sm:text-[12px] rounded-full border border-white/90 bg-gray-700 ${
+          className={`px-2 py-1 sm:py-0.5 text-[11px] sm:text-[12px] rounded-full border border-white/90 bg-gray-700 whitespace-nowrap shrink-0 ${
             !currentLayer ? "opacity-40 cursor-not-allowed" : ""
           }`}
           onClick={() => currentLayer && toggleLayerVisibility?.(currentLayer)}
@@ -99,18 +99,18 @@ export function LayerBarView({
 
         <button
           type="button"
-          className="px-2 py-1 sm:py-0.5 text-[11px] sm:text-[12px] rounded-full border border-white/90 bg-gray-700"
+          className="px-2 py-1 sm:py-0.5 text-[11px] sm:text-[12px] rounded-full border border-white/90 bg-gray-700 whitespace-nowrap shrink-0"
           onClick={() => toggleLayerVisibility?.("tokens")}
           title={tokensToggleLabel}
         >
           {tokensToggleLabel}
         </button>
 
-        <div className="h-4 w-px bg-gray-600 mx-1" />
+        <div className="h-4 w-px bg-gray-600 mx-1 shrink-0" />
 
         <button
           type="button"
-          className="px-2 py-1 sm:py-0.5 text-[11px] sm:text-[12px] rounded-full border border-white/90 bg-gray-700"
+          className="px-2 py-1 sm:py-0.5 text-[11px] sm:text-[12px] rounded-full border border-white/90 bg-gray-700 whitespace-nowrap shrink-0"
           onClick={() => setShowGridLines((value) => !value)}
           title={showGridLines ? "Hide Grid" : "Show Grid"}
         >
