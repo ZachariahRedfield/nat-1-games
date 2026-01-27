@@ -1,6 +1,20 @@
 import React, { useMemo } from "react";
 import { resolvePrimaryPreview } from "../assetGrouping.js";
 
+function getAssetTypeTag(asset) {
+  if (!asset) return null;
+  if (asset.kind === "color") return "Material";
+  if (asset.kind === "image") return "Image";
+  return null;
+}
+
+function getAssetTagClasses(tag) {
+  if (tag === "Material") {
+    return "bg-emerald-900/80 text-emerald-100";
+  }
+  return "bg-blue-900/80 text-blue-100";
+}
+
 function AssetPreview({ asset, showPreview, preview }) {
   const resolvedPreview = preview ?? resolvePrimaryPreview(asset);
 
@@ -77,6 +91,8 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
   if (!asset) return null;
 
   const preview = useMemo(() => resolvePrimaryPreview(asset), [asset]);
+  const typeTag = getAssetTypeTag(asset);
+  const tagClasses = typeTag ? getAssetTagClasses(typeTag) : "";
 
   const previewBaseClasses =
     "group relative w-2/3 mx-auto aspect-square overflow-hidden rounded-xl border shadow-sm transition";
@@ -113,6 +129,15 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
             {asset.name}
           </span>
         </div>
+        {typeTag ? (
+          <div className="pointer-events-none absolute top-1 right-1">
+            <span
+              className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
+            >
+              {typeTag}
+            </span>
+          </div>
+        ) : null}
         {preview.type === "naturalStack" && preview.total > 1 ? (
           <div className="pointer-events-none absolute top-1 right-1">
             <span className="inline-flex rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 shadow">
@@ -151,6 +176,15 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
       <div className="flex-1 min-w-0 py-1">
         <AssetPreview asset={asset} showPreview={showPreview} preview={preview} />
       </div>
+      {typeTag ? (
+        <div className="px-2 pb-1">
+          <span
+            className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide shadow ${tagClasses}`}
+          >
+            {typeTag}
+          </span>
+        </div>
+      ) : null}
       {isSelected && (
         <div className="mt-auto flex gap-1 overflow-hidden rounded-md">
           <button

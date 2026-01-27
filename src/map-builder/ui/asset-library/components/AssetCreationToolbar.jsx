@@ -24,13 +24,11 @@ export default function AssetCreationToolbar({ activeGroup, onOpenCreator }) {
         <>
           <CreationButton onClick={open("image")}>Create Image</CreationButton>
           <CreationButton onClick={open("text")}>Text/Label</CreationButton>
+          <CreationButton onClick={open("material")}>Add Color</CreationButton>
         </>
       )}
       {activeGroup === ASSET_GROUPS.NATURAL && (
         <CreationButton onClick={open("natural")}>Add Natural</CreationButton>
-      )}
-      {activeGroup === ASSET_GROUPS.MATERIAL && (
-        <CreationButton onClick={open("material")}>Add Color</CreationButton>
       )}
       {activeGroup === ASSET_GROUPS.TOKEN && (
         <CreationButton onClick={open("token")}>Add Token</CreationButton>

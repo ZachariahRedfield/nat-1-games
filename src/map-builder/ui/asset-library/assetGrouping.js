@@ -11,7 +11,7 @@ export function assetMatchesGroup(asset, group) {
   if (!asset || asset.hiddenFromUI) return false;
   switch (group) {
     case ASSET_GROUPS.IMAGE:
-      return asset.kind === "image";
+      return asset.kind === "image" || asset.kind === "color";
     case ASSET_GROUPS.TOKEN:
       return TOKEN_KINDS.has(asset.kind);
     case ASSET_GROUPS.MATERIAL:
