@@ -90,7 +90,10 @@ function useAssetSelection({
     setCreatorOpen(false);
 
     if (assetGroup === "image") {
-      ensureSelection((asset) => asset.kind === "image");
+      const asset = ensureSelection((entry) => entry.kind === "image" || entry.kind === "color");
+      if (asset?.kind === "color" && asset.color) {
+        setCanvasColor?.(asset.color);
+      }
     } else if (assetGroup === "material") {
       const material = ensureSelection((asset) => asset.kind === "color");
       if (material?.color) setCanvasColor?.(material.color);

@@ -38,8 +38,7 @@ function useAssetCreationHandlers({
       }
       return next;
     });
-    if (group === "material") setAssetGroup("material");
-    else if (group === "natural") setAssetGroup("natural");
+    if (group === "natural") setAssetGroup("natural");
     else if (group === "token") setAssetGroup("token");
     else setAssetGroup("image");
     setSelectedAssetId(withId.id);
