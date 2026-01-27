@@ -26,6 +26,7 @@ export async function createTokenAssetPayload({ name, state, selectedImageSrc })
       name,
       kind: "token",
       src,
+      fileSizeBytes: state.tokenFile?.size,
       aspectRatio,
       ...ASSET_DEFAULTS.token,
       glowDefault: state.tokenGlow,
@@ -43,5 +44,6 @@ export async function updateTokenAssetPayload({ base, state, selectedImageSrc })
     src: src || base.src,
     aspectRatio,
     glowDefault: state.tokenGlow,
+    fileSizeBytes: state.tokenFile?.size ?? base.fileSizeBytes,
   };
 }

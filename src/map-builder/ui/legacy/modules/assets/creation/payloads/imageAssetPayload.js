@@ -14,6 +14,7 @@ export async function createImageAssetPayload({ name, state }) {
       name,
       kind: "image",
       src,
+      fileSizeBytes: state.imageFile?.size,
       aspectRatio,
       ...ASSET_DEFAULTS.image,
       img,
@@ -35,5 +36,6 @@ export async function updateImageAssetPayload({ base, state }) {
     src,
     img,
     aspectRatio,
+    fileSizeBytes: state.imageFile?.size ?? base.fileSizeBytes,
   };
 }

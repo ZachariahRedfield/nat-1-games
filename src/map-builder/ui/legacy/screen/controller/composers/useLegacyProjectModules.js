@@ -11,6 +11,7 @@ import {
 } from "../../../../../application/save-load/index.js";
 import { useLegacyAssetWorkflow } from "../../state/useLegacyAssetWorkflow.js";
 import { useLegacyHistory } from "../../state/useLegacyHistory.js";
+import { useSelectionSettingsPersistence } from "../../state/useSelectionSettingsPersistence.js";
 import { useLegacyProjectLoading } from "../../../modules/save-load/useLegacyProjectLoading.js";
 import { useLegacyProjectSaving } from "../../../modules/save-load/useLegacyProjectSaving.js";
 
@@ -139,6 +140,17 @@ export function useLegacyProjectModules({
     removeTokenById: tokenSelectionState.removeTokenById,
     clearObjectSelection: gridSelectionState.clearObjectSelection,
     clearTokenSelection: tokenSelectionState.clearTokenSelection,
+  });
+
+  useSelectionSettingsPersistence({
+    gridSettings: gridSettingsState.gridSettings,
+    selectedObjsList: gridSelectionState.selectedObjsList,
+    selectedTokensList: tokenSelectionState.selectedTokensList,
+    currentLayer: layerState.currentLayer,
+    updateObjectById: sceneState.updateObjectById,
+    updateTokenById: tokenSelectionState.updateTokenById,
+    onBeginObjectStroke: historyState.onBeginObjectStroke,
+    onBeginTokenStroke: historyState.onBeginTokenStroke,
   });
 
   const projectLoadingState = useLegacyProjectLoading({

@@ -60,6 +60,7 @@ export function useAssetCreatorState({ kind = "image", initialAsset = null }) {
           {
             src,
             aspectRatio: img.width && img.height ? img.width / img.height : 1,
+            fileSizeBytes: file.size,
           },
         ]);
       };
