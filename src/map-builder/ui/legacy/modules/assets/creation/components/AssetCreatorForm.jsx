@@ -1,19 +1,15 @@
 import React from "react";
 import { NumericInput, TextCommitInput } from "../../../../../../../shared/index.js";
 
-function getInputWidthStyle(value, { min = 16, max = 36 } = {}) {
-  const length = String(value ?? "").length;
-  const width = Math.min(max, Math.max(min, length + 2));
-  return { width: `${width}ch`, maxWidth: "100%" };
-}
+const baseInputClass =
+  "mt-1 w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/60";
 
 function NameField({ label = "Name", value, onChange }) {
   return (
-    <label className="text-xs">
+    <label className="text-xs text-gray-200">
       {label}
       <input
-        className="p-1 text-black rounded max-w-full"
-        style={getInputWidthStyle(value)}
+        className={baseInputClass}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -23,12 +19,12 @@ function NameField({ label = "Name", value, onChange }) {
 
 function FileField({ label, accept, onChange }) {
   return (
-    <label className="text-xs">
+    <label className="text-xs text-gray-200">
       {label}
       <input
         type="file"
         accept={accept}
-        className="w-full text-xs"
+        className="mt-1 w-full text-xs text-gray-100 file:mr-3 file:rounded file:border-0 file:bg-blue-600 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white hover:file:bg-blue-500"
         onChange={(event) => onChange(event.target.files?.[0] || null)}
       />
     </label>
@@ -40,7 +36,7 @@ export default function AssetCreatorForm({ state }) {
 
   if (tab === "image") {
     return (
-      <div className="grid gap-2">
+      <div className="grid gap-3">
         <NameField value={state.name} onChange={state.setName} />
         <FileField label="Upload Image" accept="image/*" onChange={state.setImageFile} />
       </div>
@@ -49,19 +45,19 @@ export default function AssetCreatorForm({ state }) {
 
   if (tab === "token") {
     return (
-      <div className="grid gap-2">
+      <div className="grid gap-3">
         <NameField value={state.name} onChange={state.setName} />
-        <label className="text-xs">
+        <label className="text-xs text-gray-200">
           Glow Color
           <input
             type="color"
             value={state.tokenGlow}
             onChange={(event) => state.setTokenGlow(event.target.value)}
-            className="w-full h-8 p-0 border border-gray-500 rounded"
+            className="mt-1 w-full h-9 p-0 border border-gray-500 rounded"
           />
         </label>
         <FileField label="Upload Image" accept="image/*" onChange={state.setTokenFile} />
-        <div className="text-[10px] text-gray-300">
+        <div className="text-[11px] text-gray-400">
           Tip: If left empty, will try selected image asset.
         </div>
       </div>
@@ -70,27 +66,26 @@ export default function AssetCreatorForm({ state }) {
 
   if (tab === "text") {
     return (
-      <div className="grid gap-2">
-        <label className="text-xs">
+      <div className="grid gap-3">
+        <label className="text-xs text-gray-200">
           Text
           <TextCommitInput
-            className="p-1 text-black rounded max-w-full"
-            style={getInputWidthStyle(state.labelText, { min: 18, max: 48 })}
+            className={baseInputClass}
             value={state.labelText}
             onCommit={state.setLabelText}
           />
         </label>
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-xs">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-xs text-gray-200">
             Color
             <input
               type="color"
               value={state.labelColor}
               onChange={(event) => state.setLabelColor(event.target.value)}
-              className="w-full h-8 p-0 border border-gray-500 rounded"
+              className="mt-1 w-full h-9 p-0 border border-gray-500 rounded"
             />
           </label>
-          <label className="text-xs">
+          <label className="text-xs text-gray-200">
             Font Size
             <NumericInput
               value={state.labelSize}
@@ -98,14 +93,13 @@ export default function AssetCreatorForm({ state }) {
               max={128}
               step={1}
               onCommit={(value) => state.setLabelSize(Math.round(value))}
-              className="w-12 px-1 py-0.5 text-xs text-black rounded"
+              className={`${baseInputClass} text-center`}
             />
           </label>
-          <label className="text-xs col-span-2">
+          <label className="text-xs text-gray-200 col-span-2">
             Font Family
             <TextCommitInput
-              className="p-1 text-black rounded max-w-full"
-              style={getInputWidthStyle(state.labelFont, { min: 18, max: 48 })}
+              className={baseInputClass}
               value={state.labelFont}
               onCommit={state.setLabelFont}
             />
@@ -117,23 +111,22 @@ export default function AssetCreatorForm({ state }) {
 
   if (tab === "material") {
     return (
-      <div className="grid gap-2">
-        <label className="text-xs">
+      <div className="grid gap-3">
+        <label className="text-xs text-gray-200">
           Name
           <TextCommitInput
-            className="p-1 text-black rounded max-w-full"
-            style={getInputWidthStyle(state.name)}
+            className={baseInputClass}
             value={state.name}
             onCommit={state.setName}
           />
         </label>
-        <label className="text-xs">
+        <label className="text-xs text-gray-200">
           Color
           <input
             type="color"
             value={state.colorHex}
             onChange={(event) => state.setColorHex(event.target.value)}
-            className="w-full h-8 p-0 border border-gray-500 rounded"
+            className="mt-1 w-full h-9 p-0 border border-gray-500 rounded"
           />
         </label>
       </div>
@@ -142,19 +135,18 @@ export default function AssetCreatorForm({ state }) {
 
   if (tab === "natural") {
     return (
-      <div className="grid gap-2">
-        <label className="text-xs">
+      <div className="grid gap-3">
+        <label className="text-xs text-gray-200">
           Name
           <TextCommitInput
-            className="p-1 text-black rounded max-w-full"
-            style={getInputWidthStyle(state.name)}
+            className={baseInputClass}
             value={state.name}
             onCommit={state.setName}
           />
         </label>
-        <div className="text-xs flex items-center gap-2">
+        <div className="text-xs flex items-center gap-2 text-gray-200">
           <button
-            className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm"
+            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium"
             onClick={() => state.naturalFileRef.current?.click()}
             type="button"
           >
@@ -170,10 +162,10 @@ export default function AssetCreatorForm({ state }) {
         </div>
         <div className="grid grid-cols-4 gap-2">
           {state.variants.map((variant, index) => (
-            <div key={index} className="relative border border-gray-600 rounded">
-              <img src={variant.src} alt={`v-${index}`} className="w-full h-14 object-contain" />
+            <div key={index} className="relative border border-gray-700 bg-gray-800 rounded">
+              <img src={variant.src} alt={`v-${index}`} className="w-full h-16 object-contain p-1" />
               <button
-                className="absolute top-1 right-1 text-[10px] px-1 bg-red-700 rounded"
+                className="absolute top-1 right-1 text-[10px] px-1 bg-red-600 hover:bg-red-500 rounded"
                 onClick={() => state.removeVariantAt(index)}
                 type="button"
               >

@@ -167,7 +167,7 @@ export default function AssetPreview({ selectedAsset, gridSettings }) {
       <div className="text-xs opacity-80 mb-1">Preview</div>
       <div
         ref={containerRef}
-        className="relative w-full h-36 md:h-40 border border-gray-700 rounded overflow-hidden"
+        className="relative w-full h-32 md:h-36 border border-gray-700 rounded overflow-hidden"
         style={{ backgroundColor: "#111827" }}
       >
         <div className="absolute inset-0 flex items-center justify-center">

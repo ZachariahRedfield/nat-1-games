@@ -76,6 +76,44 @@ export function getCornerWorldPosition(entity, corner) {
   };
 }
 
+export function computeLinkedResizeUpdate({
+  anchorRow,
+  anchorCol,
+  rotation = 0,
+  anchorCorner = "nw",
+  sizeTiles = 1,
+  geometry,
+  snapToGrid = true,
+}) {
+  if (!geometry) return null;
+
+  const totalRows = Number.isFinite(geometry?.rows) ? geometry.rows : Number.MAX_SAFE_INTEGER;
+  const totalCols = Number.isFinite(geometry?.cols) ? geometry.cols : Number.MAX_SAFE_INTEGER;
+
+  const safeSize = Math.max(1, sizeTiles);
+  const half = safeSize / 2;
+  const sign = getCornerSign(anchorCorner);
+  const offset = rotateVector({ x: sign.x * half, y: sign.y * half }, rotation);
+  const centerCol = (Number.isFinite(anchorCol) ? anchorCol : 0) - offset.x;
+  const centerRow = (Number.isFinite(anchorRow) ? anchorRow : 0) - offset.y;
+
+  let col = centerCol - half;
+  let row = centerRow - half;
+
+  const maxCol = Math.max(0, totalCols - safeSize);
+  const maxRow = Math.max(0, totalRows - safeSize);
+
+  col = clamp(col, 0, maxCol);
+  row = clamp(row, 0, maxRow);
+
+  return {
+    row: snapToGrid ? Math.round(row) : Number.parseFloat(row.toFixed(2)),
+    col: snapToGrid ? Math.round(col) : Number.parseFloat(col.toFixed(2)),
+    wTiles: safeSize,
+    hTiles: safeSize,
+  };
+}
+
 export function computeResizeUpdate({
   pointerRow,
   pointerCol,
