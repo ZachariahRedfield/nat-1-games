@@ -39,7 +39,18 @@ export default function GridBrushSettings({
 
   const handleToggleLink = () => {
     snapshotSettings?.();
-    setGridSettings((current) => ({ ...current, linkXY: !current?.linkXY }));
+    setGridSettings((current) => {
+      const nextLink = !current?.linkXY;
+      if (!nextLink) {
+        return { ...current, linkXY: false };
+      }
+      const nextValue =
+        (Number.isFinite(current?.sizeCols) ? current.sizeCols : undefined) ??
+        (Number.isFinite(current?.sizeRows) ? current.sizeRows : undefined) ??
+        current?.sizeTiles ??
+        1;
+      return { ...current, linkXY: true, sizeCols: nextValue, sizeRows: nextValue };
+    });
   };
 
   const commitCols = (value) => {

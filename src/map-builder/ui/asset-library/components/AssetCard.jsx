@@ -154,6 +154,10 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
     }
   };
 
+  const deleteWrapperClasses = `overflow-hidden transition-all duration-200 ${
+    isSelected ? "max-h-12 opacity-100 translate-y-0" : "max-h-0 opacity-0 -translate-y-2 pointer-events-none"
+  }`;
+
   if (showPreview) {
     return (
       <div
@@ -161,7 +165,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
         tabIndex={0}
         onClick={() => onSelect?.(asset.id)}
         onKeyPress={handleKeyPress}
-        className="group relative cursor-pointer transition"
+        className="group flex flex-col cursor-pointer transition"
         title={asset.name}
       >
         <div className={previewRowClasses}>
@@ -195,11 +199,11 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
             <span>{sizeLabel}</span>
           </div>
         </div>
-        {isSelected ? (
-          <div className="pointer-events-none absolute left-2 right-2 -bottom-4 flex justify-center opacity-0 translate-y-2 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto">
+        <div className={deleteWrapperClasses}>
+          <div className="px-2 pb-2 pt-1">
             <button
               type="button"
-              className="pointer-events-auto rounded-md bg-red-700/95 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/95"
+              className="w-full rounded-md bg-red-700/95 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/95"
               onClick={(event) => {
                 event.stopPropagation();
                 onDelete?.(asset);
@@ -209,7 +213,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
               Delete
             </button>
           </div>
-        ) : null}
+        </div>
       </div>
     );
   }
@@ -220,7 +224,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
       tabIndex={0}
       onClick={() => onSelect?.(asset.id)}
       onKeyPress={handleKeyPress}
-      className={`group relative cursor-pointer ${detailsWrapperClasses}`}
+      className={`group flex flex-col cursor-pointer ${detailsWrapperClasses}`}
       title={asset.name}
     >
       <div className={detailsRowClasses}>
@@ -242,11 +246,11 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
           <span>{sizeLabel}</span>
         </div>
       </div>
-      {isSelected ? (
-        <div className="pointer-events-none absolute left-2 right-2 -bottom-4 flex justify-center opacity-0 translate-y-2 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto">
+      <div className={deleteWrapperClasses}>
+        <div className="px-2 pb-2 pt-1">
           <button
             type="button"
-            className="pointer-events-auto rounded-md bg-red-700/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/90"
+            className="w-full rounded-md bg-red-700/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-lg hover:bg-red-600/90"
             onClick={(event) => {
               event.stopPropagation();
               onDelete?.(asset);
@@ -256,7 +260,7 @@ export default function AssetCard({ asset, isSelected, showPreview, onSelect, on
             Delete
           </button>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
