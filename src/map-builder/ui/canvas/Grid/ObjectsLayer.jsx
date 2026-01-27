@@ -1,4 +1,5 @@
 import React from "react";
+import { normalizeTileCount } from "./utils.js";
 
 export default function ObjectsLayer({
   layers = [],
@@ -30,10 +31,12 @@ export default function ObjectsLayer({
           {(objects[layer] || []).map((o) => {
             const a = getAssetById(o.assetId);
             if (!a || (a.kind !== "image" && a.kind !== 'natural')) return null;
+            const widthTiles = normalizeTileCount(o.wTiles);
+            const heightTiles = normalizeTileCount(o.hTiles);
             const left = o.col * tileSize;
             const top = o.row * tileSize;
-            const w = o.wTiles * tileSize;
-            const h = o.hTiles * tileSize;
+            const w = widthTiles * tileSize;
+            const h = heightTiles * tileSize;
             const rot = o.rotation || 0;
             const sx = o.flipX ? -1 : 1;
             const sy = o.flipY ? -1 : 1;
