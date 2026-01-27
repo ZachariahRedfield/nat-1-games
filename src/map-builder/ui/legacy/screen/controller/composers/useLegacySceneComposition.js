@@ -43,6 +43,7 @@ export function useLegacySceneComposition() {
 
   const tokenSelectionState = useTokenSelectionState({
     setGridSettings: gridSettingsState.setGridSettings,
+    snapToGrid: gridSettingsState.gridSettings?.snapToGrid ?? true,
   });
 
   const saveSelectionDialogState = useSaveSelectionDialogState();

@@ -105,6 +105,7 @@ export default function GridBrushSettings({
               buttonClassName={buildLinkButtonClass(linkXY, true)}
               placeholderCols={sizeColsMixed ? "N/A" : ""}
               placeholderRows={sizeRowsMixed ? "N/A" : ""}
+              snapToGrid={gridSettings?.snapToGrid ?? true}
             />
           </div>
         </div>

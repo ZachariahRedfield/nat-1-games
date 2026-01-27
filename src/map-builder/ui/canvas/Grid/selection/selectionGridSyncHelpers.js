@@ -52,6 +52,15 @@ export const isMultiSelectionNeutral = (gridSettings) => {
   );
 };
 
+const quantizeSize = (value, snapToGrid) => {
+  if (!Number.isFinite(value)) return null;
+  const clamped = Math.max(1, value);
+  if (snapToGrid) {
+    return Math.round(clamped);
+  }
+  return Number.parseFloat(clamped.toFixed(2));
+};
+
 export const applyMultiSelectionUpdates = ({
   selectedObjIds,
   currentLayer,
@@ -59,6 +68,7 @@ export const applyMultiSelectionUpdates = ({
   updateObjectById,
   gridSettings,
   prevGridSettings,
+  snapToGrid = true,
 }) => {
   const updates = getMultiSelectionUpdates(gridSettings, prevGridSettings);
   if (!updates || Object.keys(updates).length === 0) return;
@@ -69,10 +79,10 @@ export const applyMultiSelectionUpdates = ({
 
     const patch = {};
     if (typeof updates.sizeCols === "number") {
-      patch.wTiles = Math.max(1, Math.round(updates.sizeCols));
+      patch.wTiles = quantizeSize(updates.sizeCols, snapToGrid);
     }
     if (typeof updates.sizeRows === "number") {
-      patch.hTiles = Math.max(1, Math.round(updates.sizeRows));
+      patch.hTiles = quantizeSize(updates.sizeRows, snapToGrid);
     }
     if (typeof updates.rotation === "number") {
       patch.rotation = updates.rotation;
@@ -103,9 +113,10 @@ export const getObjectSizeFromGrid = ({ gridSettings, obj, aspect }) => {
   const sc = gridSettings.sizeCols;
   const sr = gridSettings.sizeRows;
   const st = gridSettings.sizeTiles;
+  const snapToGrid = !!gridSettings.snapToGrid;
 
-  if (typeof sc === "number" && sc >= 1) nextW = Math.max(1, Math.round(sc));
-  if (typeof sr === "number" && sr >= 1) nextH = Math.max(1, Math.round(sr));
+  if (typeof sc === "number" && sc >= 1) nextW = quantizeSize(sc, snapToGrid);
+  if (typeof sr === "number" && sr >= 1) nextH = quantizeSize(sr, snapToGrid);
 
   if (
     (typeof sc !== "number" || sc < 1) &&
@@ -113,8 +124,8 @@ export const getObjectSizeFromGrid = ({ gridSettings, obj, aspect }) => {
     typeof st === "number" &&
     st >= 1
   ) {
-    nextW = Math.max(1, Math.round(st));
-    nextH = Math.max(1, Math.round(nextW / aspect));
+    nextW = quantizeSize(st, snapToGrid);
+    nextH = quantizeSize(nextW / aspect, snapToGrid);
   }
 
   return { nextW, nextH };
@@ -126,9 +137,10 @@ export const getTokenSizeFromGrid = ({ gridSettings, token }) => {
   const sc = gridSettings.sizeCols;
   const sr = gridSettings.sizeRows;
   const st = gridSettings.sizeTiles;
+  const snapToGrid = !!gridSettings.snapToGrid;
 
-  if (typeof sc === "number" && sc >= 1) wTiles = Math.max(1, Math.round(sc));
-  if (typeof sr === "number" && sr >= 1) hTiles = Math.max(1, Math.round(sr));
+  if (typeof sc === "number" && sc >= 1) wTiles = quantizeSize(sc, snapToGrid);
+  if (typeof sr === "number" && sr >= 1) hTiles = quantizeSize(sr, snapToGrid);
 
   if (
     (typeof sc !== "number" || sc < 1) &&
@@ -136,8 +148,8 @@ export const getTokenSizeFromGrid = ({ gridSettings, token }) => {
     typeof st === "number" &&
     st >= 1
   ) {
-    wTiles = Math.max(1, Math.round(st));
-    hTiles = Math.max(1, Math.round(wTiles));
+    wTiles = quantizeSize(st, snapToGrid);
+    hTiles = quantizeSize(wTiles, snapToGrid);
   }
 
   return { wTiles, hTiles };

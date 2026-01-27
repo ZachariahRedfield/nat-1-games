@@ -45,6 +45,7 @@ export function useObjectSelectionGridSync({
         updateObjectById,
         gridSettings,
         prevGridSettings: prevGridSettingsRef.current,
+        snapToGrid: gridSettings?.snapToGrid ?? true,
       });
 
       prevGridSettingsRef.current = gridSettings;

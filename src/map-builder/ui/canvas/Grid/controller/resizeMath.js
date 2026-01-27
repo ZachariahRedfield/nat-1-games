@@ -87,6 +87,7 @@ export function computeResizeUpdate({
   minWidthTiles = 1,
   minHeightTiles = 1,
   geometry,
+  snapToGrid = true,
 }) {
   if (!geometry) return null;
 
@@ -132,8 +133,15 @@ export function computeResizeUpdate({
   const halfW = Math.max(minHalfW, Math.abs(localVec.x));
   const halfH = Math.max(minHalfH, Math.abs(localVec.y));
 
-  let wTiles = Math.max(1, Math.round(halfW * 2));
-  let hTiles = Math.max(1, Math.round(halfH * 2));
+  let wTiles = Math.max(1, halfW * 2);
+  let hTiles = Math.max(1, halfH * 2);
+  if (snapToGrid) {
+    wTiles = Math.max(1, Math.round(wTiles));
+    hTiles = Math.max(1, Math.round(hTiles));
+  } else {
+    wTiles = Number.parseFloat(wTiles.toFixed(2));
+    hTiles = Number.parseFloat(hTiles.toFixed(2));
+  }
 
   const quantHalfW = wTiles / 2;
   const quantHalfH = hTiles / 2;
@@ -156,8 +164,8 @@ export function computeResizeUpdate({
   row = clamp(row, 0, maxRow);
 
   return {
-    row: Math.round(row),
-    col: Math.round(col),
+    row: snapToGrid ? Math.round(row) : Number.parseFloat(row.toFixed(2)),
+    col: snapToGrid ? Math.round(col) : Number.parseFloat(col.toFixed(2)),
     wTiles,
     hTiles,
   };

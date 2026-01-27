@@ -5,6 +5,15 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
   const [hasSelection, setHasSelection] = useState(false);
   const [selectedObj, setSelectedObj] = useState(null);
   const [selectedObjsList, setSelectedObjsList] = useState([]);
+  const snapToGrid = gridSettings?.snapToGrid ?? true;
+
+  const quantizeSize = useCallback((value) => {
+    const clamped = Math.max(1, value);
+    if (snapToGrid) {
+      return Math.round(clamped);
+    }
+    return Number.parseFloat(clamped.toFixed(2));
+  }, [snapToGrid]);
 
   const getUniformValue = useCallback((items, getValue) => {
     if (!Array.isArray(items) || items.length === 0) return null;
@@ -26,8 +35,8 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
         setSelectedObj(obj);
 
         if (arr.length > 1) {
-          const sizeCols = getUniformValue(arr, (item) => Math.max(1, Math.round(item.wTiles || 1)));
-          const sizeRows = getUniformValue(arr, (item) => Math.max(1, Math.round(item.hTiles || 1)));
+          const sizeCols = getUniformValue(arr, (item) => quantizeSize(item.wTiles || 1));
+          const sizeRows = getUniformValue(arr, (item) => quantizeSize(item.hTiles || 1));
           const rotation = getUniformValue(arr, (item) => item.rotation || 0);
           const flipX = getUniformValue(arr, (item) => !!item.flipX);
           const flipY = getUniformValue(arr, (item) => !!item.flipY);
@@ -48,9 +57,9 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
         } else {
           setGridSettings((prev) => ({
             ...prev,
-            sizeTiles: Math.max(1, Math.round(obj.wTiles || 1)),
-            sizeCols: Math.max(1, Math.round(obj.wTiles || 1)),
-            sizeRows: Math.max(1, Math.round(obj.hTiles || 1)),
+            sizeTiles: quantizeSize(obj.wTiles || 1),
+            sizeCols: quantizeSize(obj.wTiles || 1),
+            sizeRows: quantizeSize(obj.hTiles || 1),
             rotation: obj.rotation || 0,
             flipX: !!obj.flipX,
             flipY: !!obj.flipY,
@@ -69,7 +78,7 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
       setSelectedObj(null);
       setSelectedObjsList([]);
     },
-    [getUniformValue, gridSettings, hasSelection, setGridSettings],
+    [getUniformValue, hasSelection, quantizeSize, setGridSettings],
   );
 
   const clearObjectSelection = useCallback(() => {

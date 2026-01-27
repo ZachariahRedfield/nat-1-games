@@ -80,16 +80,22 @@ function useResponsiveTileSize(containerRef, widthTiles, heightTiles) {
 export default function AssetPreview({ selectedAsset, gridSettings }) {
   const containerRef = useRef(null);
   const presentation = useMemo(() => getAssetPresentation(selectedAsset), [selectedAsset]);
+  const snapToGrid = gridSettings?.snapToGrid ?? true;
 
   const widthTiles = useMemo(
-    () => Math.max(1, Math.round(gridSettings?.sizeCols ?? gridSettings?.sizeTiles ?? 1)),
-    [gridSettings?.sizeCols, gridSettings?.sizeTiles]
+    () => {
+      const base = gridSettings?.sizeCols ?? gridSettings?.sizeTiles ?? 1;
+      const clamped = Math.max(1, base);
+      return snapToGrid ? Math.round(clamped) : Number.parseFloat(clamped.toFixed(2));
+    },
+    [gridSettings?.sizeCols, gridSettings?.sizeTiles, snapToGrid]
   );
 
   const heightTiles = useMemo(() => {
     const target = gridSettings?.sizeRows ?? widthTiles / (presentation.aspect || 1) ?? widthTiles;
-    return Math.max(1, Math.round(target));
-  }, [gridSettings?.sizeRows, presentation.aspect, widthTiles]);
+    const clamped = Math.max(1, target);
+    return snapToGrid ? Math.round(clamped) : Number.parseFloat(clamped.toFixed(2));
+  }, [gridSettings?.sizeRows, presentation.aspect, snapToGrid, widthTiles]);
 
   const tileSize = useResponsiveTileSize(containerRef, widthTiles, heightTiles);
 
