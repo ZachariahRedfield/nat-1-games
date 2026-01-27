@@ -20,6 +20,7 @@ export function createAssetPanelProps(state) {
     setEditingAsset: state.setEditingAsset,
     handleCreatorCreate: state.handleCreatorCreate,
     updateAssetById: state.updateAssetById,
+    reorderAssets: state.reorderAssets,
     setAssets: state.setAssets,
     setSelectedAssetId: state.setSelectedAssetId,
     alertFn: (message) => state.showToast(message, "warning", 3500),

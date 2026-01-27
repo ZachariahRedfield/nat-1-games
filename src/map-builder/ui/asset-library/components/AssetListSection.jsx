@@ -1,32 +1,99 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import AssetCard from "./AssetCard.jsx";
 import AssetViewToggle from "./AssetViewToggle.jsx";
 
 export default function AssetListSection({
   assets,
+  totalAssets,
   showAssetPreviews,
   onToggleView,
   selectedAssetId,
   onSelect,
   onDelete,
   onCreateAsset,
+  searchQuery,
+  onSearchChange,
+  onClearSearch,
+  onReorder,
 }) {
+  const [draggedId, setDraggedId] = useState(null);
+  const [dropTargetId, setDropTargetId] = useState(null);
+  const hasSearch = useMemo(() => Boolean(searchQuery?.trim()), [searchQuery]);
+
+  const handleDragStart = (assetId) => (event) => {
+    setDraggedId(assetId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", assetId);
+  };
+
+  const handleDragOver = (assetId) => (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    if (assetId !== dropTargetId) {
+      setDropTargetId(assetId);
+    }
+  };
+
+  const handleDrop = (assetId) => (event) => {
+    event.preventDefault();
+    const sourceId = event.dataTransfer.getData("text/plain") || draggedId;
+    if (sourceId && assetId && sourceId !== assetId) {
+      onReorder?.(sourceId, assetId);
+    }
+    setDraggedId(null);
+    setDropTargetId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDropTargetId(null);
+  };
+
+  const emptyMessage = useMemo(() => {
+    if (totalAssets === 0) return "No assets available.";
+    if (hasSearch && assets.length === 0) return "No assets match that search.";
+    return null;
+  }, [assets.length, hasSearch, totalAssets]);
+
   return (
     <div className="mb-2 border border-gray-600 rounded overflow-hidden resize-y min-h-[240px] max-h-[70vh] flex flex-col">
       <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
         <div className="flex items-center gap-2">
           <span className="text-xs uppercase tracking-wide">Assets</span>
-          <div className="rounded border border-gray-500/80 bg-gray-800/70 px-1 py-0.5">
-            <button
-              type="button"
-              className="px-2 py-0.5 text-[11px] font-semibold text-gray-100 hover:text-white"
-              onClick={onCreateAsset}
-            >
-              Create Asset
-            </button>
-          </div>
+          <span className="rounded-full bg-gray-800/80 px-2 py-0.5 text-[10px] font-semibold text-gray-200">
+            {totalAssets ?? assets.length}
+          </span>
         </div>
         <AssetViewToggle showPreview={!!showAssetPreviews} onChange={onToggleView} />
+      </div>
+
+      <div className="flex items-center gap-2 border-b border-gray-700 bg-gray-900/60 px-2 py-2">
+        <div className="relative flex-1">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => onSearchChange?.(event.target.value)}
+            placeholder="Search saved assets..."
+            className="w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs text-gray-100 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+            aria-label="Search saved assets"
+          />
+          {hasSearch ? (
+            <button
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-gray-400 hover:text-gray-200"
+              onClick={onClearSearch}
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="rounded-md bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow hover:bg-blue-500"
+          onClick={onCreateAsset}
+        >
+          Create Asset
+        </button>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -39,19 +106,30 @@ export default function AssetListSection({
               <span>Size</span>
             </div>
             <div className="flex flex-col divide-y divide-gray-800">
-              {assets.map((asset) => (
-                <AssetCard
-                  key={asset.id}
-                  asset={asset}
-                  isSelected={selectedAssetId === asset.id}
-                  showPreview={!!showAssetPreviews}
-                  onSelect={onSelect}
-                  onDelete={onDelete}
-                />
-              ))}
-              {assets.length === 0 && (
-                <div className="px-2 py-3 text-xs text-gray-400">No assets available.</div>
-              )}
+              {assets.map((asset) => {
+                const isDropTarget = dropTargetId === asset.id && draggedId !== asset.id;
+                return (
+                  <div
+                    key={asset.id}
+                    draggable
+                    onDragStart={handleDragStart(asset.id)}
+                    onDragOver={handleDragOver(asset.id)}
+                    onDrop={handleDrop(asset.id)}
+                    onDragEnd={handleDragEnd}
+                    className={`transition ${isDropTarget ? "ring-2 ring-blue-400" : ""}`}
+                    title="Drag to reorder"
+                  >
+                    <AssetCard
+                      asset={asset}
+                      isSelected={selectedAssetId === asset.id}
+                      showPreview={!!showAssetPreviews}
+                      onSelect={onSelect}
+                      onDelete={onDelete}
+                    />
+                  </div>
+                );
+              })}
+              {emptyMessage ? <div className="px-2 py-3 text-xs text-gray-400">{emptyMessage}</div> : null}
             </div>
           </div>
         ) : (
@@ -62,19 +140,30 @@ export default function AssetListSection({
               <span>Size</span>
             </div>
             <div className="flex flex-col divide-y divide-gray-800">
-              {assets.map((asset) => (
-                <AssetCard
-                  key={asset.id}
-                  asset={asset}
-                  isSelected={selectedAssetId === asset.id}
-                  showPreview={!!showAssetPreviews}
-                  onSelect={onSelect}
-                  onDelete={onDelete}
-                />
-              ))}
-              {assets.length === 0 && (
-                <div className="px-2 py-3 text-xs text-gray-400">No assets available.</div>
-              )}
+              {assets.map((asset) => {
+                const isDropTarget = dropTargetId === asset.id && draggedId !== asset.id;
+                return (
+                  <div
+                    key={asset.id}
+                    draggable
+                    onDragStart={handleDragStart(asset.id)}
+                    onDragOver={handleDragOver(asset.id)}
+                    onDrop={handleDrop(asset.id)}
+                    onDragEnd={handleDragEnd}
+                    className={`transition ${isDropTarget ? "ring-2 ring-blue-400" : ""}`}
+                    title="Drag to reorder"
+                  >
+                    <AssetCard
+                      asset={asset}
+                      isSelected={selectedAssetId === asset.id}
+                      showPreview={!!showAssetPreviews}
+                      onSelect={onSelect}
+                      onDelete={onDelete}
+                    />
+                  </div>
+                );
+              })}
+              {emptyMessage ? <div className="px-2 py-3 text-xs text-gray-400">{emptyMessage}</div> : null}
             </div>
           </div>
         )}
