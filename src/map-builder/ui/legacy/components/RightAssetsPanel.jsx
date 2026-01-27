@@ -463,16 +463,16 @@ export default function RightAssetsPanel({
               </button>
             </div>
             <div
-              className={`flex-1 p-2 sm:p-3 text-gray-100 ${
-                activeTab === "assets" ? "overflow-y-auto" : "overflow-hidden"
+              className={`flex-1 text-gray-100 ${
+                activeTab === "assets" ? "overflow-y-auto p-0" : "overflow-hidden p-2 sm:p-3"
               }`}
             >
               {activeTab === "assets" ? (
-                <>
+                <div className="flex flex-col h-full">
                   <AssetPanel {...assetPanelProps} />
 
                   {assetPanelProps?.selectedAssetId ? (
-                    <div className="mt-4 pt-3 border-t border-gray-700">
+                    <div className="mt-4 border-t border-gray-700 px-3 pb-3 pt-3">
                       <div className="grid gap-4">
                         <AssetDrawerSettings
                           assetPanelProps={assetPanelProps}
@@ -495,10 +495,10 @@ export default function RightAssetsPanel({
                       </div>
                     </div>
                   ) : null}
-                </>
+                </div>
               ) : (
                 <div className="flex flex-col h-full">
-                  <div className="flex-[1.4] min-h-[260px] max-h-[65vh] border-b border-gray-700 pb-6 flex flex-col resize-y overflow-hidden">
+                  <div className="flex-[1.4] min-h-[5vh] max-h-[95vh] border-b border-gray-700 pb-6 flex flex-col resize-y overflow-hidden">
                     <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
                       <span>Placed Assets</span>
                       <div className="flex items-center gap-2">

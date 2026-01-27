@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import AssetListSection from "./components/AssetListSection.jsx";
 import { assetMatchesGroup } from "./assetGrouping.js";
+import { getAssetTypeTag } from "./assetTags.js";
 import useAssetPanelHandlers from "./hooks/useAssetPanelHandlers.js";
 
 export default function AssetPanel(props) {
@@ -15,34 +16,58 @@ export default function AssetPanel(props) {
     setSelectedAssetId,
     confirmFn,
     reorderAssets,
+    openEditAsset,
   } = props;
 
   const [assetSearch, setAssetSearch] = useState("");
+  const [tagFilter, setTagFilter] = useState("all");
 
   const visibleAssets = useMemo(() => {
     const list = Array.isArray(assets) ? assets : [];
     return list.filter((asset) => assetMatchesGroup(asset));
   }, [assets]);
 
+  const tagOptions = useMemo(() => {
+    const tags = new Set();
+    visibleAssets.forEach((asset) => {
+      const tag = getAssetTypeTag(asset);
+      if (tag) tags.add(tag);
+    });
+    const order = ["Image", "Label", "Material", "Natural", "Token"];
+    return order.filter((tag) => tags.has(tag));
+  }, [visibleAssets]);
+
+  useEffect(() => {
+    if (tagFilter === "all") return;
+    if (!tagOptions.includes(tagFilter)) {
+      setTagFilter("all");
+    }
+  }, [tagFilter, tagOptions]);
+
+  const tagFilteredAssets = useMemo(() => {
+    if (!tagFilter || tagFilter === "all") return visibleAssets;
+    return visibleAssets.filter((asset) => getAssetTypeTag(asset) === tagFilter);
+  }, [tagFilter, visibleAssets]);
+
   const filteredAssets = useMemo(() => {
     const query = assetSearch.trim().toLowerCase();
-    if (!query) return visibleAssets;
-    return visibleAssets.filter((asset) => {
-      const labelText = asset?.labelMeta?.text || "";
-      const kind = asset?.kind || "";
+    if (!query) return tagFilteredAssets;
+    return tagFilteredAssets.filter((asset) => {
       const name = asset?.name || "";
-      return `${name} ${kind} ${labelText}`.toLowerCase().includes(query);
+      return name.toLowerCase().includes(query);
     });
-  }, [assetSearch, visibleAssets]);
+  }, [assetSearch, tagFilteredAssets]);
 
   const {
     handleOpenCreator,
     handleSelectAsset,
+    handleEditAsset,
     handleDeleteAsset,
     handleToggleView,
   } = useAssetPanelHandlers({
     openCreator,
     selectAsset,
+    openEditAsset,
     confirmFn,
     visibleAssets,
     setAssets,
@@ -76,11 +101,15 @@ export default function AssetPanel(props) {
         onToggleView={handleToggleView}
         selectedAssetId={selectedAssetId}
         onSelect={handleSelectAsset}
+        onEdit={handleEditAsset}
         onDelete={handleDeleteAsset}
         onCreateAsset={openCreatorPrompt}
         searchQuery={assetSearch}
         onSearchChange={setAssetSearch}
         onClearSearch={() => setAssetSearch("")}
+        tagFilter={tagFilter}
+        onTagFilterChange={setTagFilter}
+        tagOptions={tagOptions}
         onReorder={reorderAssets}
       />
 

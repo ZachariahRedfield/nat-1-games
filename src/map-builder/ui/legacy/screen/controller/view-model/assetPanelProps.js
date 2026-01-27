@@ -16,6 +16,7 @@ export function createAssetPanelProps(state) {
     creatorKind: state.creatorKind,
     editingAsset: state.editingAsset,
     openCreator: state.openCreator,
+    openEditAsset: state.openEditAsset,
     setCreatorOpen: state.setCreatorOpen,
     setEditingAsset: state.setEditingAsset,
     handleCreatorCreate: state.handleCreatorCreate,
