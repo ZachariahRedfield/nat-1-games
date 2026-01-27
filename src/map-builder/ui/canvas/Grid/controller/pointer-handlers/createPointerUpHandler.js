@@ -140,6 +140,32 @@ function finalizeLinkedResize({ refs, config, selection, actions, geometry }) {
   }
 }
 
+function finalizeResizeGridSettings({ refs, config, selection }) {
+  const drag = refs.dragRef.current;
+  if (!drag || !config?.setGridSettings) return;
+
+  if (drag.kind === "resize-obj") {
+    const obj = selection.getObjectById(config.currentLayer, drag.id);
+    if (!obj) return;
+    config.setGridSettings((settings) => ({
+      ...settings,
+      sizeCols: obj.wTiles ?? 1,
+      sizeRows: obj.hTiles ?? 1,
+    }));
+    return;
+  }
+
+  if (drag.kind === "resize-token") {
+    const token = selection.getTokenById(drag.id);
+    if (!token) return;
+    config.setGridSettings((settings) => ({
+      ...settings,
+      sizeCols: token.wTiles ?? 1,
+      sizeRows: token.hTiles ?? 1,
+    }));
+  }
+}
+
 export function createPointerUpHandler(context) {
   const { refs, config, callbacks, data, selection, actions, state, geometry } = context;
 
@@ -154,6 +180,7 @@ export function createPointerUpHandler(context) {
 
     if (refs.dragRef.current) {
       finalizeLinkedResize({ refs, config, selection, actions, geometry });
+      finalizeResizeGridSettings({ refs, config, selection });
       collectMarqueeSelection({ refs, selection, config, data, actions });
       refs.dragRef.current = null;
     }

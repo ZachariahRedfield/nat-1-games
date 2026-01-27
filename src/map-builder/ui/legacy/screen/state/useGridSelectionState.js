@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useGridSelectionState({ gridSettings, setGridSettings }) {
   const gridDefaultsRef = useRef(null);
+  const pendingDefaultsRef = useRef(null);
   const [hasSelection, setHasSelection] = useState(false);
   const [selectedObj, setSelectedObj] = useState(null);
   const [selectedObjsList, setSelectedObjsList] = useState([]);
@@ -33,6 +34,7 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
         setSelectedObjsList(arr);
         const obj = arr[arr.length - 1];
         setSelectedObj(obj);
+        pendingDefaultsRef.current = null;
 
         if (arr.length > 1) {
           const sizeCols = getUniformValue(arr, (item) => quantizeSize(item.wTiles || 1));
@@ -77,7 +79,7 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
 
       const defaults = gridDefaultsRef.current;
       if (defaults) {
-        setGridSettings((prev) => ({ ...prev, ...defaults }));
+        pendingDefaultsRef.current = defaults;
       }
       setHasSelection(false);
       setSelectedObj(null);
@@ -89,12 +91,20 @@ export function useGridSelectionState({ gridSettings, setGridSettings }) {
   const clearObjectSelection = useCallback(() => {
     const defaults = gridDefaultsRef.current;
     if (defaults) {
-      setGridSettings((prev) => ({ ...prev, ...defaults }));
+      pendingDefaultsRef.current = defaults;
     }
     setHasSelection(false);
     setSelectedObj(null);
     setSelectedObjsList([]);
   }, [setGridSettings]);
+
+  useEffect(() => {
+    if (hasSelection) return;
+    if (!pendingDefaultsRef.current) return;
+    const defaults = pendingDefaultsRef.current;
+    pendingDefaultsRef.current = null;
+    setGridSettings((prev) => ({ ...prev, ...defaults }));
+  }, [hasSelection, setGridSettings]);
 
   return {
     hasSelection,
