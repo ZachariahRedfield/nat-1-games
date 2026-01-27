@@ -1,12 +1,19 @@
 import React from "react";
 import { NumericInput, TextCommitInput } from "../../../../../../../shared/index.js";
 
+function getInputWidthStyle(value, { min = 16, max = 36 } = {}) {
+  const length = String(value ?? "").length;
+  const width = Math.min(max, Math.max(min, length + 2));
+  return { width: `${width}ch`, maxWidth: "100%" };
+}
+
 function NameField({ label = "Name", value, onChange }) {
   return (
     <label className="text-xs">
       {label}
       <input
-        className="w-full p-1 text-black rounded"
+        className="p-1 text-black rounded max-w-full"
+        style={getInputWidthStyle(value)}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -67,7 +74,8 @@ export default function AssetCreatorForm({ state }) {
         <label className="text-xs">
           Text
           <TextCommitInput
-            className="w-full p-1 text-black rounded"
+            className="p-1 text-black rounded max-w-full"
+            style={getInputWidthStyle(state.labelText, { min: 18, max: 48 })}
             value={state.labelText}
             onCommit={state.setLabelText}
           />
@@ -96,7 +104,8 @@ export default function AssetCreatorForm({ state }) {
           <label className="text-xs col-span-2">
             Font Family
             <TextCommitInput
-              className="w-full p-1 text-black rounded"
+              className="p-1 text-black rounded max-w-full"
+              style={getInputWidthStyle(state.labelFont, { min: 18, max: 48 })}
               value={state.labelFont}
               onCommit={state.setLabelFont}
             />
@@ -112,7 +121,8 @@ export default function AssetCreatorForm({ state }) {
         <label className="text-xs">
           Name
           <TextCommitInput
-            className="w-full p-1 text-black rounded"
+            className="p-1 text-black rounded max-w-full"
+            style={getInputWidthStyle(state.name)}
             value={state.name}
             onCommit={state.setName}
           />
@@ -136,7 +146,8 @@ export default function AssetCreatorForm({ state }) {
         <label className="text-xs">
           Name
           <TextCommitInput
-            className="w-full p-1 text-black rounded"
+            className="p-1 text-black rounded max-w-full"
+            style={getInputWidthStyle(state.name)}
             value={state.name}
             onCommit={state.setName}
           />
