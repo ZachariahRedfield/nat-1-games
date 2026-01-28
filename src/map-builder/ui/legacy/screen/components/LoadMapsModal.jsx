@@ -10,7 +10,7 @@ export default function LoadMapsModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[10055] flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-[10055] flex items-center justify-center bg-black/60 pointer-events-auto">
       <div className="w-[96%] max-w-2xl max-h-[80vh] overflow-hidden bg-gray-900 border border-gray-700 rounded text-gray-100">
         <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           <div className="font-semibold">Load Map</div>

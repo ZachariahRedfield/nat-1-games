@@ -12,7 +12,7 @@ export default function AssetsFolderDialog({ open, onClose, onChooseFolder }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[10070] flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-[10070] flex items-center justify-center bg-black/60 pointer-events-auto">
       <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100 shadow-lg">
         <div className="font-semibold text-base mb-2">Choose an Assets Folder</div>
         <p className="text-sm text-gray-200 mb-4">

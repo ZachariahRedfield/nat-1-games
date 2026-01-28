@@ -12,7 +12,7 @@ export default function MapSizeModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60 pointer-events-auto">
       <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100">
         <div className="font-semibold mb-2">Map Size</div>
         <div className="grid grid-cols-2 gap-3 mb-3 items-end">

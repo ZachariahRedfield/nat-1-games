@@ -30,7 +30,7 @@ function PromptModal({ state, inputRef, onSubmit, onCancel }) {
   const { title, defaultValue = "" } = state;
 
   return (
-    <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60 pointer-events-auto">
       <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100">
         <div className="font-semibold mb-2">{title || "Input"}</div>
         <input
@@ -71,7 +71,7 @@ function ConfirmModal({ state, onApprove, onCancel }) {
   const { title = "Confirm", message = "", okText = "OK", cancelText = "Cancel" } = state;
 
   return (
-    <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60 pointer-events-auto">
       <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100">
         <div className="font-semibold mb-2">{title}</div>
         <div className="whitespace-pre-wrap text-sm mb-3">{message}</div>

@@ -79,7 +79,7 @@ export default function SaveSelectionDialog({
   const selectedTokensCount = selectedTokensList?.length || 0;
 
   return (
-    <div className="fixed inset-0 z-[10058] flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-[10058] flex items-center justify-center bg-black/60 pointer-events-auto">
       <div className="w-[96%] max-w-xl max-h-[80vh] overflow-auto bg-gray-900 text-white border border-gray-700 rounded">
         <DialogHeader onClose={onClose} />
         <div className="p-4">
