@@ -13,7 +13,7 @@ export default function AssetCreatorModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[10057] flex items-center justify-center bg-black/70 p-4">
+    <div className="fixed inset-0 z-[10057] flex items-center justify-center bg-black/70 p-4 pointer-events-auto">
       <div className="w-[92%] max-w-xl max-h-[85vh] overflow-hidden bg-gray-900 border border-gray-700 rounded-lg text-gray-100 shadow-2xl">
         <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
           <div className="font-semibold text-sm uppercase tracking-wide text-gray-200">
