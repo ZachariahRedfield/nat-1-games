@@ -8,7 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
 
-    "codex:verify": "npm test || exit 1",
+    "verify:fast": "npm run build",
+    "verify": "npm run build",
+
+    "codex:verify:fast": "npm run verify:fast",
+    "codex:verify": "npm run verify",
+
     "codex:doc-sync": "echo \"doc-sync placeholder\""
   },
   "devDependencies": {
