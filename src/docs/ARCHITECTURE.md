@@ -33,6 +33,7 @@ Nat-1 Games is implemented as a **modular monolith**. Each module owns its domai
 - UI dispatches intent → domain/state layer
 - State mutation recorded in history system
 - Render layer reacts to state snapshot
+- Header storage menu → StorageManager import/export + provider status
 <!-- AGENT:END data-flow -->
 
 

@@ -28,6 +28,7 @@ This document defines **source-of-truth concepts and invariants**. It is intenti
 - Modularized MapBuilder components
 - Versioned save/load snapshots and stripped runtime-only asset fields
 - Introduced StorageProvider architecture with OPFS/IndexedDB + pack export/import
+- Added header menu storage status with pack import/export actions
 <!-- AGENT:END done-list -->
 
 

@@ -4,7 +4,7 @@ import type {
   StorageSaveResult,
   StorageProvider,
 } from "./StorageProvider";
-import { getProjectMetadata } from "./db";
+import { getProjectMetadata, getProjectMetadataByLocation } from "./db";
 import { FolderProvider } from "./providers/FolderProvider";
 import { OPFSProvider } from "./providers/OPFSProvider";
 import { IndexedDBProvider } from "./providers/IndexedDBProvider";
@@ -36,6 +36,7 @@ export class StorageManager {
   private adapter: StorageAdapter;
   private session: StorageSession;
   private providers: StorageProvider[];
+  private providerEntries: { key: string; label: string; provider: StorageProvider }[];
   private providerMap: Map<string, StorageProvider>;
   private folderProvider: FolderProvider;
   private opfsProvider: OPFSProvider;
@@ -48,12 +49,13 @@ export class StorageManager {
     this.folderProvider = new FolderProvider(adapter, this.session);
     this.opfsProvider = new OPFSProvider(adapter, this.session);
     this.indexedDbProvider = new IndexedDBProvider(adapter, this.session);
-    this.providers = [this.folderProvider, this.opfsProvider, this.indexedDbProvider];
-    this.providerMap = new Map([
-      ["folder", this.folderProvider],
-      ["opfs", this.opfsProvider],
-      ["indexeddb", this.indexedDbProvider],
-    ]);
+    this.providerEntries = [
+      { key: "folder", label: "Folder", provider: this.folderProvider },
+      { key: "opfs", label: "OPFS", provider: this.opfsProvider },
+      { key: "indexeddb", label: "IndexedDB", provider: this.indexedDbProvider },
+    ];
+    this.providers = this.providerEntries.map((entry) => entry.provider);
+    this.providerMap = new Map(this.providerEntries.map((entry) => [entry.key, entry.provider]));
   }
 
   async init() {
@@ -75,10 +77,72 @@ export class StorageManager {
     return this.folderProvider.isSupported();
   }
 
+  getCurrentProjectId() {
+    return this.session.getCurrentProjectId();
+  }
+
   private async selectDefaultProvider() {
     if (this.folderProvider.isSupported()) return this.folderProvider;
     if (this.opfsProvider.isSupported()) return this.opfsProvider;
     return this.indexedDbProvider;
+  }
+
+  private findProviderEntryByKey(key: string | undefined | null) {
+    if (!key) return null;
+    return this.providerEntries.find((entry) => entry.key === key) || null;
+  }
+
+  private findProviderEntryByInstance(provider: StorageProvider) {
+    return this.providerEntries.find((entry) => entry.provider === provider) || null;
+  }
+
+  async getActiveProviderInfo(): Promise<{ key: string; label: string }> {
+    await this.init();
+    const currentProjectId = this.session.getCurrentProjectId();
+    if (currentProjectId) {
+      const meta = await getProjectMetadata(currentProjectId);
+      const entry = this.findProviderEntryByKey(meta?.provider);
+      if (entry) {
+        return { key: entry.key, label: entry.label };
+      }
+    }
+
+    const currentHandle = this.adapter.getCurrentProjectDirectoryHandle();
+    if (currentHandle) {
+      const entry = this.findProviderEntryByKey("folder");
+      if (entry) {
+        return { key: entry.key, label: entry.label };
+      }
+    }
+
+    const provider = await this.selectDefaultProvider();
+    const entry = this.findProviderEntryByInstance(provider) || this.providerEntries[0];
+    return { key: entry.key, label: entry.label };
+  }
+
+  async getCurrentProjectInfo(): Promise<{ id: string; name: string; providerKey: string } | null> {
+    await this.init();
+    const currentProjectId = this.session.getCurrentProjectId();
+    if (currentProjectId) {
+      const meta = await getProjectMetadata(currentProjectId);
+      if (meta) {
+        return { id: meta.id, name: meta.name, providerKey: meta.provider };
+      }
+      const provider = await this.selectDefaultProvider();
+      const entry = this.findProviderEntryByInstance(provider) || this.providerEntries[0];
+      return { id: currentProjectId, name: currentProjectId, providerKey: entry.key };
+    }
+
+    const currentHandle = this.adapter.getCurrentProjectDirectoryHandle();
+    if (currentHandle) {
+      const meta = await getProjectMetadataByLocation("folder", currentHandle.name);
+      if (meta) {
+        return { id: meta.id, name: meta.name, providerKey: meta.provider };
+      }
+      return { id: currentHandle.name, name: currentHandle.name, providerKey: "folder" };
+    }
+
+    return null;
   }
 
   private async providerForProjectId(projectId: string): Promise<StorageProvider> {
