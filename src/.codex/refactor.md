@@ -5,7 +5,7 @@ Follow this loop strictly:
 
 
 1. PLAN
-- Read ARCHITECTURE.md and CODEX.md
+- Read ARCHITECTURE.md and Codex.md
 - Identify affected modules and boundaries
 - Propose a step-by-step refactor plan
 - Call out risks (state, undo/redo, persistence)
