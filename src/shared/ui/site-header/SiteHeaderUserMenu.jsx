@@ -1,4 +1,5 @@
 import React from "react";
+import StorageMenuSection from "./StorageMenuSection.jsx";
 
 export default function SiteHeaderUserMenu({
   username,
@@ -7,6 +8,7 @@ export default function SiteHeaderUserMenu({
   onNavigateHome,
   onLogout,
   homeActive,
+  storageMenu,
 }) {
   return (
     <div className="relative flex items-center gap-2">
@@ -24,7 +26,20 @@ export default function SiteHeaderUserMenu({
         </svg>
       </button>
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-[10100] bg-gray-800 border border-gray-600 rounded shadow-md min-w-[120px]">
+        <div className="absolute right-0 top-full mt-1 z-[10100] bg-gray-800 border border-gray-600 rounded shadow-md min-w-[180px]">
+          {storageMenu ? (
+            <StorageMenuSection
+              providerLabel={storageMenu.providerLabel}
+              canImport={storageMenu.canImport}
+              canExport={storageMenu.canExport}
+              importTitle={storageMenu.importTitle}
+              exportTitle={storageMenu.exportTitle}
+              onImportPack={storageMenu.onImportPack}
+              onExportPack={storageMenu.onExportPack}
+              statusMessage={storageMenu.statusMessage}
+              statusTone={storageMenu.statusTone}
+            />
+          ) : null}
           <button
             className={`block w-full text-left px-3 py-1 text-sm ${
               homeActive ? "text-white font-semibold" : "text-gray-300 hover:text-white"
