@@ -3,6 +3,7 @@ import SiteHeaderNavigation from "./SiteHeaderNavigation.jsx";
 import SiteHeaderTitleButton from "./SiteHeaderTitleButton.jsx";
 import SiteHeaderUserMenu from "./SiteHeaderUserMenu.jsx";
 import { useSiteHeaderController } from "./useSiteHeaderController.js";
+import { useStorageMenuController } from "./useStorageMenuController.js";
 
 export default function SiteHeader(props) {
   const {
@@ -15,6 +16,7 @@ export default function SiteHeader(props) {
     username,
     homeActive,
   } = useSiteHeaderController(props);
+  const storageMenu = useStorageMenuController({ menuOpen });
 
   return (
     <header className="px-3 py-1.5 sm:px-4 sm:py-3 bg-gray-800 text-white grid grid-cols-[1fr_auto_1fr] items-center">
@@ -32,6 +34,7 @@ export default function SiteHeader(props) {
           onNavigateHome={navigateHome}
           onLogout={logout}
           homeActive={homeActive}
+          storageMenu={storageMenu}
         />
       </div>
     </header>

@@ -3,3 +3,8 @@ export { loadProject, loadProjectById } from "./services/projectLoadService.js";
 export { listMaps, deleteMap } from "./mapDirectoryService.js";
 export { loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured } from "./assetFolderService.js";
 export { saveGlobalAssets, loadGlobalAssets } from "./globalAssetsStore.js";
+export {
+  exportCurrentProjectPack,
+  getStorageMenuState,
+  importProjectPack,
+} from "./services/storageMenuService.js";
