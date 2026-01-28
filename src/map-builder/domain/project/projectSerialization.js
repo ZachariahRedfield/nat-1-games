@@ -1,11 +1,27 @@
+const PROJECT_SNAPSHOT_VERSION = 2;
+const LEGACY_PROJECT_VERSION = 1;
+
+function normalizeProjectVersion(version, fallback = LEGACY_PROJECT_VERSION) {
+  const parsed = Number.parseInt(version, 10);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  return fallback;
+}
+
+function stripVariantRuntimeFields(variant) {
+  const { img, file, ...rest } = variant || {};
+  return rest;
+}
+
 function stripAssetInMemoryFields(asset) {
-  const { img, ...rest } = asset || {};
+  const { img, file, variants, ...rest } = asset || {};
+  if (Array.isArray(variants)) {
+    return { ...rest, variants: variants.map(stripVariantRuntimeFields) };
+  }
   return rest;
 }
 
 export function toProjectJson(projectState = {}) {
   const {
-    version = 1,
     name,
     rows,
     cols,
@@ -19,7 +35,7 @@ export function toProjectJson(projectState = {}) {
   } = projectState;
 
   return {
-    version: version ?? 1,
+    version: PROJECT_SNAPSHOT_VERSION,
     name: name || settings?.name || undefined,
     map: { rows, cols, gridSize: tileSize },
     settings: settings || {},
@@ -51,11 +67,12 @@ export async function buildProjectStateSnapshot(raw = {}, canvasesOrSingleBlob =
   const { map, settings, assets, layers: projectLayers, name } = raw.project || raw || {};
   const { tiles } = raw.tiles || {};
   const { objects, tokens } = raw.objects || {};
+  const version = normalizeProjectVersion(raw?.project?.version ?? raw?.version ?? raw?.snapshotVersion);
   const rows = map?.rows || raw.rows || 20;
   const cols = map?.cols || raw.cols || 20;
   const tileSize = map?.gridSize || 32;
   const maps = tiles || raw.maps || {};
-  const assetsIn = assets || raw.assets || [];
+  const assetsIn = (assets || raw.assets || []).map(stripAssetInMemoryFields);
   const settingsLayers = raw.settings?.layers;
   const layersIn =
     (Array.isArray(projectLayers) && projectLayers.length ? projectLayers : null) ??
@@ -90,6 +107,7 @@ export async function buildProjectStateSnapshot(raw = {}, canvasesOrSingleBlob =
   }
 
   return {
+    version,
     rows,
     cols,
     tileSize,

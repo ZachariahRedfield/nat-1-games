@@ -26,12 +26,12 @@ This document defines **source-of-truth concepts and invariants**. It is intenti
 <!-- AGENT:BEGIN done-list -->
 - Added undo/redo for canvas + grid
 - Modularized MapBuilder components
+- Versioned save/load snapshots and stripped runtime-only asset fields
 <!-- AGENT:END done-list -->
 
 
 ## Next Up
 <!-- AGENT:BEGIN next-up -->
-- Refactor save/load pipeline
 - Mobile UI pass
 <!-- AGENT:END next-up -->
 
