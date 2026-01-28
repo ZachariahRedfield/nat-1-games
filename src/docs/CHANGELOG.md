@@ -8,3 +8,4 @@
 - Refactored documentation into ARCHITECTURE / CODEX / CHANGELOG structure
 - Introduced agent-writable fenced blocks
 - Established doc-sync policy and automation philosophy
+- Versioned project snapshots and removed runtime-only asset fields from persisted state

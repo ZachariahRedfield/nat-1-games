@@ -153,9 +153,7 @@ export async function exportBundle(projectState, { canvasRefs, silent = false, m
 
 function hydrateImageAsset(asset, blob) {
   const src = URL.createObjectURL(blob);
-  const img = new Image();
-  img.src = src;
-  return { ...asset, src, img };
+  return { ...asset, src };
 }
 
 async function hydrateAssetFromZip(zip, asset) {
@@ -263,17 +261,6 @@ export async function importBundle(file) {
     const text = await file.text();
     const raw = JSON.parse(text || "{}");
     const snapshot = await buildProjectStateSnapshot(raw, null);
-    snapshot.assets = (snapshot.assets || []).map((asset) => {
-      if ((asset.kind === "image" || asset.kind === "token") && asset.src) {
-        const img = new Image();
-        img.src = asset.src;
-        return { ...asset, img };
-      }
-      if (asset.kind === "natural" && Array.isArray(asset.variants)) {
-        return { ...asset };
-      }
-      return asset;
-    });
     return snapshot;
   }
 
