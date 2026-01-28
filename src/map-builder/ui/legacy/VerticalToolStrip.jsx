@@ -2,10 +2,7 @@ import React from "react";
 import ToolButton from "./modules/toolbar/ToolButton.jsx";
 import { useToolstripTips } from "./modules/toolbar/useToolstripTips.js";
 import { BrushIcon, CursorIcon, PanIcon, ZoomIcon } from "./modules/toolbar/icons.jsx";
-import {
-  DrawModeToolGroup,
-  SelectModeToolGroup,
-} from "./modules/toolbar/groups/index.js";
+import { DrawModeToolGroup } from "./modules/toolbar/groups/index.js";
 
 export default function VerticalToolStrip({
   interactionMode,
@@ -19,9 +16,6 @@ export default function VerticalToolStrip({
   engine,
   setEngine,
   assetGroup,
-  canActOnSelection,
-  onSaveSelection,
-  onDeleteSelection,
 }) {
   const { showTip, iconClassFor, labelClassFor } = useToolstripTips();
   const drawActive = !zoomToolActive && !panToolActive && interactionMode === "draw";
@@ -100,17 +94,6 @@ export default function VerticalToolStrip({
         labelClassFor={labelClassFor}
       />
 
-      {selectActive && (
-        <SelectModeToolGroup
-          canActOnSelection={canActOnSelection}
-          onSaveSelection={onSaveSelection}
-          onDeleteSelection={onDeleteSelection}
-          showTip={showTip}
-          iconClassFor={iconClassFor}
-          labelClassFor={labelClassFor}
-          showSelectionActions={false}
-        />
-      )}
     </div>
   );
 }
