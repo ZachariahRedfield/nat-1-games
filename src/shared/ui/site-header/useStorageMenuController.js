@@ -111,7 +111,9 @@ export function useStorageMenuController({ menuOpen }) {
 
   const providerLabel = resolveProviderLabel(providerInfo);
   const canExport = Boolean(projectInfo?.id);
-  const exportTitle = canExport ? "Export current project" : "No active project to export.";
+  const exportTitle = canExport
+    ? "Export last saved project snapshot"
+    : "No active project to export.";
   const canImport = Boolean(storageApi?.importProjectPack);
   const importTitle = canImport ? "Import a project pack" : "Storage unavailable.";
 
