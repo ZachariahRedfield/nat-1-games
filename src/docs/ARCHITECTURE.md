@@ -18,6 +18,8 @@ Nat-1 Games is implemented as a **modular monolith**. Each module owns its domai
 - Owns map state, history, undo/redo
 - AssetManager
 - Asset metadata, import/export, tagging
+- Storage
+- StorageProvider selection, pack import/export, metadata index
 - SessionManager (planned)
 - Multiplayer/session state
 - Core
@@ -39,6 +41,7 @@ Nat-1 Games is implemented as a **modular monolith**. Each module owns its domai
 - /modules
 - /map-builder
 - /asset-manager
+- /storage
 - /core
 - /shared
 - /docs

@@ -7,9 +7,12 @@ import {
 import { ensureAssetsDir } from "../../infrastructure/filesystem/directoryManagement.js";
 import { hydrateAssetsFromFS } from "../../infrastructure/assets/assetHydration.js";
 import { readAssetsManifest, writeAssetsManifest } from "../../infrastructure/assets/assetLibrary.js";
+import { getStorageManager } from "./storageManager.js";
 
 export async function loadAssetsFromStoredParent() {
   try {
+    const storageManager = getStorageManager();
+    if (!storageManager.isFolderProviderAvailable()) return [];
     const parent = await getStoredParentDirectoryHandle();
     const ok = parent ? await verifyPermission(parent, false) : false;
     if (!ok) {
@@ -61,6 +64,8 @@ export async function chooseAssetsFolder() {
 
 export async function isAssetsFolderConfigured() {
   try {
+    const storageManager = getStorageManager();
+    if (!storageManager.isFolderProviderAvailable()) return true;
     const parent = await getStoredParentDirectoryHandle();
     if (!parent) return false;
     const ok = await verifyPermission(parent, false);
