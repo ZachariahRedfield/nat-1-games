@@ -60,7 +60,7 @@ export default function AssetListSection({
   }, [assets.length, hasSearch, totalAssets]);
 
   return (
-    <div className="mb-2 border border-gray-600 rounded overflow-hidden flex flex-col h-full">
+    <div className="mb-2 border border-gray-600 rounded overflow-hidden resize-y min-h-[5vh] max-h-[95vh] flex flex-col">
       <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
         <div className="flex items-center gap-2">
           <span className="text-xs uppercase tracking-wide">Assets</span>
