@@ -1,18 +1,15 @@
 import React from "react";
 
 export default function LegacyUndoRedoControls({
-  top,
-  center,
   onUndo,
   onRedo,
   canUndo,
   canRedo,
+  className,
+  style,
 }) {
   return (
-    <div
-      className="fixed z-[10015] pointer-events-auto"
-      style={{ top, left: center, transform: "translateX(-50%)" }}
-    >
+    <div className={`pointer-events-auto ${className || ""}`.trim()} style={style}>
       <div className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-slate-900/60 px-1.5 py-1 shadow-xl shadow-black/40 backdrop-blur-xl">
         <button
           onClick={onUndo}
