@@ -33,15 +33,6 @@ export default function AssetDrawerSettings({
   snapshotSettings,
 }) {
   const { selectedAsset, selectedAssetId, updateAssetById } = assetPanelProps;
-  const assetName = selectedAsset?.name ?? "";
-
-  const handleNameChange = useCallback(
-    (event) => {
-      if (!selectedAssetId) return;
-      updateAssetById?.(selectedAssetId, { name: event.target.value });
-    },
-    [selectedAssetId, updateAssetById]
-  );
 
   const persistAssetStamp = useCallback(
     (updater) => withAssetPersistence(updater, setAssetStamp, selectedAssetId, updateAssetById, "stampDefaults"),
@@ -95,20 +86,6 @@ export default function AssetDrawerSettings({
     return (
       <>
         {canvasBrushSizeControl}
-        <div className="space-y-1">
-          <label className="text-xs uppercase tracking-wide text-gray-400" htmlFor="asset-name-input">
-            Asset Name
-          </label>
-          <input
-            id="asset-name-input"
-            type="text"
-            value={assetName}
-            onChange={handleNameChange}
-            disabled={!selectedAssetId}
-            className="w-full rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-100 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-            placeholder="Name this asset"
-          />
-        </div>
         <BrushSettings
           kind="natural"
           gridSettings={assetStamp}
@@ -127,20 +104,6 @@ export default function AssetDrawerSettings({
   return (
     <>
       {canvasBrushSizeControl}
-      <div className="space-y-1">
-        <label className="text-xs uppercase tracking-wide text-gray-400" htmlFor="asset-name-input">
-          Asset Name
-        </label>
-        <input
-          id="asset-name-input"
-          type="text"
-          value={assetName}
-          onChange={handleNameChange}
-          disabled={!selectedAssetId}
-          className="w-full rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-100 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-          placeholder="Name this asset"
-        />
-      </div>
       <BrushSettings
         kind="grid"
         gridSettings={assetStamp}
