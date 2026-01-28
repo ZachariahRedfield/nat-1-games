@@ -641,7 +641,9 @@ export default function RightAssetsPanel({
       </div>
       {collapsed && (
         <div
-          className={`fixed z-[10019] flex gap-2 ${isMobile ? "flex-row justify-center" : "flex-col"}`}
+          className={`fixed z-[10019] pointer-events-auto flex gap-2 ${
+            isMobile ? "flex-row justify-center" : "flex-col"
+          }`}
           style={tabWrapStyle}
         >
           <button
