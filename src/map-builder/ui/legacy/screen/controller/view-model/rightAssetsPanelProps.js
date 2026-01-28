@@ -1,5 +1,5 @@
 import { createAssetPanelProps } from "./assetPanelProps.js";
-import { createLegacySettingsPanelProps } from "./legacySettingsPanelProps.js";
+import { createSelectionPanelProps } from "./selectionPanelProps.js";
 
 export function createRightAssetsPanelProps(state) {
   return {
@@ -14,7 +14,7 @@ export function createRightAssetsPanelProps(state) {
     setBrushSize: state.setBrushSize,
     tileSize: state.tileSize,
     snapshotSettings: state.snapshotSettings,
-    selectionPanelProps: createLegacySettingsPanelProps(state),
+    selectionPanelProps: createSelectionPanelProps(state),
     selectedObj: state.selectedObj,
     selectedToken: state.selectedToken,
     handleSelectionChange: state.handleSelectionChange,

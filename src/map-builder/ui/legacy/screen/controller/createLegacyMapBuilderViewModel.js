@@ -1,6 +1,5 @@
 import { createDialogProps } from "./view-model/dialogProps.js";
 import { createFeedbackLayerProps } from "./view-model/feedbackProps.js";
-import { createLegacySettingsPanelProps } from "./view-model/legacySettingsPanelProps.js";
 import { createLayoutProps } from "./view-model/layoutProps.js";
 import { createLayerBarProps } from "./view-model/layerBarProps.js";
 import { createToolbarProps } from "./view-model/toolbarProps.js";
@@ -13,7 +12,6 @@ import { createRightAssetsPanelProps } from "./view-model/rightAssetsPanelProps.
 export function createLegacyMapBuilderViewModel(state) {
   const headerProps = createHeaderProps(state);
   const feedbackLayerProps = createFeedbackLayerProps(state);
-  const legacySettingsPanelProps = createLegacySettingsPanelProps(state);
   const { layout } = createLayoutProps(state);
   const layerBarProps = createLayerBarProps(state);
   const toolbarProps = createToolbarProps(state);
@@ -36,7 +34,6 @@ export function createLegacyMapBuilderViewModel(state) {
     feedbackLayerProps,
     assetCreatorModalProps,
     loadMapsModalProps,
-    legacySettingsPanelProps,
     layout,
     layerBarProps,
     toolbarProps,
