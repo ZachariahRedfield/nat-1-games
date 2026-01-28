@@ -50,13 +50,7 @@ export default function LegacyMapBuilderLayout({
         currentScreen={currentScreen || "mapBuilder"}
       />
 
-      <main className="flex flex-1 overflow-hidden min-h-0">
-        <FeedbackLayer {...feedbackLayerProps} />
-
-        <AssetCreatorModal {...assetCreatorModalProps} />
-        <LoadMapsModal {...loadMapsModalProps} />
-        <RightAssetsPanel {...rightAssetsPanelProps} topOffset={rightPanelTopOffset} />
-
+      <main className="relative flex flex-1 overflow-hidden min-h-0">
         <div className="flex-1 overflow-hidden">
           <div
             ref={layout.scrollRef}
@@ -68,6 +62,25 @@ export default function LegacyMapBuilderLayout({
               backgroundColor: "#f4e4c1",
               paddingTop: layout.topControlsHeight,
             }}
+          >
+            <div className="relative w-full min-h-full flex justify-center items-start md:items-center p-3 sm:p-6">
+              <div className="flex-1 flex">
+                <div ref={layout.gridContentRef} className="relative inline-flex mx-auto">
+                  <Grid {...gridProps} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute inset-0 pointer-events-none" data-overlay-root>
+          <div className="absolute inset-0 z-[10005] pointer-events-none" data-overlay-layer="feedback">
+            <FeedbackLayer {...feedbackLayerProps} />
+          </div>
+
+          <div
+            className="absolute inset-0 z-[10010] pointer-events-none"
+            data-overlay-layer="workspace-chrome"
           >
             <div
               ref={layout.topControlsWrapRef}
@@ -85,45 +98,60 @@ export default function LegacyMapBuilderLayout({
             </div>
 
             <div
-              className="fixed inset-x-0 z-[10020]"
+              className="fixed inset-x-0 pointer-events-auto"
               style={{ top: layout.fixedBarTop }}
+              data-workspace-chrome
             >
               <div className="flex flex-col">
                 <Header {...headerAllProps} />
                 <LayerBar {...layerBarProps} />
               </div>
             </div>
+          </div>
 
-            <div className="relative w-full min-h-full flex justify-center items-start md:items-center p-3 sm:p-6">
-              <div
-                className="fixed z-[10015] pointer-events-auto"
-                style={{ top: layout.overlayTop, left: layout.overlayLeft }}
-              >
-                <VerticalToolStrip {...toolbarProps} />
-              </div>
+          <div
+            className="absolute inset-0 z-[10015] pointer-events-none"
+            data-overlay-layer="tool-hud"
+          >
+            <div
+              className="fixed pointer-events-auto"
+              style={{ top: layout.overlayTop, left: layout.overlayLeft }}
+              data-tool-hud-left-dock
+            >
+              <VerticalToolStrip {...toolbarProps} />
+            </div>
 
+            <div
+              className="fixed pointer-events-auto"
+              style={{
+                top: layout.overlayTop,
+                left: layout.overlayCenter,
+                transform: "translateX(-50%)",
+              }}
+              data-tool-hud-top-center
+            >
               <LegacyMapBuilderUndoRedoControls
-                top={layout.overlayTop}
-                center={layout.overlayCenter}
                 onUndo={undo}
                 onRedo={redo}
                 canUndo={undoStack.length > 0}
                 canRedo={redoStack.length > 0}
               />
-
-              <div className="flex-1 flex">
-                <div ref={layout.gridContentRef} className="relative inline-flex mx-auto">
-                  <Grid {...gridProps} />
-                </div>
-              </div>
             </div>
+          </div>
+
+          <div className="absolute inset-0 z-[10030] pointer-events-none">
+            <RightAssetsPanel {...rightAssetsPanelProps} topOffset={rightPanelTopOffset} />
+          </div>
+
+          <div className="absolute inset-0 z-[10060] pointer-events-none">
+            <AssetCreatorModal {...assetCreatorModalProps} />
+            <LoadMapsModal {...loadMapsModalProps} />
+            <MapSizeModal {...mapSizeModalProps} />
+            <SaveSelectionDialog {...saveSelectionDialogProps} />
+            <AssetsFolderDialog {...assetsFolderDialogProps} />
           </div>
         </div>
       </main>
-
-      <MapSizeModal {...mapSizeModalProps} />
-      <SaveSelectionDialog {...saveSelectionDialogProps} />
-      <AssetsFolderDialog {...assetsFolderDialogProps} />
     </div>
   );
 }
