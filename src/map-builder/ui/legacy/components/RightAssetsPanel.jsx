@@ -6,6 +6,7 @@ import SelectionSettingsPanel from "../screen/components/settings-panel/Selectio
 
 const WIDTH_STORAGE_KEY = "mapBuilder.rightAssetsPanel.width.v1";
 const COLLAPSED_STORAGE_KEY = "mapBuilder.rightAssetsPanel.collapsed.v1";
+const ASSET_LIST_HEIGHT_STORAGE_KEY = "mapBuilder.rightAssetsPanel.assetListHeight.v1";
 
 const DEFAULT_WIDTH = 360;
 const MIN_WIDTH = 260;
@@ -469,7 +470,10 @@ export default function RightAssetsPanel({
             >
               {activeTab === "assets" ? (
                 <div className="flex flex-col h-full">
-                  <AssetPanel {...assetPanelProps} />
+                  <AssetPanel
+                    {...assetPanelProps}
+                    assetListHeightStorageKey={ASSET_LIST_HEIGHT_STORAGE_KEY}
+                  />
 
                   {assetPanelProps?.selectedAssetId ? (
                     <div className="mt-4 border-t border-gray-700 px-3 pb-3 pt-3">

@@ -17,6 +17,7 @@ export default function AssetPanel(props) {
     confirmFn,
     reorderAssets,
     openEditAsset,
+    assetListHeightStorageKey,
   } = props;
 
   const [assetSearch, setAssetSearch] = useState("");
@@ -111,6 +112,7 @@ export default function AssetPanel(props) {
         onTagFilterChange={setTagFilter}
         tagOptions={tagOptions}
         onReorder={reorderAssets}
+        persistedHeightKey={assetListHeightStorageKey}
       />
 
       {isCreatorPromptOpen ? (

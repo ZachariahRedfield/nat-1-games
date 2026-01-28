@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import AssetCard from "./AssetCard.jsx";
 import AssetViewToggle from "./AssetViewToggle.jsx";
 
@@ -19,10 +19,51 @@ export default function AssetListSection({
   onTagFilterChange,
   tagOptions = [],
   onReorder,
+  persistedHeightKey,
 }) {
   const [draggedId, setDraggedId] = useState(null);
   const [dropTargetId, setDropTargetId] = useState(null);
   const hasSearch = useMemo(() => Boolean(searchQuery?.trim()), [searchQuery]);
+  const containerRef = useRef(null);
+  const isResizingRef = useRef(false);
+  const [persistedHeight, setPersistedHeight] = useState(() => {
+    if (!persistedHeightKey || typeof window === "undefined") return null;
+    try {
+      const stored = Number(window.localStorage?.getItem(persistedHeightKey));
+      return Number.isFinite(stored) && stored > 0 ? stored : null;
+    } catch (error) {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (!persistedHeightKey || typeof window === "undefined") return;
+    if (!Number.isFinite(persistedHeight) || persistedHeight <= 0) return;
+    try {
+      window.localStorage?.setItem(persistedHeightKey, String(persistedHeight));
+    } catch (error) {
+      // ignore storage errors (private mode, quota, etc.)
+    }
+  }, [persistedHeight, persistedHeightKey]);
+
+  useEffect(() => {
+    if (!persistedHeightKey || typeof window === "undefined") return;
+    const handleResizeEnd = () => {
+      if (!isResizingRef.current) return;
+      isResizingRef.current = false;
+      const element = containerRef.current;
+      if (!element) return;
+      const nextHeight = Math.round(element.getBoundingClientRect().height);
+      if (!Number.isFinite(nextHeight) || nextHeight <= 0) return;
+      setPersistedHeight(nextHeight);
+    };
+    window.addEventListener("mouseup", handleResizeEnd);
+    window.addEventListener("touchend", handleResizeEnd);
+    return () => {
+      window.removeEventListener("mouseup", handleResizeEnd);
+      window.removeEventListener("touchend", handleResizeEnd);
+    };
+  }, [persistedHeightKey]);
 
   const handleDragStart = (assetId) => (event) => {
     setDraggedId(assetId);
@@ -60,7 +101,21 @@ export default function AssetListSection({
   }, [assets.length, hasSearch, totalAssets]);
 
   return (
-    <div className="mb-2 border border-gray-600 rounded overflow-hidden resize-y min-h-[5vh] max-h-[95vh] flex flex-col">
+    <div
+      ref={containerRef}
+      onMouseDown={() => {
+        if (persistedHeightKey) {
+          isResizingRef.current = true;
+        }
+      }}
+      onTouchStart={() => {
+        if (persistedHeightKey) {
+          isResizingRef.current = true;
+        }
+      }}
+      className="mb-2 border border-gray-600 rounded overflow-hidden resize-y min-h-[5vh] max-h-[95vh] flex flex-col"
+      style={persistedHeight ? { height: `${persistedHeight}px` } : undefined}
+    >
       <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
         <div className="flex items-center gap-2">
           <span className="text-xs uppercase tracking-wide">Assets</span>
