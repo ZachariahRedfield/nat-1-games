@@ -1,0 +1,30 @@
+docs:
+architecture:
+file: docs/ARCHITECTURE.md
+allowed_blocks:
+- module-map
+- data-flow
+- folder-structure
+max_bullets_per_block: 12
+
+
+codex:
+file: docs/CODEX.md
+allowed_blocks:
+- current-phase
+- done-list
+- next-up
+- known-issues
+max_bullets_per_block: 12
+
+
+changelog:
+file: docs/CHANGELOG.md
+max_entries_per_month: 20
+entry_style: concise
+
+
+rules:
+- Do not edit text outside AGENT blocks
+- Prefer links to changelog over expanding docs
+- Never add new sections without explicit approval
