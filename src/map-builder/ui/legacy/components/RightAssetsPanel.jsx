@@ -84,6 +84,7 @@ export default function RightAssetsPanel({
   canActOnSelection,
   onSaveSelection,
   onDeleteSelection,
+  placedTabLabel,
   topOffset = 0,
 }) {
   const dragState = useRef(null);
@@ -102,6 +103,10 @@ export default function RightAssetsPanel({
   const [placedSearch, setPlacedSearch] = useState("");
   const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
   const previousTabRef = useRef(activeTab);
+  const resolvedPlacedTabLabel = useMemo(() => {
+    const trimmed = (placedTabLabel ?? "").trim();
+    return trimmed.length ? trimmed : "Placed";
+  }, [placedTabLabel]);
 
   useEffect(() => {
     localStorage.setItem(WIDTH_STORAGE_KEY, String(width));
@@ -452,7 +457,7 @@ export default function RightAssetsPanel({
                     activeTab === "placed" ? "bg-gray-700 text-gray-100" : "bg-gray-800 text-gray-300"
                   }`}
                 >
-                  Placed
+                  {resolvedPlacedTabLabel}
                 </button>
               </div>
               <button
@@ -665,12 +670,12 @@ export default function RightAssetsPanel({
             type="button"
             onClick={() => handleOpenTab("placed")}
             style={tabStyle}
-            title="Open placed assets panel"
+            title={`Open ${resolvedPlacedTabLabel} panel`}
             className={`px-3 py-2 text-xs font-semibold uppercase tracking-wide bg-gray-800 border border-gray-600 text-gray-100 shadow-sm ${
               isMobile ? "rounded-full" : "rounded-l-lg"
             }`}
           >
-            Placed
+            {resolvedPlacedTabLabel}
           </button>
         </div>
       )}
