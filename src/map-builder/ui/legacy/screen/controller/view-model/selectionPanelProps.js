@@ -1,4 +1,4 @@
-export function createLegacySettingsPanelProps(state) {
+export function createSelectionPanelProps(state) {
   return {
     panToolActive: state.panToolActive,
     zoomToolActive: state.zoomToolActive,

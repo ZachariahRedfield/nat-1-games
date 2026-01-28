@@ -10,7 +10,6 @@ import AssetCreatorModal from "../components/AssetCreatorModal.jsx";
 import LoadMapsModal from "../components/LoadMapsModal.jsx";
 import MapSizeModal from "../components/MapSizeModal.jsx";
 import AssetsFolderDialog from "../components/AssetsFolderDialog.jsx";
-import LegacySettingsPanel from "../components/LegacySettingsPanel.jsx";
 import LegacyMapBuilderUndoRedoControls from "./LegacyUndoRedoControls.jsx";
 import RightAssetsPanel from "../../components/RightAssetsPanel.jsx";
 
@@ -23,7 +22,6 @@ export default function LegacyMapBuilderLayout({
   feedbackLayerProps,
   assetCreatorModalProps,
   loadMapsModalProps,
-  legacySettingsPanelProps,
   layout,
   layerBarProps,
   toolbarProps,
@@ -57,7 +55,6 @@ export default function LegacyMapBuilderLayout({
 
         <AssetCreatorModal {...assetCreatorModalProps} />
         <LoadMapsModal {...loadMapsModalProps} />
-        <LegacySettingsPanel {...legacySettingsPanelProps} />
         <RightAssetsPanel {...rightAssetsPanelProps} topOffset={rightPanelTopOffset} />
 
         <div className="flex-1 overflow-hidden">
