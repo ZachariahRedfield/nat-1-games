@@ -2,5 +2,5 @@ export { default as MapBuilderScreen } from "./ui/legacy/screen/MapBuilderScreen
 export {
   clearCurrentProjectDir,
   hasCurrentProjectDir,
-  loadProjectFromDirectory,
+  loadProjectById,
 } from "./application/save-load/index.js";

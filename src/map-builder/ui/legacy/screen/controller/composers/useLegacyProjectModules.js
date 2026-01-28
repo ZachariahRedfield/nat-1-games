@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import {
   saveProject as saveProjectManager,
   saveProjectAs as saveProjectAsManager,
-  loadProjectFromDirectory,
+  loadProjectById,
   listMaps,
   deleteMap,
   loadAssetsFromStoredParent,
@@ -159,7 +159,7 @@ export function useLegacyProjectModules({
     setAssetsFolderDialogOpen: legacyAssetWorkflow.setAssetsFolderDialogOpen,
     showToast: feedbackState.showToast,
     listMaps,
-    loadProjectFromDirectory,
+    loadProjectById,
     setRowsInput: sceneState.setRowsInput,
     setColsInput: sceneState.setColsInput,
     setMaps: sceneState.setMaps,

@@ -7,7 +7,7 @@ export function useLegacyProjectLoading({
   setAssetsFolderDialogOpen,
   showToast,
   listMaps,
-  loadProjectFromDirectory,
+  loadProjectById,
   setRowsInput,
   setColsInput,
   setMaps,
@@ -79,8 +79,8 @@ export function useLegacyProjectLoading({
 
   const handleLoadMapFromList = useCallback(
     async (entry) => {
-      if (!entry?.dirHandle) return;
-      const result = await loadProjectFromDirectory(entry.dirHandle);
+      if (!entry?.id) return;
+      const result = await loadProjectById(entry.id);
       if (!result?.ok || !result?.data) return;
       const data = result.data;
       setRowsInput(String(Math.min(200, data.rows || 20)));
@@ -152,7 +152,7 @@ export function useLegacyProjectLoading({
     },
     [
       canvasRefs,
-      loadProjectFromDirectory,
+      loadProjectById,
       normalizeLoadedLayers,
       setAssets,
       setColsInput,
@@ -171,13 +171,13 @@ export function useLegacyProjectLoading({
 
   const handleDeleteMapFromList = useCallback(
     async (entry) => {
-      if (!entry?.folderName) return;
+      if (!entry?.id) return;
       const ok = await confirmUser(
-        `Delete map "${entry.name || entry.folderName}"?\nThis cannot be undone.`,
+        `Delete map "${entry.name || entry.id}"?\nThis cannot be undone.`,
         { title: "Delete Map", okText: "Delete", cancelText: "Cancel" }
       );
       if (!ok) return;
-      const response = await deleteMap(entry.folderName);
+      const response = await deleteMap(entry.id);
       if (!response?.ok) {
         showToast(response?.message || "Failed to delete map.", "error");
         return;

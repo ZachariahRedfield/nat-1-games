@@ -9,3 +9,4 @@
 - Introduced agent-writable fenced blocks
 - Established doc-sync policy and automation philosophy
 - Versioned project snapshots and removed runtime-only asset fields from persisted state
+- Refactored save/load to StorageProvider architecture with OPFS/IndexedDB and .nat1pack packs
