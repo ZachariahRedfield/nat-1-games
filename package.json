@@ -4,18 +4,18 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview",
 
-    "verify:fast": "npm run build",
-    "verify": "npm run build",
+  "verify:fast": "npm run build",
+  "verify": "npm run build",
 
-    "codex:verify:fast": "npm run verify:fast",
-    "codex:verify": "npm run verify",
+  "codex:verify:fast": "npm run verify:fast",
+  "codex:verify": "npm run verify",
 
-    "codex:doc-sync": "echo \"doc-sync placeholder\""
-  },
+  "codex:doc-sync": "node scripts/doc-sync.js"
+},
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
