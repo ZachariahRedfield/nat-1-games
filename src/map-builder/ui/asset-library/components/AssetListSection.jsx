@@ -20,6 +20,8 @@ export default function AssetListSection({
   tagOptions = [],
   onReorder,
   persistedHeightKey,
+  disableReorder = false,
+  disableResize = false,
 }) {
   const [draggedId, setDraggedId] = useState(null);
   const [dropTargetId, setDropTargetId] = useState(null);
@@ -66,12 +68,14 @@ export default function AssetListSection({
   }, [persistedHeightKey]);
 
   const handleDragStart = (assetId) => (event) => {
+    if (disableReorder) return;
     setDraggedId(assetId);
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", assetId);
   };
 
   const handleDragOver = (assetId) => (event) => {
+    if (disableReorder) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
     if (assetId !== dropTargetId) {
@@ -80,6 +84,7 @@ export default function AssetListSection({
   };
 
   const handleDrop = (assetId) => (event) => {
+    if (disableReorder) return;
     event.preventDefault();
     const sourceId = event.dataTransfer.getData("text/plain") || draggedId;
     if (sourceId && assetId && sourceId !== assetId) {
@@ -90,6 +95,7 @@ export default function AssetListSection({
   };
 
   const handleDragEnd = () => {
+    if (disableReorder) return;
     setDraggedId(null);
     setDropTargetId(null);
   };
@@ -104,17 +110,21 @@ export default function AssetListSection({
     <div
       ref={containerRef}
       onMouseDown={() => {
-        if (persistedHeightKey) {
+        if (persistedHeightKey && !disableResize) {
           isResizingRef.current = true;
         }
       }}
       onTouchStart={() => {
-        if (persistedHeightKey) {
+        if (persistedHeightKey && !disableResize) {
           isResizingRef.current = true;
         }
       }}
-      className="mb-2 border border-gray-600 rounded overflow-hidden resize-y min-h-[5vh] max-h-[95vh] flex flex-col"
-      style={persistedHeight ? { height: `${persistedHeight}px` } : undefined}
+      className={`mb-2 border border-gray-600 rounded overflow-hidden min-h-[5vh] max-h-[95vh] flex flex-col ${
+        disableResize ? "" : "resize-y"
+      }`}
+      style={
+        persistedHeight && !disableResize ? { height: `${persistedHeight}px` } : undefined
+      }
     >
       <div className="flex items-center justify-between bg-gray-700 px-2 py-1">
         <div className="flex items-center gap-2">
@@ -181,11 +191,11 @@ export default function AssetListSection({
             </div>
             <div className="flex flex-col divide-y divide-gray-800">
               {assets.map((asset) => {
-                const isDropTarget = dropTargetId === asset.id && draggedId !== asset.id;
+                const isDropTarget = !disableReorder && dropTargetId === asset.id && draggedId !== asset.id;
                 return (
                   <div
                     key={asset.id}
-                    draggable
+                    draggable={!disableReorder}
                     onDragStart={handleDragStart(asset.id)}
                     onDragOver={handleDragOver(asset.id)}
                     onDrop={handleDrop(asset.id)}
@@ -216,11 +226,11 @@ export default function AssetListSection({
             </div>
             <div className="flex flex-col divide-y divide-gray-800">
               {assets.map((asset) => {
-                const isDropTarget = dropTargetId === asset.id && draggedId !== asset.id;
+                const isDropTarget = !disableReorder && dropTargetId === asset.id && draggedId !== asset.id;
                 return (
                   <div
                     key={asset.id}
-                    draggable
+                    draggable={!disableReorder}
                     onDragStart={handleDragStart(asset.id)}
                     onDragOver={handleDragOver(asset.id)}
                     onDrop={handleDrop(asset.id)}

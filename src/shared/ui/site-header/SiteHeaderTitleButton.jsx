@@ -1,9 +1,10 @@
 import React from "react";
 
-export default function SiteHeaderTitleButton({ onNavigateHome }) {
+export default function SiteHeaderTitleButton({ onNavigateHome, size = "default" }) {
+  const sizeClass = size === "compact" ? "text-lg sm:text-2xl" : "text-2xl";
   return (
     <button
-      className="text-2xl font-bold hover:text-gray-200"
+      className={`${sizeClass} font-bold hover:text-gray-200`}
       onClick={onNavigateHome}
       title="Home"
     >

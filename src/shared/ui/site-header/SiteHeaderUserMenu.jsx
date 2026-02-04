@@ -9,7 +9,11 @@ export default function SiteHeaderUserMenu({
   onLogout,
   homeActive,
   storageMenu,
+  navItems = [],
+  onNavigate,
 }) {
+  const hasNavItems = navItems.length > 0;
+
   return (
     <div className="relative flex items-center gap-2">
       <span className="text-xs opacity-90 hidden sm:inline">{username}</span>
@@ -26,7 +30,22 @@ export default function SiteHeaderUserMenu({
         </svg>
       </button>
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-[10100] bg-gray-800 border border-gray-600 rounded shadow-md min-w-[180px]">
+        <div className="absolute right-0 top-full mt-1 z-[10100] bg-gray-800 border border-gray-600 rounded shadow-md min-w-[180px] max-h-[70vh] overflow-y-auto">
+          {hasNavItems ? (
+            <div className="border-b border-gray-700">
+              {navItems.map(({ key, label, active }) => (
+                <button
+                  key={key}
+                  className={`block w-full text-left px-3 py-1 text-sm ${
+                    active ? "text-white font-semibold" : "text-gray-300 hover:text-white"
+                  }`}
+                  onClick={() => onNavigate?.(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {storageMenu ? (
             <StorageMenuSection
               providerLabel={storageMenu.providerLabel}

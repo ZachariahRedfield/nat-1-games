@@ -29,12 +29,13 @@ This document defines **source-of-truth concepts and invariants**. It is intenti
 - Versioned save/load snapshots and stripped runtime-only asset fields
 - Introduced StorageProvider architecture with OPFS/IndexedDB + pack export/import
 - Added header menu storage status with pack import/export actions
+- Implemented mobile/tablet UI refactor for shared header + MapBuilder layout
 <!-- AGENT:END done-list -->
 
 
 ## Next Up
 <!-- AGENT:BEGIN next-up -->
-- Mobile UI pass
+- Mobile UI validation + polish
 <!-- AGENT:END next-up -->
 
 

@@ -3,6 +3,7 @@ import AssetPanel from "../../asset-library/AssetPanel.jsx";
 import AssetDrawerSettings from "../modules/assets/drawer/AssetDrawerSettings.jsx";
 import AssetPreviewSection from "../modules/assets/drawer/AssetPreviewSection.jsx";
 import SelectionSettingsPanel from "../screen/components/settings-panel/SelectionSettingsPanel.jsx";
+import { useResponsiveMode } from "../../../../shared/index.js";
 
 const WIDTH_STORAGE_KEY = "mapBuilder.rightAssetsPanel.width.v1";
 const COLLAPSED_STORAGE_KEY = "mapBuilder.rightAssetsPanel.collapsed.v1";
@@ -12,7 +13,6 @@ const DEFAULT_WIDTH = 360;
 const MIN_WIDTH = 260;
 const MAX_WIDTH_FALLBACK = 520;
 const MAX_WIDTH_PCT = 0.75;
-const MOBILE_BREAKPOINT = 640;
 
 function getMaxWidth() {
   if (typeof window === "undefined") return MAX_WIDTH_FALLBACK;
@@ -24,10 +24,6 @@ function getViewport() {
     return { width: MAX_WIDTH_FALLBACK, height: 800 };
   }
   return { width: window.innerWidth, height: window.innerHeight };
-}
-
-function getIsMobile(viewport) {
-  return (viewport?.width ?? MAX_WIDTH_FALLBACK) < MOBILE_BREAKPOINT;
 }
 
 function clampWidth(value, maxWidth) {
@@ -89,7 +85,7 @@ export default function RightAssetsPanel({
   const dragState = useRef(null);
   const [maxWidth, setMaxWidth] = useState(() => getMaxWidth());
   const [viewport, setViewport] = useState(() => getViewport());
-  const [isMobile, setIsMobile] = useState(() => getIsMobile(getViewport()));
+  const { isMobile } = useResponsiveMode();
   const [width, setWidth] = useState(() => {
     const stored = Number.parseInt(localStorage.getItem(WIDTH_STORAGE_KEY), 10);
     return clampWidth(Number.isFinite(stored) ? stored : DEFAULT_WIDTH, getMaxWidth());
@@ -101,6 +97,7 @@ export default function RightAssetsPanel({
   const [activeTab, setActiveTab] = useState("assets");
   const [placedSearch, setPlacedSearch] = useState("");
   const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
+  const [sheetMode, setSheetMode] = useState("peek");
   const previousTabRef = useRef(activeTab);
 
   useEffect(() => {
@@ -112,7 +109,6 @@ export default function RightAssetsPanel({
       const nextViewport = getViewport();
       setMaxWidth(getMaxWidth());
       setViewport(nextViewport);
-      setIsMobile(getIsMobile(nextViewport));
     };
     window.addEventListener("resize", handleResize);
     return () => {
@@ -129,6 +125,12 @@ export default function RightAssetsPanel({
   }, [collapsed]);
 
   useEffect(() => {
+    if (!isMobile) {
+      setSheetMode("peek");
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
     if (previousTabRef.current !== "assets" && activeTab === "assets") {
       clearObjectSelection?.();
       clearTokenSelection?.();
@@ -138,6 +140,10 @@ export default function RightAssetsPanel({
 
   const handleToggle = useCallback(() => {
     setCollapsed((value) => !value);
+  }, []);
+
+  const handleSheetModeToggle = useCallback(() => {
+    setSheetMode((value) => (value === "peek" ? "full" : "peek"));
   }, []);
 
   const selectedObjsList = selectionPanelProps?.selectedObjsList ?? [];
@@ -205,7 +211,8 @@ export default function RightAssetsPanel({
   const panelStyle = useMemo(() => {
     if (isMobile) {
       const usableHeight = viewport.height - Math.max(0, topOffset) - 24;
-      const panelHeight = Math.max(240, Math.min(Math.round(viewport.height * 0.55), usableHeight));
+      const targetHeight = sheetMode === "full" ? Math.round(viewport.height * 0.85) : Math.round(viewport.height * 0.45);
+      const panelHeight = Math.max(220, Math.min(targetHeight, usableHeight));
       return {
         left: 0,
         right: 0,
@@ -221,7 +228,7 @@ export default function RightAssetsPanel({
       bottom: 0,
       width: collapsed ? 0 : width,
     };
-  }, [collapsed, isMobile, topOffset, viewport.height, width]);
+  }, [collapsed, isMobile, sheetMode, topOffset, viewport.height, width]);
 
   const tabStyle = useMemo(() => {
     if (isMobile) {
@@ -434,6 +441,16 @@ export default function RightAssetsPanel({
             }`}
             style={isMobile ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" } : undefined}
           >
+            {isMobile ? (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={handleSheetModeToggle}
+                  className="h-2 w-14 rounded-full bg-gray-600/80"
+                  aria-label={sheetMode === "full" ? "Collapse assets panel" : "Expand assets panel"}
+                />
+              </div>
+            ) : null}
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700 text-gray-100 sticky top-0 bg-gray-900/95 backdrop-blur-sm z-10">
               <div className="flex items-center gap-2 flex-1">
                 <button
@@ -455,13 +472,24 @@ export default function RightAssetsPanel({
                   Placed
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={handleToggle}
-                className="ml-3 text-[11px] sm:text-xs uppercase tracking-wide bg-gray-800 border border-gray-600 px-3 py-1.5 sm:px-2 sm:py-1 rounded"
-              >
-                Minimize
-              </button>
+              <div className="flex items-center gap-2">
+                {isMobile ? (
+                  <button
+                    type="button"
+                    onClick={handleSheetModeToggle}
+                    className="text-[11px] uppercase tracking-wide bg-gray-800 border border-gray-600 px-3 py-1.5 rounded"
+                  >
+                    {sheetMode === "full" ? "Peek" : "Expand"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={handleToggle}
+                  className="text-[11px] sm:text-xs uppercase tracking-wide bg-gray-800 border border-gray-600 px-3 py-1.5 sm:px-2 sm:py-1 rounded"
+                >
+                  Minimize
+                </button>
+              </div>
             </div>
             <div
               className={`flex-1 text-gray-100 ${
@@ -473,6 +501,8 @@ export default function RightAssetsPanel({
                   <AssetPanel
                     {...assetPanelProps}
                     assetListHeightStorageKey={ASSET_LIST_HEIGHT_STORAGE_KEY}
+                    disableReorder={isMobile}
+                    disableResize={isMobile}
                   />
 
                   {assetPanelProps?.selectedAssetId ? (
@@ -502,7 +532,11 @@ export default function RightAssetsPanel({
                 </div>
               ) : (
                 <div className="flex flex-col h-full">
-                  <div className="flex-[1.4] min-h-[5vh] max-h-[95vh] border-b border-gray-700 pb-6 flex flex-col resize-y overflow-hidden">
+                  <div
+                    className={`flex-[1.4] min-h-[5vh] max-h-[95vh] border-b border-gray-700 pb-6 flex flex-col overflow-hidden ${
+                      isMobile ? "" : "resize-y"
+                    }`}
+                  >
                     <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
                       <span>Placed Assets</span>
                       <div className="flex items-center gap-2">

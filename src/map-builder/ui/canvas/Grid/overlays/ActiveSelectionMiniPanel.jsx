@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import SelectionMiniPanel from "../../SelectionMiniPanel.jsx";
 import { clamp } from "../utils.js";
 import { useSelectionPanelPosition } from "../../selection-panel/useSelectionPanelPosition.js";
+import { useResponsiveMode } from "../../../../shared/index.js";
 
 function MultiSelectionMiniPanel({
   anchorObj,
@@ -70,10 +71,15 @@ export default function ActiveSelectionMiniPanel({
   scrollRef,
   contentRef,
 }) {
+  const { isCompact } = useResponsiveMode();
   const layerObjects = useMemo(
     () => (Array.isArray(objects?.[currentLayer]) ? objects[currentLayer] : []),
     [currentLayer, objects],
   );
+
+  if (isCompact) {
+    return null;
+  }
 
   const selectedObjects = useMemo(() => {
     if (!Array.isArray(selectedObjIds) || !selectedObjIds.length) return [];
