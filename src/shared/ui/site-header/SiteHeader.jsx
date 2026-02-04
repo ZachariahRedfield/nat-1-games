@@ -4,8 +4,10 @@ import SiteHeaderTitleButton from "./SiteHeaderTitleButton.jsx";
 import SiteHeaderUserMenu from "./SiteHeaderUserMenu.jsx";
 import { useSiteHeaderController } from "./useSiteHeaderController.js";
 import { useStorageMenuController } from "./useStorageMenuController.js";
+import { useResponsiveMode } from "../responsive/useResponsiveMode.js";
 
 export default function SiteHeader(props) {
+  const { isCompact } = useResponsiveMode();
   const {
     navItems,
     menuOpen,
@@ -17,16 +19,21 @@ export default function SiteHeader(props) {
     homeActive,
   } = useSiteHeaderController(props);
   const storageMenu = useStorageMenuController({ menuOpen });
+  const showInlineNav = !isCompact;
 
   return (
-    <header className="px-3 py-1.5 sm:px-4 sm:py-3 bg-gray-800 text-white grid grid-cols-[1fr_auto_1fr] items-center">
-      <div className="justify-self-start">
-        <SiteHeaderTitleButton onNavigateHome={navigateHome} />
+    <header className="px-2 py-1.5 sm:px-4 sm:py-3 bg-gray-800 text-white flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <SiteHeaderTitleButton onNavigateHome={navigateHome} size={isCompact ? "compact" : "default"} />
       </div>
-      <div className="justify-self-center">
-        <SiteHeaderNavigation items={navItems} onNavigate={navigateTo} />
-      </div>
-      <div className="justify-self-end">
+      {showInlineNav ? (
+        <div className="flex-1 flex justify-center">
+          <SiteHeaderNavigation items={navItems} onNavigate={navigateTo} />
+        </div>
+      ) : (
+        <div className="flex-1" />
+      )}
+      <div className="flex items-center justify-end">
         <SiteHeaderUserMenu
           username={username}
           menuOpen={menuOpen}
@@ -35,6 +42,8 @@ export default function SiteHeader(props) {
           onLogout={logout}
           homeActive={homeActive}
           storageMenu={storageMenu}
+          navItems={showInlineNav ? [] : navItems}
+          onNavigate={navigateTo}
         />
       </div>
     </header>

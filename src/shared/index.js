@@ -1,5 +1,6 @@
 export { MainMenu } from "./ui/main-menu/index.js";
 export { SiteHeader, SiteHeaderNavigation, SiteHeaderTitleButton, SiteHeaderUserMenu } from "./ui/site-header/index.js";
+export { BREAKPOINTS, DEFAULT_VIEWPORT, getResponsiveMode, getViewportSize, useResponsiveMode } from "./ui/responsive/index.js";
 export { default as AlphaSlider } from "./ui/inputs/AlphaSlider.jsx";
 export { default as NumericInput } from "./ui/inputs/NumericInput.jsx";
 export { default as RotationWheel } from "./ui/inputs/RotationWheel.jsx";

@@ -18,6 +18,8 @@ export default function AssetPanel(props) {
     reorderAssets,
     openEditAsset,
     assetListHeightStorageKey,
+    disableReorder = false,
+    disableResize = false,
   } = props;
 
   const [assetSearch, setAssetSearch] = useState("");
@@ -113,6 +115,8 @@ export default function AssetPanel(props) {
         tagOptions={tagOptions}
         onReorder={reorderAssets}
         persistedHeightKey={assetListHeightStorageKey}
+        disableReorder={disableReorder}
+        disableResize={disableResize}
       />
 
       {isCreatorPromptOpen ? (
