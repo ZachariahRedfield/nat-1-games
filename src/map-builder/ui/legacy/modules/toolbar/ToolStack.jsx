@@ -61,14 +61,31 @@ export default function ToolStack({
     []
   );
 
+  const handleMouseEnter = useCallback(() => {
+    if (!allowHover) return;
+    setOpen(true);
+  }, [allowHover]);
+
+  const handleMouseLeave = useCallback(
+    (event) => {
+      if (!allowHover) return;
+      const nextTarget = event.relatedTarget;
+      if (nextTarget && containerRef.current?.contains(nextTarget)) {
+        return;
+      }
+      setOpen(false);
+    },
+    [allowHover]
+  );
+
   if (!activeItem) return null;
 
   return (
     <div
       ref={containerRef}
       className="relative inline-flex flex-col items-center"
-      onMouseEnter={allowHover ? () => setOpen(true) : undefined}
-      onMouseLeave={allowHover ? () => setOpen(false) : undefined}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <ToolButton
         id={activeItem.id}

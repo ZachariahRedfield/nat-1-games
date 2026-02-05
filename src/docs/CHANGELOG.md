@@ -18,3 +18,4 @@
 - Fixed MapBuilder selection resizing, off-grid transform hit capture, and overlay layering for modals/toasts.
 - Improved storage reliability for asset deletions, first-time saves, and import/export notifications.
 - Introduced a stacked interaction tool menu to reduce toolbar footprint.
+- Kept the interaction tool menu open while moving between the active icon and menu options.
