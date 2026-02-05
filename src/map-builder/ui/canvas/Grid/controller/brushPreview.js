@@ -98,6 +98,8 @@ export const paintBrushTip = (cssPoint, context) => {
 
   if (selectedAsset?.kind === "image" && selectedAsset.img) {
     const img = selectedAsset.img;
+    // Disable interpolation to avoid transparent-edge fringes while stamping.
+    ctx.imageSmoothingEnabled = false;
     const { wTiles, hTiles } = resolveStampTiles(stamp, gridSettings, selectedAsset);
     const pxWidth = wTiles * BASE_TILE;
     const pxHeight = hTiles * BASE_TILE;
