@@ -1,6 +1,10 @@
 # Change Log
 
 
+## 2026-02
+
+- Made Main Menu role constraints visible by rendering DM-only actions as disabled buttons with explicit "DM only" labels for non-DM users, while keeping navigation-level DM guards unchanged.
+
 ## 2026-01
 
 

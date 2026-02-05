@@ -10,6 +10,19 @@ export default function MainMenu({ setScreen, session, onLogout }) {
   const goTo = setScreen || navigate;
   const resolvedSession = session ?? contextSession;
   const handleLogout = onLogout || logout;
+  const isDM = resolvedSession?.role === "DM";
+
+  const dmOnlyActions = new Set([
+    SCREENS.MAP_BUILDER,
+    SCREENS.START_SESSION,
+    SCREENS.ASSET_CREATION,
+  ]);
+
+  const menuActions = [
+    { label: "Map Builder", screen: SCREENS.MAP_BUILDER, className: "bg-blue-600 hover:bg-blue-500" },
+    { label: "Start Session", screen: SCREENS.START_SESSION, className: "bg-green-600 hover:bg-green-500" },
+    { label: "Asset Creation", screen: SCREENS.ASSET_CREATION, className: "bg-purple-600 hover:bg-purple-500" },
+  ];
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -20,24 +33,26 @@ export default function MainMenu({ setScreen, session, onLogout }) {
         onNavigate={goTo}
       />
       <main className="flex-1 flex flex-col gap-4 items-center justify-center bg-gray-900 text-white">
-        <button
-          className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-500"
-          onClick={() => goTo?.(SCREENS.MAP_BUILDER)}
-        >
-          Map Builder
-        </button>
-        <button
-          className="px-4 py-2 bg-green-600 rounded hover:bg-green-500"
-          onClick={() => goTo?.(SCREENS.START_SESSION)}
-        >
-          Start Session
-        </button>
-        <button
-          className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-500"
-          onClick={() => goTo?.(SCREENS.ASSET_CREATION)}
-        >
-          Asset Creation
-        </button>
+        {menuActions.map(({ label, screen, className }) => {
+          const isDmOnly = dmOnlyActions.has(screen);
+          const isBlocked = isDmOnly && !isDM;
+
+          return (
+            <button
+              key={screen}
+              className={`px-4 py-2 rounded ${
+                isBlocked ? "bg-gray-600 cursor-not-allowed opacity-70" : className
+              }`}
+              disabled={isBlocked}
+              aria-label={isBlocked ? `${label} (DM only)` : label}
+              title={isBlocked ? "DM only" : undefined}
+              onClick={() => goTo?.(screen)}
+            >
+              {label}
+              {isBlocked ? " (DM only)" : ""}
+            </button>
+          );
+        })}
       </main>
     </div>
   );
