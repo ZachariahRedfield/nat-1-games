@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useResponsiveMode } from "../../../../../shared/index.js";
 import ToolButton from "./ToolButton.jsx";
 
 export default function ToolStack({
@@ -12,6 +13,7 @@ export default function ToolStack({
   const closeTimerRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [allowHover, setAllowHover] = useState(false);
+  const { isMobile } = useResponsiveMode();
 
   const activeItem = useMemo(() => items.find((item) => item.active) || items[0], [items]);
   const menuItems = useMemo(
@@ -98,6 +100,10 @@ export default function ToolStack({
 
   if (!activeItem) return null;
 
+  const menuPositionClass = isMobile
+    ? "absolute left-0 bottom-full mb-1 flex flex-col items-center gap-1 z-[10020]"
+    : "absolute left-0 top-full mt-1 flex flex-col items-center gap-1 z-[10020]";
+
   return (
     <div
       ref={containerRef}
@@ -119,7 +125,7 @@ export default function ToolStack({
       />
       {open && menuItems.length > 0 ? (
         <div
-          className="absolute left-0 top-full mt-1 flex flex-col items-center gap-1 z-[10020]"
+          className={menuPositionClass}
           role="menu"
           aria-label={menuLabel}
         >

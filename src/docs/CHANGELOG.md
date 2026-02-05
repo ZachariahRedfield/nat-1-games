@@ -21,3 +21,4 @@
 - Kept the interaction tool menu open while moving between the active icon and menu options.
 - Added a brief hover-close delay so the interaction tool menu stays open during pointer travel.
 - Stabilized mobile asset drawers by disabling resize/drag behaviors and clamping saved heights.
+- Removed canvas brush halo artifacts, made the mobile tool stack expand upward, and grouped top chrome controls to prevent split drags.
