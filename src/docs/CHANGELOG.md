@@ -24,3 +24,5 @@
 - Removed canvas brush halo artifacts, made the mobile tool stack expand upward, and grouped top chrome controls to prevent split drags.
 - Disabled canvas image-stamp smoothing so transparent-edge interpolation no longer shows white fringes during brush painting.
 - Removed the extra circular clip from image-stamp canvas brushing so stamp edges no longer show a white ring when crossing transparent pixels.
+- Normalized auth role UX by showing role selection in both login and sign-up flows so client validation matches the signup service contract.
+

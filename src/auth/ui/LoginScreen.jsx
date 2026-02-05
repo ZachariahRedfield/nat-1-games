@@ -39,7 +39,7 @@ export default function LoginScreen({ onLoggedIn, goBack }) {
           onUsernameChange={actions.updateUsername}
           onPasswordChange={actions.updatePassword}
         />
-        {state.mode === "login" && <AuthRoleSelect role={state.role} onChange={actions.updateRole} />}
+        <AuthRoleSelect role={state.role} onChange={actions.updateRole} />
         <AuthFeedback feedback={state.feedback} />
         <AuthSubmitButton mode={state.mode} loading={state.loading} />
       </form>
