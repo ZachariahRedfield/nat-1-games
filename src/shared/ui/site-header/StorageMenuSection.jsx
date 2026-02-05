@@ -15,6 +15,12 @@ function actionClass(canAct) {
 
 export default function StorageMenuSection({
   providerLabel,
+  providerActions = [],
+  activeProviderKey,
+  onSelectProvider,
+  canChangeFolder,
+  changeFolderTitle,
+  onChangeFolder,
   canImport,
   canExport,
   importTitle,
@@ -46,6 +52,34 @@ export default function StorageMenuSection({
       <div className="px-3 pt-2 pb-1 text-[11px] uppercase tracking-wide text-gray-400">
         {providerLabel}
       </div>
+      {providerActions.length ? (
+        <div className="pb-2">
+          {providerActions.map((action) => (
+            <button
+              key={action.key}
+              type="button"
+              className={actionClass(!action.disabled)}
+              onClick={action.disabled ? undefined : () => onSelectProvider?.(action.key)}
+              disabled={action.disabled}
+              title={action.title}
+            >
+              {action.label}
+              {action.active && action.key === activeProviderKey ? " ✓" : ""}
+            </button>
+          ))}
+          {canChangeFolder ? (
+            <button
+              type="button"
+              className={actionClass(canChangeFolder)}
+              onClick={onChangeFolder}
+              disabled={!canChangeFolder}
+              title={changeFolderTitle}
+            >
+              Change folder…
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <button
         type="button"
         className={actionClass(canImport)}

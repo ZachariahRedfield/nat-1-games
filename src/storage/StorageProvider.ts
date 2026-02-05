@@ -2,6 +2,8 @@ export type StorageProjectListItem = {
   id: string;
   name: string;
   updatedAt: number;
+  providerKey?: string;
+  providerLabel?: string;
 };
 
 export type StorageSaveResult = {
@@ -17,6 +19,7 @@ export type StorageImportResult = {
 };
 
 export interface StorageProvider {
+  isSupported?: () => boolean;
   init(): Promise<void>;
   saveProject(
     projectName: string,
@@ -52,6 +55,9 @@ export type PackBundle = {
 export type StorageAdapter = {
   hasFileSystemAccess: () => boolean;
   verifyPermission: (handle: FileSystemHandle, readWrite: boolean) => Promise<boolean>;
+  requestParentDirectoryHandle: (
+    startIn?: FileSystemDirectoryHandle | null
+  ) => Promise<FileSystemDirectoryHandle | null>;
   getStoredParentDirectoryHandle: () => Promise<FileSystemDirectoryHandle | null>;
   setStoredParentDirectoryHandle: (handle: FileSystemDirectoryHandle | null) => Promise<void>;
   getCurrentProjectDirectoryHandle: () => FileSystemDirectoryHandle | null;

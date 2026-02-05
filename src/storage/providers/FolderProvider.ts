@@ -34,6 +34,30 @@ export class FolderProvider implements StorageProvider {
     return this.adapter.hasFileSystemAccess();
   }
 
+  async changeLocation(): Promise<{ ok: boolean; message: string; code?: string }> {
+    if (!this.isSupported()) {
+      return { ok: false, message: "Folder storage isn't supported on this device.", code: "UNSUPPORTED" };
+    }
+    const startIn = await this.adapter.getStoredParentDirectoryHandle();
+    let parent: FileSystemDirectoryHandle | null = null;
+    try {
+      parent = await this.adapter.requestParentDirectoryHandle(startIn || undefined);
+    } catch {
+      return { ok: false, message: "Folder selection canceled.", code: "CANCELED" };
+    }
+    if (!parent) {
+      return { ok: false, message: "Folder selection canceled.", code: "CANCELED" };
+    }
+    const ok = await this.adapter.verifyPermission(parent, true);
+    if (!ok) {
+      return { ok: false, message: "Permission denied for selected folder.", code: "PERMISSION" };
+    }
+    await this.adapter.setStoredParentDirectoryHandle(parent);
+    await this.adapter.ensureMapsDir(parent);
+    this.adapter.clearCurrentProjectDirectory();
+    return { ok: true, message: "Folder storage location updated." };
+  }
+
   async saveProject(
     projectName: string,
     projectState: unknown,

@@ -11,13 +11,17 @@ function resolveExportName(projectName) {
 
 export async function getStorageMenuState() {
   const storageManager = getStorageManager();
-  const [providerInfo, projectInfo] = await Promise.all([
+  const [providerInfo, projectInfo, providerOptions, providerStatus] = await Promise.all([
     storageManager.getActiveProviderInfo(),
     storageManager.getCurrentProjectInfo(),
+    storageManager.getProviderOptions(),
+    storageManager.getActiveProviderStatus(),
   ]);
   return {
     providerInfo,
     projectInfo,
+    providerOptions,
+    providerStatus,
   };
 }
 
@@ -40,4 +44,14 @@ export async function importProjectPack(file) {
   const storageManager = getStorageManager();
   const result = await storageManager.importPack(file);
   return { ok: true, message: "Imported project pack.", result };
+}
+
+export async function setActiveStorageProvider(providerKey) {
+  const storageManager = getStorageManager();
+  return storageManager.setActiveProvider(providerKey);
+}
+
+export async function changeFolderLocation() {
+  const storageManager = getStorageManager();
+  return storageManager.changeFolderLocation();
 }

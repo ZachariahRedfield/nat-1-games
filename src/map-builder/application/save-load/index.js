@@ -4,7 +4,9 @@ export { listMaps, deleteMap } from "./mapDirectoryService.js";
 export { loadAssetsFromStoredParent, chooseAssetsFolder, isAssetsFolderConfigured } from "./assetFolderService.js";
 export { saveGlobalAssets, loadGlobalAssets } from "./globalAssetsStore.js";
 export {
+  changeFolderLocation,
   exportCurrentProjectPack,
   getStorageMenuState,
   importProjectPack,
+  setActiveStorageProvider,
 } from "./services/storageMenuService.js";

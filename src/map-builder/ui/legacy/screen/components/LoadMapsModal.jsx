@@ -31,10 +31,17 @@ export default function LoadMapsModal({
                   className="text-left px-3 py-2 border border-gray-700 rounded bg-gray-800"
                 >
                   <div className="font-medium truncate">{m.name || m.folderName}</div>
-                  <div className="text-xs text-gray-300 truncate">Folder: {m.folderName}</div>
-                  {m.mtime ? (
+                  {m.folderName ? (
+                    <div className="text-xs text-gray-300 truncate">Folder: {m.folderName}</div>
+                  ) : null}
+                  {m.providerLabel || m.providerKey ? (
                     <div className="text-[10px] text-gray-400">
-                      Updated: {new Date(m.mtime).toLocaleString()}
+                      Storage: {m.providerLabel || m.providerKey}
+                    </div>
+                  ) : null}
+                  {m.updatedAt || m.mtime ? (
+                    <div className="text-[10px] text-gray-400">
+                      Updated: {new Date(m.updatedAt || m.mtime).toLocaleString()}
                     </div>
                   ) : null}
                   <div className="mt-2 flex gap-2">
