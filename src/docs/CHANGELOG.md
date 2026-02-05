@@ -23,3 +23,5 @@
 - Stabilized mobile asset drawers by disabling resize/drag behaviors and clamping saved heights.
 - Removed canvas brush halo artifacts, made the mobile tool stack expand upward, and grouped top chrome controls to prevent split drags.
 - Disabled canvas image-stamp smoothing so transparent-edge interpolation no longer shows white fringes during brush painting.
+- Removed the extra circular clip from image-stamp canvas brushing so stamp edges no longer show a white ring when crossing transparent pixels.
+- Canvas brush now uses raw circular edge clipping when snap-to-grid is off, while preserving tile-cell clipping when snap-to-grid is on.
