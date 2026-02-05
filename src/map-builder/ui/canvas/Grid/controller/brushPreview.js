@@ -112,11 +112,6 @@ export const paintBrushTip = (cssPoint, context) => {
       return;
     }
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-    ctx.clip();
-
     const stampOrigins = new Set();
     for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
       const startRow = row - (row % hTiles);
@@ -145,8 +140,6 @@ export const paintBrushTip = (cssPoint, context) => {
       ctx.drawImage(img, 0, 0, img.width, img.height, -pxWidth / 2, -pxHeight / 2, pxWidth, pxHeight);
       ctx.restore();
     }
-
-    ctx.restore();
     ctx.restore();
     return;
   }
