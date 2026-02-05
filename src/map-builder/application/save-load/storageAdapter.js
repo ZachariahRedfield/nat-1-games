@@ -36,10 +36,30 @@ export async function readProjectJson(dirHandle) {
   }
 }
 
+export async function requestParentDirectoryHandle(startIn) {
+  if (typeof window === "undefined" || typeof window.showDirectoryPicker !== "function") {
+    return null;
+  }
+  const options = {
+    id: "mapbuilder-parent",
+    mode: "readwrite",
+    startIn: startIn || undefined,
+  };
+  try {
+    return await window.showDirectoryPicker(options);
+  } catch (error) {
+    if (startIn) {
+      return window.showDirectoryPicker({ id: "mapbuilder-parent", mode: "readwrite" });
+    }
+    throw error;
+  }
+}
+
 export function createMapBuilderStorageAdapter() {
   return {
     hasFileSystemAccess,
     verifyPermission,
+    requestParentDirectoryHandle,
     getStoredParentDirectoryHandle,
     setStoredParentDirectoryHandle,
     getCurrentProjectDirectoryHandle,

@@ -49,6 +49,12 @@ export default function SiteHeaderUserMenu({
           {storageMenu ? (
             <StorageMenuSection
               providerLabel={storageMenu.providerLabel}
+              providerActions={storageMenu.providerActions}
+              activeProviderKey={storageMenu.activeProviderKey}
+              onSelectProvider={storageMenu.onSelectProvider}
+              canChangeFolder={storageMenu.canChangeFolder}
+              changeFolderTitle={storageMenu.changeFolderTitle}
+              onChangeFolder={storageMenu.onChangeFolder}
               canImport={storageMenu.canImport}
               canExport={storageMenu.canExport}
               importTitle={storageMenu.importTitle}

@@ -13,8 +13,10 @@ export function useStorageMenuController({ menuOpen }) {
   const storageApi = container?.mapBuilder;
   const [providerInfo, setProviderInfo] = useState(null);
   const [projectInfo, setProjectInfo] = useState(null);
-  const [statusMessage, setStatusMessage] = useState(null);
-  const [statusTone, setStatusTone] = useState("info");
+  const [providerOptions, setProviderOptions] = useState([]);
+  const [providerStatus, setProviderStatus] = useState(null);
+  const [actionStatusMessage, setActionStatusMessage] = useState(null);
+  const [actionStatusTone, setActionStatusTone] = useState("info");
   const statusTimeoutRef = useRef(null);
 
   const clearStatusTimer = useCallback(() => {
@@ -26,18 +28,18 @@ export function useStorageMenuController({ menuOpen }) {
 
   const clearStatusMessage = useCallback(() => {
     clearStatusTimer();
-    setStatusMessage(null);
-    setStatusTone("info");
+    setActionStatusMessage(null);
+    setActionStatusTone("info");
   }, [clearStatusTimer]);
 
   const showStatusMessage = useCallback(
     (message, tone = "info") => {
       clearStatusTimer();
-      setStatusMessage(message);
-      setStatusTone(tone);
+      setActionStatusMessage(message);
+      setActionStatusTone(tone);
       statusTimeoutRef.current = setTimeout(() => {
-        setStatusMessage(null);
-        setStatusTone("info");
+        setActionStatusMessage(null);
+        setActionStatusTone("info");
         statusTimeoutRef.current = null;
       }, STATUS_RESET_DELAY);
     },
@@ -54,9 +56,13 @@ export function useStorageMenuController({ menuOpen }) {
       const state = await storageApi.getStorageMenuState();
       setProviderInfo(state?.providerInfo ?? null);
       setProjectInfo(state?.projectInfo ?? null);
+      setProviderOptions(Array.isArray(state?.providerOptions) ? state.providerOptions : []);
+      setProviderStatus(state?.providerStatus ?? null);
     } catch {
       setProviderInfo(null);
       setProjectInfo(null);
+      setProviderOptions([]);
+      setProviderStatus(null);
     }
   }, [storageApi]);
 
@@ -109,24 +115,101 @@ export function useStorageMenuController({ menuOpen }) {
     [refreshStorageState, showStatusMessage, storageApi]
   );
 
+  const handleSetProvider = useCallback(
+    async (providerKey) => {
+      if (!storageApi?.setActiveStorageProvider) {
+        showStatusMessage("Storage unavailable.", "error");
+        return;
+      }
+      try {
+        const result = await storageApi.setActiveStorageProvider(providerKey);
+        if (result?.ok) {
+          showStatusMessage(result.message || "Storage provider updated.", "success");
+          refreshStorageState();
+        } else {
+          showStatusMessage(result?.message || "Failed to switch storage provider.", "warning");
+        }
+      } catch {
+        showStatusMessage("Failed to switch storage provider.", "error");
+      }
+    },
+    [refreshStorageState, showStatusMessage, storageApi]
+  );
+
+  const handleChangeFolder = useCallback(async () => {
+    if (!storageApi?.changeFolderLocation) {
+      showStatusMessage("Storage unavailable.", "error");
+      return;
+    }
+    try {
+      const result = await storageApi.changeFolderLocation();
+      if (result?.ok) {
+        showStatusMessage(result.message || "Folder location updated.", "success");
+        refreshStorageState();
+      } else {
+        showStatusMessage(result?.message || "Folder location unchanged.", "warning");
+      }
+    } catch {
+      showStatusMessage("Failed to update folder location.", "error");
+    }
+  }, [refreshStorageState, showStatusMessage, storageApi]);
+
   const providerLabel = resolveProviderLabel(providerInfo);
+  const activeProviderKey = providerInfo?.key || null;
   const canExport = Boolean(projectInfo?.id);
   const exportTitle = canExport
     ? "Export last saved project snapshot"
     : "No active project to export.";
   const canImport = Boolean(storageApi?.importProjectPack);
   const importTitle = canImport ? "Import a project pack" : "Storage unavailable.";
-
+  const providerActions = providerOptions
+    .filter((option) => option.key === "folder" || option.key === "opfs")
+    .map((option) => {
+      const label =
+        option.key === "folder" ? "Use Folder Storage" : "Use Local Storage (OPFS)";
+      const disabled = option.active || !option.supported;
+      let title = "";
+      if (option.active) {
+        title = "Already active.";
+      } else if (!option.supported) {
+        title = `${option.label} storage is unavailable on this device.`;
+      } else {
+        title = `Switch to ${option.label} storage.`;
+      }
+      return {
+        key: option.key,
+        label,
+        disabled,
+        active: option.active,
+        title,
+      };
+    });
+  const canChangeFolder = providerOptions.some(
+    (option) => option.key === "folder" && option.active && option.canChangeLocation
+  );
+  const changeFolderTitle = canChangeFolder
+    ? "Choose a different folder for Folder storage"
+    : "Folder storage is unavailable.";
+  const displayStatusMessage = actionStatusMessage ?? providerStatus?.message ?? null;
+  const displayStatusTone = actionStatusMessage
+    ? actionStatusTone
+    : providerStatus?.tone || "info";
   return {
     providerLabel,
+    providerActions,
+    activeProviderKey,
+    onSelectProvider: handleSetProvider,
+    canChangeFolder,
+    changeFolderTitle,
+    onChangeFolder: handleChangeFolder,
     canExport,
     exportTitle,
     onExportPack: handleExport,
     canImport,
     importTitle,
     onImportPack: handleImport,
-    statusMessage,
-    statusTone,
+    statusMessage: displayStatusMessage,
+    statusTone: displayStatusTone,
   };
 }
 
