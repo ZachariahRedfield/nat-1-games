@@ -26,6 +26,9 @@ export function useLoginSubmission({
         }
 
         if (mode === "signup") {
+          if (!role) {
+            throw new Error("Role is required for sign up");
+          }
           await signup?.(trimmedUsername, rawPassword, role);
           setMode("login");
           setFeedback({ type: "info", message: "Account created. Please log in." });

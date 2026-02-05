@@ -49,7 +49,7 @@ export async function login(username, password) {
 
 export async function signup(username, password, role) {
   const u = String(username).trim().toLowerCase();
-  if (!u || !password || !role) throw new Error('Missing fields');
+  if (!u || !password || !role) throw new Error('Username, password, and role are required for sign up');
   const email = `${u}@example.com`;
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw new Error(error.message || 'Signup failed');
