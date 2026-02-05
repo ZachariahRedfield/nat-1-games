@@ -33,15 +33,22 @@ export default function SiteHeaderUserMenu({
         <div className="absolute right-0 top-full mt-1 z-[10100] bg-gray-800 border border-gray-600 rounded shadow-md min-w-[180px] max-h-[70vh] overflow-y-auto">
           {hasNavItems ? (
             <div className="border-b border-gray-700">
-              {navItems.map(({ key, label, active }) => (
+              {navItems.map(({ key, label, active, disabled, title }) => (
                 <button
                   key={key}
                   className={`block w-full text-left px-3 py-1 text-sm ${
-                    active ? "text-white font-semibold" : "text-gray-300 hover:text-white"
+                    disabled
+                      ? "text-gray-500 cursor-not-allowed"
+                      : active
+                        ? "text-white font-semibold"
+                        : "text-gray-300 hover:text-white"
                   }`}
-                  onClick={() => onNavigate?.(key)}
+                  onClick={() => !disabled && onNavigate?.(key)}
+                  disabled={disabled}
+                  title={title || label}
                 >
                   {label}
+                  {disabled ? <span className="ml-1 text-[10px] opacity-80">DM only</span> : null}
                 </button>
               ))}
             </div>

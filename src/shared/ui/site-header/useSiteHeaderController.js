@@ -1,12 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useAppNavigation, useAppSession } from "../../../app/AppContext.jsx";
 import { SCREENS } from "../../../app/screens.js";
-
-const NAV_ITEMS = [
-  { key: SCREENS.MAP_BUILDER, label: "Map Builder" },
-  { key: SCREENS.START_SESSION, label: "Start Session" },
-  { key: SCREENS.ASSET_CREATION, label: "Asset Creation" },
-];
+import { buildHeaderNavItems } from "./headerNavItems.js";
 
 export function useSiteHeaderController({ session, onLogout, currentScreen, onNavigate }) {
   const navigation = useAppNavigation();
@@ -15,17 +10,14 @@ export function useSiteHeaderController({ session, onLogout, currentScreen, onNa
   const [menuOpen, setMenuOpen] = useState(false);
 
   const resolvedSession = session ?? contextSession;
+  const isDM = resolvedSession?.role === "DM";
   const activeScreen = currentScreen ?? navigation?.screen ?? SCREENS.MENU;
   const goTo = onNavigate || navigation?.navigate;
   const handleLogout = onLogout || navigation?.logout;
 
   const navItems = useMemo(
-    () =>
-      NAV_ITEMS.map((item) => ({
-        ...item,
-        active: activeScreen === item.key,
-      })),
-    [activeScreen]
+    () => buildHeaderNavItems(activeScreen, isDM),
+    [activeScreen, isDM]
   );
 
   const toggleMenu = useCallback(() => {
@@ -39,9 +31,12 @@ export function useSiteHeaderController({ session, onLogout, currentScreen, onNa
   const navigateTo = useCallback(
     (screen) => {
       closeMenu();
+      if (!isDM) {
+        return;
+      }
       goTo?.(screen);
     },
-    [closeMenu, goTo]
+    [closeMenu, goTo, isDM]
   );
 
   const navigateHome = useCallback(() => {

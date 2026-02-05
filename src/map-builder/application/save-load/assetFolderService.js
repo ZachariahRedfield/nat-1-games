@@ -9,6 +9,10 @@ import { hydrateAssetsFromFS } from "../../infrastructure/assets/assetHydration.
 import { readAssetsManifest, writeAssetsManifest } from "../../infrastructure/assets/assetLibrary.js";
 import { getStorageManager } from "./storageManager.js";
 
+function isAbortError(error) {
+  return error?.name === "AbortError";
+}
+
 export async function loadAssetsFromStoredParent() {
   try {
     const storageManager = getStorageManager();
@@ -57,8 +61,24 @@ export async function chooseAssetsFolder() {
     const hydrated = await hydrateAssetsFromFS({ assets: hydratedAssets }, null, parent);
     return { ok: true, assets: hydrated };
   } catch (error) {
+    if (isAbortError(error)) {
+      return { ok: false, reason: "canceled", assets: [] };
+    }
     console.error("chooseAssetsFolder error", error);
-    return { ok: false, assets: [] };
+    return { ok: false, reason: "error", assets: [] };
+  }
+}
+
+export async function isAssetsFolderRequired() {
+  try {
+    const storageManager = getStorageManager();
+    if (!storageManager.isFolderProviderAvailable()) {
+      return false;
+    }
+    const provider = await storageManager.getActiveProviderInfo();
+    return provider?.key === "folder";
+  } catch {
+    return true;
   }
 }
 

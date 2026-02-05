@@ -3,6 +3,7 @@ import { createDefaultLayers } from "../../utils.js";
 
 export function useLegacyProjectLoading({
   isAssetsFolderConfigured,
+  isAssetsFolderRequired,
   setNeedsAssetsFolder,
   setAssetsFolderDialogOpen,
   showToast,
@@ -55,8 +56,9 @@ export function useLegacyProjectLoading({
   );
 
   const openLoadModal = useCallback(async () => {
-    const configured = await isAssetsFolderConfigured();
-    if (!configured) {
+    const folderRequired = await isAssetsFolderRequired();
+    const configured = folderRequired ? await isAssetsFolderConfigured() : true;
+    if (folderRequired && !configured) {
       setNeedsAssetsFolder(true);
       setAssetsFolderDialogOpen(true);
       showToast("Select an Account Save Folder first.", "warning");
@@ -66,6 +68,7 @@ export function useLegacyProjectLoading({
     setMapsList(items || []);
     setLoadModalOpen(true);
   }, [
+    isAssetsFolderRequired,
     isAssetsFolderConfigured,
     listMaps,
     setNeedsAssetsFolder,

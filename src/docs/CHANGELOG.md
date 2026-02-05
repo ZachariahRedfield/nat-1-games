@@ -3,6 +3,10 @@
 
 ## 2026-02
 
+- Hardened auth API behavior by normalizing login usernames consistently with signup and by failing fast on missing JWT secret configuration.
+- Updated map save/load folder gating to respect active storage provider so OPFS/local workflows no longer require folder setup, and treated folder picker cancel as a non-error user action.
+- Made site-header DM navigation constraints explicit by disabling DM-only entries for non-DM sessions instead of allowing dead-end navigation attempts.
+
 - Made Main Menu role constraints visible by rendering DM-only actions as disabled buttons with explicit "DM only" labels for non-DM users, while keeping navigation-level DM guards unchanged.
 
 ## 2026-01
@@ -32,4 +36,3 @@
 - Removed the extra circular clip from image-stamp canvas brushing so stamp edges no longer show a white ring when crossing transparent pixels.
 - Normalized auth role UX by showing role selection in both login and sign-up flows so client validation matches the signup service contract.
 - Switched login session role resolution to server-authenticated `data.role` (fallback `Player`) and removed client-side profile role mutation during login so DM gating reflects trusted auth data.
-

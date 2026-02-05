@@ -2,6 +2,8 @@ import { kv } from "@vercel/kv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+import { getJwtSecretOrThrow, normalizeUsernameForKey } from "./login.js";
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, message: 'Method not allowed', data: null });
@@ -14,7 +16,7 @@ export default async function handler(req, res) {
       return;
     }
     const normalized = String(username).trim();
-    const key = `user:${normalized.toLowerCase()}`;
+    const key = `user:${normalizeUsernameForKey(username)}`;
     const existing = await kv.get(key);
     if (existing) {
       res.status(409).json({ success: false, message: 'user already exists', data: null });
@@ -31,7 +33,7 @@ export default async function handler(req, res) {
     await kv.set(key, rec);
     const token = jwt.sign(
       { sub: rec.username, role: rec.role },
-      process.env.JWT_SECRET,
+      getJwtSecretOrThrow(),
       { algorithm: 'HS256', expiresIn: '7d' }
     );
     res.status(200).json({ success: true, message: 'signed up', data: { token, user: { username: rec.username, role: rec.role } } });
@@ -39,4 +41,3 @@ export default async function handler(req, res) {
     res.status(500).json({ success: false, message: 'server error', data: null });
   }
 }
-
