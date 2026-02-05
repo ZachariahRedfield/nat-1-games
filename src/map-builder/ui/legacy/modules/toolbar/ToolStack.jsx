@@ -9,6 +9,7 @@ export default function ToolStack({
   menuLabel = "Tools",
 }) {
   const containerRef = useRef(null);
+  const closeTimerRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [allowHover, setAllowHover] = useState(false);
 
@@ -44,6 +45,14 @@ export default function ToolStack({
   }, [open]);
 
   useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     setOpen(false);
   }, [activeItem?.id]);
 
@@ -61,14 +70,40 @@ export default function ToolStack({
     []
   );
 
+  const handleMouseEnter = useCallback(() => {
+    if (!allowHover) return;
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setOpen(true);
+  }, [allowHover]);
+
+  const handleMouseLeave = useCallback(
+    (event) => {
+      if (!allowHover) return;
+      const nextTarget = event.relatedTarget;
+      if (nextTarget && containerRef.current?.contains(nextTarget)) {
+        return;
+      }
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+      closeTimerRef.current = setTimeout(() => {
+        setOpen(false);
+      }, 150);
+    },
+    [allowHover]
+  );
+
   if (!activeItem) return null;
 
   return (
     <div
       ref={containerRef}
       className="relative inline-flex flex-col items-center"
-      onMouseEnter={allowHover ? () => setOpen(true) : undefined}
-      onMouseLeave={allowHover ? () => setOpen(false) : undefined}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <ToolButton
         id={activeItem.id}
