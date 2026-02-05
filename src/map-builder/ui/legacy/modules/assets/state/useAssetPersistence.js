@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   chooseAssetsFolder,
   isAssetsFolderConfigured,
+  isAssetsFolderRequired,
   loadAssetsFromStoredParent,
   loadGlobalAssets,
   saveGlobalAssets,
@@ -22,14 +23,16 @@ function useAssetPersistence({
     let mounted = true;
 
     (async () => {
-      const configured = await isAssetsFolderConfigured();
+      const folderRequired = await isAssetsFolderRequired();
+      const configured = folderRequired ? await isAssetsFolderConfigured() : true;
       const fsAssets = configured ? await loadAssetsFromStoredParent() : [];
       const global = await loadGlobalAssets();
 
       if (!mounted) return;
 
-      setNeedsAssetsFolder(!configured);
-      setAssetsFolderDialogOpen(!configured);
+      const needsFolder = folderRequired && !configured;
+      setNeedsAssetsFolder(needsFolder);
+      setAssetsFolderDialogOpen(needsFolder);
 
       const gMap = new Map(
         (Array.isArray(global) ? global : [])
@@ -96,7 +99,14 @@ function useAssetPersistence({
         persistTimerRef.current = null;
       }
     };
-  }, [setAssets, setNeedsAssetsFolder, setSelectedAssetId, setAssetsFolderDialogOpen]);
+  }, [
+    isAssetsFolderConfigured,
+    isAssetsFolderRequired,
+    setAssets,
+    setNeedsAssetsFolder,
+    setSelectedAssetId,
+    setAssetsFolderDialogOpen,
+  ]);
 
   useEffect(() => {
     if (persistTimerRef.current) {
@@ -131,6 +141,8 @@ function useAssetPersistence({
         "warning",
         6000
       );
+    } else if (result?.reason === "canceled") {
+      return;
     } else if (result && showToast) {
       showToast("Failed to open assets folder.", "error");
     }

@@ -7,6 +7,7 @@ import {
   deleteMap,
   loadAssetsFromStoredParent,
   isAssetsFolderConfigured,
+  isAssetsFolderRequired,
   hasCurrentProjectDir,
   getCurrentProjectInfo,
 } from "../../../../../application/save-load/index.js";
@@ -156,6 +157,7 @@ export function useLegacyProjectModules({
 
   const projectLoadingState = useLegacyProjectLoading({
     isAssetsFolderConfigured,
+    isAssetsFolderRequired,
     setNeedsAssetsFolder: legacyAssetWorkflow.setNeedsAssetsFolder,
     setAssetsFolderDialogOpen: legacyAssetWorkflow.setAssetsFolderDialogOpen,
     showToast: feedbackState.showToast,
@@ -180,6 +182,7 @@ export function useLegacyProjectModules({
   const projectSavingState = useLegacyProjectSaving({
     layers: layerState.layers,
     isAssetsFolderConfigured,
+    isAssetsFolderRequired,
     showToast: feedbackState.showToast,
     setNeedsAssetsFolder: legacyAssetWorkflow.setNeedsAssetsFolder,
     setAssetsFolderDialogOpen: legacyAssetWorkflow.setAssetsFolderDialogOpen,

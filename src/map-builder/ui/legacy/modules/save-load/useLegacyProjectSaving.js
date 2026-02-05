@@ -7,6 +7,7 @@ function cloneAssetList(assets) {
 export function useLegacyProjectSaving({
   layers,
   isAssetsFolderConfigured,
+  isAssetsFolderRequired,
   showToast,
   setNeedsAssetsFolder,
   setAssetsFolderDialogOpen,
@@ -148,8 +149,9 @@ export function useLegacyProjectSaving({
   }, [loadAssetsFromStoredParent, setAssets, setSelectedAssetId]);
 
   const saveProject = useCallback(async () => {
-    const configured = await isAssetsFolderConfigured();
-    if (!configured) {
+    const folderRequired = await isAssetsFolderRequired();
+    const configured = folderRequired ? await isAssetsFolderConfigured() : true;
+    if (folderRequired && !configured) {
       setNeedsAssetsFolder(true);
       setAssetsFolderDialogOpen(true);
       showToast("Select an Account Save Folder to save.", "warning");
@@ -189,6 +191,7 @@ export function useLegacyProjectSaving({
     canvasRefs,
     hasCurrentProjectDir,
     getCurrentProjectInfo,
+    isAssetsFolderRequired,
     isAssetsFolderConfigured,
     prepareProjectState,
     projectNameRef,
@@ -203,8 +206,9 @@ export function useLegacyProjectSaving({
   ]);
 
   const saveProjectAs = useCallback(async () => {
-    const configured = await isAssetsFolderConfigured();
-    if (!configured) {
+    const folderRequired = await isAssetsFolderRequired();
+    const configured = folderRequired ? await isAssetsFolderConfigured() : true;
+    if (folderRequired && !configured) {
       setNeedsAssetsFolder(true);
       setAssetsFolderDialogOpen(true);
       showToast("Select an Account Save Folder to save.", "warning");
@@ -232,6 +236,7 @@ export function useLegacyProjectSaving({
     await refreshAssetsFromFilesystem();
   }, [
     canvasRefs,
+    isAssetsFolderRequired,
     isAssetsFolderConfigured,
     prepareProjectState,
     projectNameRef,
