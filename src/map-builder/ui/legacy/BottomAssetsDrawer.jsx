@@ -3,6 +3,7 @@ import AssetPanel from "../asset-library/AssetPanel.jsx";
 import AssetDrawerSettings from "./modules/assets/drawer/AssetDrawerSettings.jsx";
 import AssetPreviewSection from "./modules/assets/drawer/AssetPreviewSection.jsx";
 import { useAssetsDrawerHeight } from "./modules/assets/drawer/useAssetsDrawerHeight.js";
+import { useResponsiveMode } from "../../../shared/index.js";
 
 const STORAGE_KEY = "assetsDrawer.height.v2";
 
@@ -18,6 +19,7 @@ export default function BottomAssetsDrawer(props = {}) {
     setNaturalSettings,
   } = props;
 
+  const { isMobile } = useResponsiveMode();
   const { height, collapsed, toggleDrawer } = useAssetsDrawerHeight({
     storageKey: STORAGE_KEY,
     initialHeight,
@@ -44,8 +46,12 @@ export default function BottomAssetsDrawer(props = {}) {
         } backdrop-blur-[1px]`}
         style={{ height }}
       >
-        <div className="h-full overflow-y-auto p-3 text-gray-100">
-          <AssetPanel {...assetPanelProps} />
+        <div className="h-full overflow-y-auto p-3 text-gray-100 overscroll-contain touch-pan-y">
+          <AssetPanel
+            {...assetPanelProps}
+            disableReorder={isMobile}
+            disableResize={isMobile}
+          />
 
           <div className="mt-4 pt-3 border-t border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

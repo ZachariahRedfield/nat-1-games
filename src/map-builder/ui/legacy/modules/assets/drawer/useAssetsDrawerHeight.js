@@ -46,6 +46,16 @@ export function useAssetsDrawerHeight({ storageKey, initialHeight, minHeight, ma
     return Math.max(minimumHeight, maximumHeight);
   }, [maxHeightPct, minimumHeight]);
 
+  useEffect(() => {
+    const maxHeight = computeExpandedHeight();
+    setHeight((prev) => {
+      if (!Number.isFinite(prev)) return minimumHeight;
+      if (prev <= minimumHeight) return minimumHeight;
+      if (prev > maxHeight) return maxHeight;
+      return prev;
+    });
+  }, [computeExpandedHeight, minimumHeight]);
+
   const toggleDrawer = useCallback(() => {
     setHeight((prev) => {
       if (prev <= minimumHeight) {

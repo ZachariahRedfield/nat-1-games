@@ -189,6 +189,7 @@ export default function RightAssetsPanel({
   }, [width]);
 
   useEffect(() => {
+    if (isMobile) return undefined;
     const handleDragMove = (event) => {
       if (!dragState.current) return;
       const delta = dragState.current.startX - event.clientX;
@@ -206,7 +207,7 @@ export default function RightAssetsPanel({
       window.removeEventListener("mousemove", handleDragMove);
       window.removeEventListener("mouseup", handleDragEnd);
     };
-  }, []);
+  }, [isMobile, maxWidth]);
 
   const panelStyle = useMemo(() => {
     if (isMobile) {
@@ -562,7 +563,7 @@ export default function RightAssetsPanel({
                         aria-label="Search placed assets"
                       />
                     </div>
-                    <div className="mt-3 flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
+                    <div className="mt-3 flex-1 min-h-0 overflow-y-auto space-y-1 pr-1 overscroll-contain touch-pan-y">
                       {placedAssets.length === 0 ? (
                         <div className="text-sm text-gray-400">No placed assets yet.</div>
                       ) : filteredPlacedAssets.length === 0 ? (
@@ -618,7 +619,7 @@ export default function RightAssetsPanel({
                       )}
                     </div>
                   </div>
-                  <div className="flex-1 min-h-0 pt-6 overflow-y-auto">
+                  <div className="flex-1 min-h-0 pt-6 overflow-y-auto overscroll-contain touch-pan-y">
                     {hasSelection ? (
                       <>
                         <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
@@ -669,11 +670,13 @@ export default function RightAssetsPanel({
                 </div>
               )}
             </div>
-            <div
-              role="presentation"
-              onMouseDown={handleDragStart}
-              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-gray-700/40 hover:bg-gray-500/70 max-sm:hidden"
-            />
+            {!isMobile ? (
+              <div
+                role="presentation"
+                onMouseDown={handleDragStart}
+                className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-gray-700/40 hover:bg-gray-500/70"
+              />
+            ) : null}
           </div>
         )}
       </div>
