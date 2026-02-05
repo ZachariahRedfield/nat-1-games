@@ -1,10 +1,24 @@
 import React from "react";
+import { createPortal } from "react-dom";
+
+const OVERLAY_ROOT_ID = "nat1-overlay-root";
+
+function getOverlayRoot() {
+  if (typeof document === "undefined") return null;
+  let root = document.getElementById(OVERLAY_ROOT_ID);
+  if (!root) {
+    root = document.createElement("div");
+    root.id = OVERLAY_ROOT_ID;
+    document.body.appendChild(root);
+  }
+  return root;
+}
 
 function ToastList({ toasts }) {
   if (!toasts.length) return null;
 
   return (
-    <div className="fixed top-3 right-3 z-[10050] space-y-2">
+    <div className="fixed top-3 right-3 z-[11010] space-y-2 pointer-events-auto">
       {toasts.map((toast) => {
         const tone = toast.kind === "error"
           ? "bg-red-800/90 border-red-600 text-red-50"
@@ -30,7 +44,7 @@ function PromptModal({ state, inputRef, onSubmit, onCancel }) {
   const { title, defaultValue = "" } = state;
 
   return (
-    <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60 pointer-events-auto">
+    <div className="fixed inset-0 z-[11020] flex items-center justify-center bg-black/60 pointer-events-auto">
       <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100">
         <div className="font-semibold mb-2">{title || "Input"}</div>
         <input
@@ -71,7 +85,7 @@ function ConfirmModal({ state, onApprove, onCancel }) {
   const { title = "Confirm", message = "", okText = "OK", cancelText = "Cancel" } = state;
 
   return (
-    <div className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/60 pointer-events-auto">
+    <div className="fixed inset-0 z-[11020] flex items-center justify-center bg-black/60 pointer-events-auto">
       <div className="w-[90%] max-w-sm bg-gray-800 border border-gray-600 rounded p-4 text-gray-100">
         <div className="font-semibold mb-2">{title}</div>
         <div className="whitespace-pre-wrap text-sm mb-3">{message}</div>
@@ -98,7 +112,8 @@ export default function FeedbackLayer({
   onConfirmApprove,
   onConfirmCancel,
 }) {
-  return (
+  const overlayRoot = getOverlayRoot();
+  const content = (
     <>
       <ToastList toasts={toasts} />
       <PromptModal
@@ -114,4 +129,10 @@ export default function FeedbackLayer({
       />
     </>
   );
+
+  if (!overlayRoot) {
+    return content;
+  }
+
+  return createPortal(content, overlayRoot);
 }

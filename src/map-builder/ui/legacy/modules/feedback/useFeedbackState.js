@@ -1,24 +1,17 @@
 import { useCallback, useRef, useState } from "react";
-
-function makeToast(id, text, kind) {
-  return { id, text, kind };
-}
+import { dismissToast, notifyToast } from "../../../../../shared/infrastructure/notifications/toastStore.js";
+import { useToastStore } from "../../../../../shared/ui/notifications/useToastStore.js";
 
 export function useFeedbackState() {
-  const [toasts, setToasts] = useState([]);
-  const toastIdRef = useRef(1);
+  const toasts = useToastStore();
 
-  const dismissToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  const handleDismissToast = useCallback((id) => {
+    dismissToast(id);
   }, []);
 
   const showToast = useCallback((text, kind = "info", ttl = 2500) => {
-    const id = toastIdRef.current++;
-    setToasts((prev) => [...prev, makeToast(id, text, kind)]);
-    window.setTimeout(() => {
-      dismissToast(id);
-    }, ttl);
-  }, [dismissToast]);
+    notifyToast(text, kind, ttl);
+  }, []);
 
   const promptResolverRef = useRef(null);
   const [promptState, setPromptState] = useState(null);
@@ -87,7 +80,7 @@ export function useFeedbackState() {
   return {
     toasts,
     showToast,
-    dismissToast,
+    dismissToast: handleDismissToast,
     promptState,
     promptInputRef,
     requestPrompt,

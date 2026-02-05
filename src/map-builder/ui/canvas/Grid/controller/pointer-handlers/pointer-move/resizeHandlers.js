@@ -1,4 +1,4 @@
-import { computeResizeUpdate, getCornerWorldPosition, oppositeCorner } from "../../resizeMath.js";
+import { computeLinkedResizeUpdate, computeResizeUpdate, getCornerWorldPosition, oppositeCorner } from "../../resizeMath.js";
 import { computeGridPosition, getPointerCssPosition } from "../gridPointerUtils.js";
 
 export function handleObjectResize({ event, refs, selection, config, geometry, actions }) {
@@ -32,7 +32,20 @@ export function handleObjectResize({ event, refs, selection, config, geometry, a
 
   if (!result) return true;
 
-  const { row, col, wTiles, hTiles } = result;
+  const linkXY = config.gridSettings?.linkXY;
+  const anchorCorner = oppositeCorner(dragRef.current.corner);
+  const linkedResult = linkXY
+    ? computeLinkedResizeUpdate({
+        anchorRow: dragRef.current.anchorRow,
+        anchorCol: dragRef.current.anchorCol,
+        rotation: dragRef.current.rotation ?? o.rotation ?? 0,
+        anchorCorner,
+        sizeTiles: Math.max(result.wTiles, result.hTiles),
+        geometry,
+        snapToGrid: config.gridSettings?.snapToGrid ?? true,
+      })
+    : null;
+  const { row, col, wTiles, hTiles } = linkedResult || result;
   if (row === o.row && col === o.col && wTiles === o.wTiles && hTiles === o.hTiles) {
     return true;
   }
@@ -43,13 +56,9 @@ export function handleObjectResize({ event, refs, selection, config, geometry, a
     wTiles,
     hTiles,
   });
-  const linkXY = config.gridSettings?.linkXY;
-  if (!linkXY) {
-    config.setGridSettings?.((settings) => {
-      return { ...settings, sizeCols: wTiles, sizeRows: hTiles };
-    });
-  }
-  const anchorCorner = oppositeCorner(dragRef.current.corner);
+  config.setGridSettings?.((settings) => {
+    return { ...settings, sizeCols: wTiles, sizeRows: hTiles };
+  });
   const updated = { ...o, row, col, wTiles, hTiles };
   const anchorPos = getCornerWorldPosition(updated, anchorCorner);
   dragRef.current.anchorRow = anchorPos.row;
@@ -88,7 +97,20 @@ export function handleTokenResize({ event, refs, selection, config, geometry, ac
 
   if (!result) return true;
 
-  const { row, col, wTiles, hTiles } = result;
+  const linkXY = config.gridSettings?.linkXY;
+  const anchorCorner = oppositeCorner(dragRef.current.corner);
+  const linkedResult = linkXY
+    ? computeLinkedResizeUpdate({
+        anchorRow: dragRef.current.anchorRow,
+        anchorCol: dragRef.current.anchorCol,
+        rotation: dragRef.current.rotation ?? token.rotation ?? 0,
+        anchorCorner,
+        sizeTiles: Math.max(result.wTiles, result.hTiles),
+        geometry,
+        snapToGrid: config.gridSettings?.snapToGrid ?? true,
+      })
+    : null;
+  const { row, col, wTiles, hTiles } = linkedResult || result;
   const existingRow = token.row ?? 0;
   const existingCol = token.col ?? 0;
   const existingW = token.wTiles || 1;
@@ -103,13 +125,9 @@ export function handleTokenResize({ event, refs, selection, config, geometry, ac
     wTiles,
     hTiles,
   });
-  const linkXY = config.gridSettings?.linkXY;
-  if (!linkXY) {
-    config.setGridSettings?.((settings) => {
-      return { ...settings, sizeCols: wTiles, sizeRows: hTiles };
-    });
-  }
-  const anchorCorner = oppositeCorner(dragRef.current.corner);
+  config.setGridSettings?.((settings) => {
+    return { ...settings, sizeCols: wTiles, sizeRows: hTiles };
+  });
   const updated = { ...token, row, col, wTiles, hTiles };
   const anchorPos = getCornerWorldPosition(updated, anchorCorner);
   dragRef.current.anchorRow = anchorPos.row;

@@ -8,6 +8,7 @@ import {
   loadAssetsFromStoredParent,
   isAssetsFolderConfigured,
   hasCurrentProjectDir,
+  getCurrentProjectInfo,
 } from "../../../../../application/save-load/index.js";
 import { useLegacyAssetWorkflow } from "../../state/useLegacyAssetWorkflow.js";
 import { useLegacyHistory } from "../../state/useLegacyHistory.js";
@@ -187,6 +188,7 @@ export function useLegacyProjectModules({
     saveProjectManager,
     saveProjectAsManager,
     loadAssetsFromStoredParent,
+    getCurrentProjectInfo,
     setAssets: legacyAssetWorkflow.setAssets,
     setSelectedAssetId: legacyAssetWorkflow.setSelectedAssetId,
     setUndoStack: undoRedoState.setUndoStack,

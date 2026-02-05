@@ -13,3 +13,8 @@
 - Added header storage status plus pack import/export actions in the user menu
 - Added mobile/tablet layout adjustments for shared header and MapBuilder UI panels
 - Added storage menu controls to switch providers and update folder-backed storage locations
+
+### Updates
+- Fixed MapBuilder selection resizing, off-grid transform hit capture, and overlay layering for modals/toasts.
+- Improved storage reliability for asset deletions, first-time saves, and import/export notifications.
+- Introduced a stacked interaction tool menu to reduce toolbar footprint.

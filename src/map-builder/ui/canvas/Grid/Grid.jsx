@@ -76,7 +76,71 @@ export default function Grid(props) {
     currentLayer,
     layerVisibility,
   });
-  const capturePadding = Math.max(16, Math.round(tileSize));
+  const capturePadding = React.useMemo(() => {
+    const basePadding = Math.max(16, Math.round(tileSize));
+    const selectedIds = Array.isArray(selectedObjIds) && selectedObjIds.length
+      ? selectedObjIds
+      : selectedObjId
+        ? [selectedObjId]
+        : [];
+    const tokenIds = Array.isArray(selectedTokenIds) && selectedTokenIds.length
+      ? selectedTokenIds
+      : selectedTokenId
+        ? [selectedTokenId]
+        : [];
+    if (!selectedIds.length && !tokenIds.length) return basePadding;
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    const paddingBuffer = 12;
+    const recordBounds = (col, row, wTiles = 1, hTiles = 1) => {
+      const width = wTiles * tileSize;
+      const height = hTiles * tileSize;
+      const cx = (col + wTiles / 2) * tileSize;
+      const cy = (row + hTiles / 2) * tileSize;
+      const radius = Math.sqrt((width / 2) ** 2 + (height / 2) ** 2) + paddingBuffer;
+      minX = Math.min(minX, cx - radius);
+      maxX = Math.max(maxX, cx + radius);
+      minY = Math.min(minY, cy - radius);
+      maxY = Math.max(maxY, cy + radius);
+    };
+
+    const layerObjects = Array.isArray(objects?.[currentLayer]) ? objects[currentLayer] : [];
+    for (const id of selectedIds) {
+      const obj = layerObjects.find((item) => item.id === id);
+      if (!obj) continue;
+      recordBounds(obj.col ?? 0, obj.row ?? 0, obj.wTiles ?? 1, obj.hTiles ?? 1);
+    }
+
+    for (const id of tokenIds) {
+      const token = Array.isArray(tokens) ? tokens.find((item) => item.id === id) : null;
+      if (!token) continue;
+      recordBounds(token.col ?? 0, token.row ?? 0, token.wTiles ?? 1, token.hTiles ?? 1);
+    }
+
+    if (!Number.isFinite(minX) || !Number.isFinite(minY)) return basePadding;
+
+    const leftOverflow = Math.max(0, 0 - minX);
+    const topOverflow = Math.max(0, 0 - minY);
+    const rightOverflow = Math.max(0, maxX - cssWidth);
+    const bottomOverflow = Math.max(0, maxY - cssHeight);
+    const overflow = Math.max(leftOverflow, topOverflow, rightOverflow, bottomOverflow, basePadding);
+    return Math.ceil(overflow);
+  }, [
+    cssHeight,
+    cssWidth,
+    currentLayer,
+    objects,
+    selectedObjId,
+    selectedObjIds,
+    selectedTokenId,
+    selectedTokenIds,
+    tileSize,
+    tokens,
+  ]);
 
   return (
     <div className="relative inline-block" style={{ padding: 16 }}>

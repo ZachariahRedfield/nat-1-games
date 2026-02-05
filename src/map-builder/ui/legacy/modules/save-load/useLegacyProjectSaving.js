@@ -11,6 +11,7 @@ export function useLegacyProjectSaving({
   setNeedsAssetsFolder,
   setAssetsFolderDialogOpen,
   hasCurrentProjectDir,
+  getCurrentProjectInfo,
   promptUser,
   saveProjectManager,
   saveProjectAsManager,
@@ -155,7 +156,8 @@ export function useLegacyProjectSaving({
       return;
     }
 
-    const hasLoaded = hasCurrentProjectDir?.() === true;
+    const currentProjectInfo = await getCurrentProjectInfo?.();
+    const hasLoaded = hasCurrentProjectDir?.() === true && Boolean(currentProjectInfo?.id);
     if (!hasLoaded) {
       const defaultName = projectNameRef.current || "My Map";
       const name = await promptUser("Name this map", defaultName);
@@ -186,6 +188,7 @@ export function useLegacyProjectSaving({
   }, [
     canvasRefs,
     hasCurrentProjectDir,
+    getCurrentProjectInfo,
     isAssetsFolderConfigured,
     prepareProjectState,
     projectNameRef,
