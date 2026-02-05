@@ -3,7 +3,6 @@ import { useCallback } from "react";
 export function useLoginSubmission({
   login,
   signup,
-  supabase,
   setSession,
   onLoggedIn,
   formState,
@@ -38,17 +37,10 @@ export function useLoginSubmission({
           throw new Error("Login failed");
         }
 
-        try {
-          if (data.userId && supabase) {
-            await supabase.from("profiles").update({ role }).eq("id", data.userId);
-          }
-        } catch (err) {
-          console.warn("Failed to update profile role", err);
-        }
-
         const resolvedUsername = data.username || trimmedUsername;
+        const resolvedRole = data.role || "Player";
         setUsername(resolvedUsername);
-        const session = { username: resolvedUsername, role, userId: data.userId };
+        const session = { username: resolvedUsername, role: resolvedRole, userId: data.userId };
         setSession?.(session);
         setFeedback(null);
         setPassword("");
@@ -66,7 +58,6 @@ export function useLoginSubmission({
       password,
       role,
       mode,
-      supabase,
       setSession,
       onLoggedIn,
       setFeedback,

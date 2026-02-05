@@ -24,3 +24,5 @@
 - Removed canvas brush halo artifacts, made the mobile tool stack expand upward, and grouped top chrome controls to prevent split drags.
 - Disabled canvas image-stamp smoothing so transparent-edge interpolation no longer shows white fringes during brush painting.
 - Removed the extra circular clip from image-stamp canvas brushing so stamp edges no longer show a white ring when crossing transparent pixels.
+- Switched login session role resolution to server-authenticated `data.role` (fallback `Player`) and removed client-side profile role mutation during login so DM gating reflects trusted auth data.
+
