@@ -2,6 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import AssetCard from "./AssetCard.jsx";
 import AssetViewToggle from "./AssetViewToggle.jsx";
 
+function clampPersistedHeight(value) {
+  if (!Number.isFinite(value) || value <= 0) return null;
+  if (typeof window === "undefined") return value;
+  const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 800;
+  const minHeight = Math.max(120, Math.round(viewportHeight * 0.15));
+  const maxHeight = Math.max(minHeight, Math.round(viewportHeight * 0.9));
+  return Math.min(maxHeight, Math.max(minHeight, value));
+}
+
 export default function AssetListSection({
   assets,
   totalAssets,
@@ -29,10 +38,10 @@ export default function AssetListSection({
   const containerRef = useRef(null);
   const isResizingRef = useRef(false);
   const [persistedHeight, setPersistedHeight] = useState(() => {
-    if (!persistedHeightKey || typeof window === "undefined") return null;
+    if (disableResize || !persistedHeightKey || typeof window === "undefined") return null;
     try {
       const stored = Number(window.localStorage?.getItem(persistedHeightKey));
-      return Number.isFinite(stored) && stored > 0 ? stored : null;
+      return clampPersistedHeight(stored);
     } catch (error) {
       return null;
     }
@@ -49,6 +58,20 @@ export default function AssetListSection({
   }, [persistedHeight, persistedHeightKey]);
 
   useEffect(() => {
+    if (disableResize) {
+      if (persistedHeight !== null) {
+        setPersistedHeight(null);
+      }
+      return;
+    }
+    if (!Number.isFinite(persistedHeight)) return;
+    const clamped = clampPersistedHeight(persistedHeight);
+    if (clamped !== persistedHeight) {
+      setPersistedHeight(clamped);
+    }
+  }, [disableResize, persistedHeight]);
+
+  useEffect(() => {
     if (!persistedHeightKey || typeof window === "undefined") return;
     const handleResizeEnd = () => {
       if (!isResizingRef.current) return;
@@ -56,8 +79,9 @@ export default function AssetListSection({
       const element = containerRef.current;
       if (!element) return;
       const nextHeight = Math.round(element.getBoundingClientRect().height);
-      if (!Number.isFinite(nextHeight) || nextHeight <= 0) return;
-      setPersistedHeight(nextHeight);
+      const clamped = clampPersistedHeight(nextHeight);
+      if (!Number.isFinite(clamped) || clamped <= 0) return;
+      setPersistedHeight(clamped);
     };
     window.addEventListener("mouseup", handleResizeEnd);
     window.addEventListener("touchend", handleResizeEnd);
@@ -109,16 +133,24 @@ export default function AssetListSection({
   return (
     <div
       ref={containerRef}
-      onMouseDown={() => {
-        if (persistedHeightKey && !disableResize) {
-          isResizingRef.current = true;
-        }
-      }}
-      onTouchStart={() => {
-        if (persistedHeightKey && !disableResize) {
-          isResizingRef.current = true;
-        }
-      }}
+      onMouseDown={
+        disableResize
+          ? undefined
+          : () => {
+              if (persistedHeightKey) {
+                isResizingRef.current = true;
+              }
+            }
+      }
+      onTouchStart={
+        disableResize
+          ? undefined
+          : () => {
+              if (persistedHeightKey) {
+                isResizingRef.current = true;
+              }
+            }
+      }
       className={`mb-2 border border-gray-600 rounded overflow-hidden min-h-[5vh] max-h-[95vh] flex flex-col ${
         disableResize ? "" : "resize-y"
       }`}
@@ -180,7 +212,7 @@ export default function AssetListSection({
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y">
         {showAssetPreviews ? (
           <div className="text-xs">
             <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,100px)_minmax(0,80px)] gap-2 px-2 py-1 text-[10px] uppercase tracking-wide text-gray-400 border-b border-gray-700">
