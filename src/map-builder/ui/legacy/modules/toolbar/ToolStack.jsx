@@ -9,6 +9,7 @@ export default function ToolStack({
   menuLabel = "Tools",
 }) {
   const containerRef = useRef(null);
+  const closeTimerRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [allowHover, setAllowHover] = useState(false);
 
@@ -44,6 +45,14 @@ export default function ToolStack({
   }, [open]);
 
   useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     setOpen(false);
   }, [activeItem?.id]);
 
@@ -63,6 +72,10 @@ export default function ToolStack({
 
   const handleMouseEnter = useCallback(() => {
     if (!allowHover) return;
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
     setOpen(true);
   }, [allowHover]);
 
@@ -73,7 +86,12 @@ export default function ToolStack({
       if (nextTarget && containerRef.current?.contains(nextTarget)) {
         return;
       }
-      setOpen(false);
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+      closeTimerRef.current = setTimeout(() => {
+        setOpen(false);
+      }, 150);
     },
     [allowHover]
   );

@@ -19,3 +19,4 @@
 - Improved storage reliability for asset deletions, first-time saves, and import/export notifications.
 - Introduced a stacked interaction tool menu to reduce toolbar footprint.
 - Kept the interaction tool menu open while moving between the active icon and menu options.
+- Added a brief hover-close delay so the interaction tool menu stays open during pointer travel.
