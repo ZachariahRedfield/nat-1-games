@@ -5,7 +5,6 @@ import {
   login as apiLogin,
   signup as apiSignup,
 } from "../services/authService.js";
-import { supabase } from "../../shared/index.js";
 import { useLoginController } from "../application/useLoginController.js";
 import {
   AuthLayout,
@@ -22,7 +21,6 @@ export default function LoginScreen({ onLoggedIn, goBack }) {
     signup: apiSignup,
     getSession,
     setSession,
-    supabase,
     onLoggedIn,
   });
 
