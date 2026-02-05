@@ -43,6 +43,7 @@ export default function LegacyMapBuilderLayout({
   const headerAllProps = { ...headerProps, onBack, session, onLogout };
   const [layersOpen, setLayersOpen] = useState(false);
   const mapDrawerOpen = headerAllProps?.mapsMenuOpen;
+  const compactDrawerOpen = mapDrawerOpen || layersOpen;
 
   useEffect(() => {
     if (mapDrawerOpen) {
@@ -87,6 +88,16 @@ export default function LegacyMapBuilderLayout({
       </div>
     ),
     [handleToggleLayers, headerAllProps, layersOpen, mapDrawerOpen],
+  );
+
+  const TopChromeCluster = useCallback(
+    ({ showHeader = true, showLayerBar = true }) => (
+      <div className="flex flex-col">
+        {showHeader ? <Header {...headerAllProps} /> : null}
+        {showLayerBar ? <LayerBar {...layerBarProps} /> : null}
+      </div>
+    ),
+    [headerAllProps, layerBarProps],
   );
 
   return (
@@ -142,10 +153,7 @@ export default function LegacyMapBuilderLayout({
               {isCompact ? (
                 compactBar
               ) : (
-                <div className="flex flex-col">
-                  <Header {...headerAllProps} />
-                  <LayerBar {...layerBarProps} />
-                </div>
+                <TopChromeCluster />
               )}
             </div>
 
@@ -157,28 +165,16 @@ export default function LegacyMapBuilderLayout({
               {isCompact ? (
                 compactBar
               ) : (
-                <div className="flex flex-col">
-                  <Header {...headerAllProps} />
-                  <LayerBar {...layerBarProps} />
-                </div>
+                <TopChromeCluster />
               )}
             </div>
 
-            {isCompact && mapDrawerOpen ? (
+            {isCompact && compactDrawerOpen ? (
               <div
                 className="fixed inset-x-0 z-[10011] pointer-events-auto bg-gray-800 border-b border-gray-700 shadow-lg"
                 style={{ top: layout.fixedBarTop + layout.topControlsHeight }}
               >
-                <Header {...headerAllProps} />
-              </div>
-            ) : null}
-
-            {isCompact && layersOpen ? (
-              <div
-                className="fixed inset-x-0 z-[10011] pointer-events-auto bg-gray-800 border-b border-gray-700 shadow-lg"
-                style={{ top: layout.fixedBarTop + layout.topControlsHeight }}
-              >
-                <LayerBar {...layerBarProps} />
+                <TopChromeCluster showHeader={mapDrawerOpen} showLayerBar={layersOpen} />
               </div>
             ) : null}
           </div>

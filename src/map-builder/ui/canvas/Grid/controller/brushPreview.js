@@ -85,6 +85,12 @@ export const paintBrushTip = (cssPoint, context) => {
       ? (stamp?.opacity ?? gridSettings?.opacity ?? 1)
       : canvasOpacity
   );
+  ctx.lineWidth = 0;
+  ctx.strokeStyle = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = "transparent";
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
 
   const radius = (brushSize * BASE_TILE) / 2;
   const bounds = getBrushCellBounds(p, radius, bufferWidth, bufferHeight);
