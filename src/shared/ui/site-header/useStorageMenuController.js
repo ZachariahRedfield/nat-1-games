@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppContainer } from "../../../app/AppContext.jsx";
+import {
+  notifyError,
+  notifySuccess,
+  notifyWarning,
+} from "../../infrastructure/notifications/toastStore.js";
 
 const STATUS_RESET_DELAY = 3200;
 
@@ -78,41 +83,41 @@ export function useStorageMenuController({ menuOpen }) {
 
   const handleExport = useCallback(async () => {
     if (!storageApi?.exportCurrentProjectPack) {
-      showStatusMessage("Storage unavailable.", "error");
+      notifyError("Storage unavailable.");
       return;
     }
     try {
       const result = await storageApi.exportCurrentProjectPack();
       if (result?.ok) {
-        showStatusMessage(result.message || "Exported project pack.", "success");
+        notifySuccess(result.message || "Exported project pack.");
         refreshStorageState();
       } else {
-        showStatusMessage(result?.message || "No active project to export.", "warning");
+        notifyWarning(result?.message || "No active project to export.");
       }
     } catch {
-      showStatusMessage("Failed to export pack.", "error");
+      notifyError("Failed to export pack.");
     }
-  }, [refreshStorageState, showStatusMessage, storageApi]);
+  }, [refreshStorageState, storageApi]);
 
   const handleImport = useCallback(
     async (file) => {
       if (!storageApi?.importProjectPack) {
-        showStatusMessage("Storage unavailable.", "error");
+        notifyError("Storage unavailable.");
         return;
       }
       try {
         const result = await storageApi.importProjectPack(file);
         if (result?.ok) {
-          showStatusMessage(result.message || "Imported project pack.", "success");
+          notifySuccess(result.message || "Imported project pack.");
           refreshStorageState();
         } else {
-          showStatusMessage(result?.message || "Import canceled.", "warning");
+          notifyWarning(result?.message || "Import canceled.");
         }
       } catch {
-        showStatusMessage("Failed to import pack.", "error");
+        notifyError("Failed to import pack.");
       }
     },
-    [refreshStorageState, showStatusMessage, storageApi]
+    [refreshStorageState, storageApi]
   );
 
   const handleSetProvider = useCallback(

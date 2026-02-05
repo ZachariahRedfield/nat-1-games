@@ -25,6 +25,11 @@ export async function getStorageMenuState() {
   };
 }
 
+export async function getCurrentProjectInfo() {
+  const storageManager = getStorageManager();
+  return storageManager.getCurrentProjectInfo();
+}
+
 export async function exportCurrentProjectPack() {
   const storageManager = getStorageManager();
   const projectInfo = await storageManager.getCurrentProjectInfo();

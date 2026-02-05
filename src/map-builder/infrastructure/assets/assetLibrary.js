@@ -33,9 +33,7 @@ export async function writeAssetsManifest(parentHandle, manifest) {
 }
 
 export async function writeAssetsLibrary(parentHandle, assetsList) {
-  const manifest = await readAssetsManifest(parentHandle);
-  const existing = new Map((manifest.assets || []).map((asset) => [asset.id, asset]));
-  const output = new Map(existing);
+  const output = new Map();
   const assetsDir = await ensureAssetsDir(parentHandle);
 
   for (const asset of assetsList || []) {

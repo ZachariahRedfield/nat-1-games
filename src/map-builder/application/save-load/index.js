@@ -6,6 +6,7 @@ export { saveGlobalAssets, loadGlobalAssets } from "./globalAssetsStore.js";
 export {
   changeFolderLocation,
   exportCurrentProjectPack,
+  getCurrentProjectInfo,
   getStorageMenuState,
   importProjectPack,
   setActiveStorageProvider,
