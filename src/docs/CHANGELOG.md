@@ -15,6 +15,8 @@
 - Added storage menu controls to switch providers and update folder-backed storage locations
 
 ### Updates
+- Made logout await Supabase sign-out and still clear local session/navigation state on async auth failures to avoid stale authenticated UI.
+- Added focused logout tests covering sign-out rejection handling and async ordering for local state reset.
 - Fixed MapBuilder selection resizing, off-grid transform hit capture, and overlay layering for modals/toasts.
 - Improved storage reliability for asset deletions, first-time saves, and import/export notifications.
 - Introduced a stacked interaction tool menu to reduce toolbar footprint.

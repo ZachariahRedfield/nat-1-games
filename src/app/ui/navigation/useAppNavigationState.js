@@ -1,6 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DM_ONLY_SCREENS, SCREENS, getDefaultScreenForSession } from "../../screens.js";
 
+export async function performLogout({ clearSession, supabase, setSessionState, setScreen }) {
+  clearSession?.();
+
+  try {
+    await supabase?.auth?.signOut?.();
+  } catch (error) {
+    console.warn("Supabase signOut failed", error);
+  }
+
+  // We always clear local auth state so the app cannot stay in a stale "logged in" UI.
+  setSessionState(null);
+  setScreen(SCREENS.LOGIN);
+}
+
 export function useAppNavigationState(container) {
   const {
     auth: { getSession, clearSession },
@@ -32,15 +46,8 @@ export function useAppNavigationState(container) {
     prevScreenRef.current = screen;
   }, [screen, clearCurrentProjectDir]);
 
-  const logout = useCallback(() => {
-    clearSession?.();
-    try {
-      supabase?.auth?.signOut?.();
-    } catch (error) {
-      console.warn("Supabase signOut failed", error);
-    }
-    setSessionState(null);
-    setScreen(SCREENS.LOGIN);
+  const logout = useCallback(async () => {
+    await performLogout({ clearSession, supabase, setSessionState, setScreen });
   }, [clearSession, supabase]);
 
   const navigate = useCallback(
