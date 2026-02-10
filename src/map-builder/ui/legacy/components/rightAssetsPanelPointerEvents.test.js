@@ -7,6 +7,8 @@ test("right assets overlay stays non-hit-testable while open panel is hit-testab
   const openState = getRightAssetsPanelPointerEventClasses({ collapsed: false });
 
   assert.equal(openState.overlayClassName.includes("pointer-events-none"), true);
+  assert.equal(openState.overlayClassName.includes("inset-0"), true);
+  assert.equal(openState.overlayClassName.includes("z-[10014]"), true);
   assert.equal(openState.panelClassName.includes("pointer-events-auto"), true);
 });
 
