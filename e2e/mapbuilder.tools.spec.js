@@ -2,7 +2,9 @@ import { expect, test } from "@playwright/test";
 import { gotoRepro } from "./helpers/nav.js";
 
 test.describe("mobile tool switching", () => {
-  test.skip(({ project }) => project.name !== "Mobile Chromium", "mobile-only regression check");
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "Mobile Chromium", "mobile-only regression check");
+  });
 
   test("stamp -> pan toggles active tool", async ({ page }) => {
     await gotoRepro(page, "mapBuilder");
