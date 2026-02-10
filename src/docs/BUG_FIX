@@ -1,40 +1,32 @@
-# Task: Explore & Report Bugs in MapBuilder UI
+# BUG_FIX: Implement a Bug Fix (with Tests)
 
-Use the deterministic repro entry:
-  http://localhost:xxxx/?repro=mapBuilder&VITE_DEBUG_AUTH=1
+This workflow implements fixes.
+If the task is exploratory, redirect to BUG_REPORTER.md.
 
-You have:
-- a seed session that logs in automatically
-- a debug snapshot hook for internal state
-- top-level interactions available
+## Required reading
+- src/docs/ARCHITECTURE.md
+- src/docs/Codex.md
+- src/docs/CODEX_CHECKLIST.md
+- src/docs/Codex.Testing.md
+- src/docs/doc-sync.yml
 
-Your job:
-1) Navigate UI and perform canonical interaction flows:
-   - resize assets at grid edges
-   - rotate assets
-   - canvas brush drawing
-   - mobile bottom toolbar interactions
-   - undo/redo sequences
-   - save/reload/persistence flows
-   - import/export flows
-2) Use the debug snapshot hook and the CODEX_CHECKLIST.md criteria
-   to detect deviations from correct behavior.
-3) Report any bugs found with:
-   - repro steps
-   - observed vs expected
-   - root cause hypotheses
-   - Vite dev console output and snapshot diffs
-4) For each bug, generate a concise entry in a new section of a BUG_REPORT.md.
+## FIX contract
+1) Fix exactly ONE bug (or multiple only if they share a root cause).
+2) Implement the fix at the root cause (no UI hacks).
+3) Add at least 1 focused unit regression test (node:test) when feasible.
+   - Prefer testing pure logic/services/hooks.
+   - If not feasible, explain why and provide a manual regression checklist.
+4) Run verification:
+   - npm run verify:fast
+   - npm run verify
+5) Add a changelog entry **only if behavior changed**.
 
-Stop when you either:
-- find 10 distinct issues,
-- or have explored all major tool interaction flows.
+## Output required
+- Root cause explanation
+- Fix summary
+- Tests added (or justification)
+- Verification results
+- Manual regression checklist
+- CODEX_CHECKLIST status
 
-Do not fix anything yet — just discover and document.
-
-Follow src/docs/CODEX_CHECKLIST.md for reporting format.
-
-Testing requirement:
-- Add at least 1 focused unit regression test for the root cause.
-- Prefer testing pure logic/services/hooks over UI.
-- If a unit test is not feasible, explain why and provide a manual regression checklist.
+Do not claim completion unless all applicable checklist items pass.
