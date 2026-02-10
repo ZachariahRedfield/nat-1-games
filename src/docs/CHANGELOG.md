@@ -3,6 +3,10 @@
 
 ## 2026-02
 
+- Kept RightAssets panel visible while aligning its overlay layer below tool/debug controls so panel hit-testing no longer blocks those interactions.
+- Restored RightAssets panel visibility by anchoring its non-interactive overlay container to the full viewport while keeping toolbar/Debug HUD interactions unobstructed.
+- Fixed MapBuilder right assets panel hit-testing so only the visible panel surface captures input, restoring toolbar and DEV Debug HUD clickability on mobile/desktop.
+- Added a focused BUG_REPORT documenting reproducible MapBuilder interaction regressions (overlay hit-testing and mobile viewport controls) to guide follow-up fixes.
 - Added a development-only MapBuilder Debug HUD with URL/keyboard toggles, live interaction/storage diagnostics, and harness actions for save/load/export/cache reset to speed local debugging without affecting production builds.
 - Made Main Menu role constraints visible by rendering DM-only actions as disabled buttons with explicit "DM only" labels for non-DM users, while keeping navigation-level DM guards unchanged.
 - Added strictly gated DEV auth bootstrap via URL params so sandbox runs can auto-login as a DM session and jump directly to mapBuilder/startSession/assetCreation without changing production behavior.
