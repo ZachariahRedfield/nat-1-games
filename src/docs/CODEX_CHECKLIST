@@ -1,0 +1,71 @@
+# Codex Completion Checklist
+
+Codex must satisfy ALL applicable items below before claiming a task is complete.
+
+If any item cannot be satisfied, explicitly explain why.
+
+---
+
+## 1) Reproduction
+- [ ] Bug has a clear reproduction path (steps written or implied by code)
+- [ ] Expected vs actual behavior is understood
+- [ ] Root cause identified (not just symptoms)
+
+---
+
+## 2) Correctness
+- [ ] Fix addresses the root cause, not a workaround
+- [ ] No new edge cases introduced
+- [ ] Behavior matches existing architecture constraints
+
+---
+
+## 3) State & History Safety
+- [ ] All state mutations are reversible (undo/redo safe)
+- [ ] No side effects during render
+- [ ] New state (if any) is serializable and snapshot-safe
+- [ ] Persistence paths updated if behavior changes affect saved state
+
+---
+
+## 4) UI & Interaction Safety
+- [ ] Works on both desktop and mobile layouts
+- [ ] No gesture conflicts (drag vs scroll vs pan)
+- [ ] No ad-hoc z-index fixes
+- [ ] Modals/toasts render via correct top-level layer
+- [ ] Canvas/pointer logic does not leak state between interactions
+
+---
+
+## 5) Persistence & Storage
+- [ ] Save/load behavior verified
+- [ ] Deleted entities do not reappear after reload
+- [ ] First-time save path validated (if applicable)
+- [ ] Storage backend assumptions are explicit
+
+---
+
+## 6) Tests & Verification
+- [ ] Tests updated or added where practical
+- [ ] If no tests added, reason is explicitly stated
+- [ ] `npm run verify:fast` run during iteration
+- [ ] `npm run verify` run before finalizing
+- [ ] Any failures explained
+
+---
+
+## 7) Changelog & Docs
+- [ ] Changelog entry added (if merge-worthy)
+- [ ] Entry summarizes *what* and *why*, not implementation details
+- [ ] Docs updated only in agent-writable sections (if needed)
+
+---
+
+## 8) Final Review
+- [ ] No console logs, TODOs, or debug artifacts
+- [ ] No cross-module imports introduced
+- [ ] Code is PR-ready and scoped
+- [ ] Summary provided describing:
+      - root cause
+      - fix
+      - validation steps
