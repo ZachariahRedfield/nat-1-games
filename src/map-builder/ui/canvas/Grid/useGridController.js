@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useGridSelection from "./selection/useGridSelection.js";
 import { createGridPointerHandlers } from "./controller/createGridPointerHandlers.js";
 import { deriveCursorStyle } from "./controller/deriveCursorStyle.js";
@@ -72,6 +72,7 @@ export function useGridController({
   updateTokenById,
   onTokenSelectionChange,
   allowInactiveSelection = false,
+  onPointerDebugChange,
 }) {
   const {
     currentLayer,
@@ -292,6 +293,15 @@ export function useGridController({
   });
 
   const cellBg = cellBackground;
+  useEffect(() => {
+    onPointerDebugChange?.({
+      mousePos,
+      isPanning,
+      isBrushing,
+      interactionMode,
+      cursorStyle,
+    });
+  }, [cursorStyle, interactionMode, isBrushing, isPanning, mousePos, onPointerDebugChange]);
 
   return {
     rows,
