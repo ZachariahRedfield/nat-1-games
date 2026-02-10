@@ -3,6 +3,7 @@
 
 ## 2026-02
 
+- Fixed mobile-only MapBuilder Playwright specs to use `testInfo.project.name` skip guards so desktop projects no longer error on unsupported `test.skip` callback parameters.
 - Added a Playwright E2E harness for MapBuilder repro flows (desktop+mobile projects, deterministic dev-auth startup, and stable `data-testid` selectors) to catch toolbar/compact-control interaction regressions earlier.
 - Kept RightAssets panel visible while aligning its overlay layer below tool/debug controls so panel hit-testing no longer blocks those interactions.
 - Restored RightAssets panel visibility by anchoring its non-interactive overlay container to the full viewport while keeping toolbar/Debug HUD interactions unobstructed.
