@@ -437,9 +437,10 @@ export default function RightAssetsPanel({
 
   return (
     <>
-      <div className={pointerEventClasses.overlayClassName}>
+      <div className={pointerEventClasses.overlayClassName} data-testid="right-assets-overlay">
         {!collapsed && (
           <div
+            data-testid="right-assets-panel"
             className={`${pointerEventClasses.panelClassName} absolute bg-gray-900/95 shadow-2xl flex flex-col ${
               isMobile ? "border-t border-gray-700 rounded-t-2xl" : "border-l border-gray-700"
             }`}

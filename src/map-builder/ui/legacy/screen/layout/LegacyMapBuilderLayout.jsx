@@ -101,6 +101,8 @@ export default function LegacyMapBuilderLayout({
           <button
             type="button"
             onClick={headerAllProps?.onToggleMaps}
+            data-testid="compact-map"
+            aria-pressed={mapDrawerOpen}
             className={`px-3 py-1 text-[11px] uppercase tracking-wide rounded border ${
               mapDrawerOpen ? "border-blue-400 bg-blue-500/20 text-blue-100" : "border-gray-600 bg-gray-700"
             }`}
@@ -110,6 +112,8 @@ export default function LegacyMapBuilderLayout({
           <button
             type="button"
             onClick={handleToggleLayers}
+            data-testid="compact-layers"
+            aria-pressed={layersOpen}
             className={`px-3 py-1 text-[11px] uppercase tracking-wide rounded border ${
               layersOpen ? "border-blue-400 bg-blue-500/20 text-blue-100" : "border-gray-600 bg-gray-700"
             }`}
@@ -164,7 +168,7 @@ export default function LegacyMapBuilderLayout({
   );
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col" data-testid="mapbuilder-root">
       <SiteHeader
         session={session}
         onLogout={onLogout}
@@ -236,6 +240,9 @@ export default function LegacyMapBuilderLayout({
               <div
                 className="fixed inset-x-0 z-[10011] pointer-events-auto bg-gray-800 border-b border-gray-700 shadow-lg"
                 style={{ top: layout.fixedBarTop + layout.topControlsHeight }}
+                data-testid="compact-drawer"
+                data-map-open={mapDrawerOpen ? "true" : "false"}
+                data-layers-open={layersOpen ? "true" : "false"}
               >
                 <TopChromeCluster showHeader={mapDrawerOpen} showLayerBar={layersOpen} />
               </div>

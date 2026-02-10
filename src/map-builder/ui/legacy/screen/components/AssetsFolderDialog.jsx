@@ -20,7 +20,7 @@ export default function AssetsFolderDialog({ open, onClose, onChooseFolder }) {
           projects.
         </p>
         <div className="flex justify-end gap-2">
-          <button className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded" onClick={handleClose}>
+          <button data-testid="assets-folder-not-now" className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded" onClick={handleClose}>
             Not Now
           </button>
           <button

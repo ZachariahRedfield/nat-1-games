@@ -3,6 +3,7 @@
 
 ## 2026-02
 
+- Added a Playwright E2E harness for MapBuilder repro flows (desktop+mobile projects, deterministic dev-auth startup, and stable `data-testid` selectors) to catch toolbar/compact-control interaction regressions earlier.
 - Kept RightAssets panel visible while aligning its overlay layer below tool/debug controls so panel hit-testing no longer blocks those interactions.
 - Restored RightAssets panel visibility by anchoring its non-interactive overlay container to the full viewport while keeping toolbar/Debug HUD interactions unobstructed.
 - Fixed MapBuilder right assets panel hit-testing so only the visible panel surface captures input, restoring toolbar and DEV Debug HUD clickability on mobile/desktop.
