@@ -1,0 +1,35 @@
+# Task: Explore & Report Bugs in MapBuilder UI
+
+Use the deterministic repro entry:
+  http://localhost:xxxx/?repro=mapBuilder&VITE_DEBUG_AUTH=1
+
+You have:
+- a seed session that logs in automatically
+- a debug snapshot hook for internal state
+- top-level interactions available
+
+Your job:
+1) Navigate UI and perform canonical interaction flows:
+   - resize assets at grid edges
+   - rotate assets
+   - canvas brush drawing
+   - mobile bottom toolbar interactions
+   - undo/redo sequences
+   - save/reload/persistence flows
+   - import/export flows
+2) Use the debug snapshot hook and the CODEX_CHECKLIST.md criteria
+   to detect deviations from correct behavior.
+3) Report any bugs found with:
+   - repro steps
+   - observed vs expected
+   - root cause hypotheses
+   - Vite dev console output and snapshot diffs
+4) For each bug, generate a concise entry in a new section of a BUG_REPORT.md.
+
+Stop when you either:
+- find 10 distinct issues,
+- or have explored all major tool interaction flows.
+
+Do not fix anything yet — just discover and document.
+
+Follow src/docs/CODEX_CHECKLIST.md for reporting format.
