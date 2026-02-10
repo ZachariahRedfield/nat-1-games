@@ -15,6 +15,15 @@ This document defines **source-of-truth concepts and invariants**. It is intenti
 - Undo/redo is snapshot-based
 - No side effects during render
 
+## Completion Criteria
+
+After implementing a change, always satisfy the conditions in:
+
+📌 `src/docs/CODEX_CHECKLIST.md`
+
+Before claiming a fix is complete, Codex should verify each checklist item.
+
+
 
 ## Current Phase
 <!-- AGENT:BEGIN current-phase -->
