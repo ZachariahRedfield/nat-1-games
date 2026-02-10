@@ -67,3 +67,35 @@
 3. Verify compact **Map/Layers** controls are visible and tappable across common device widths.
 4. Re-run undo/redo after drawing and ensure history updates in both layouts.
 5. Re-test save/load/import/export after overlay and layering fixes.
+
+## 2026-02-10 — BUG_REPORT rerun (environment-limited)
+
+### Scope attempted
+- Tried to boot the deterministic repro route at `/?repro=mapBuilder&debug=1`.
+- Tried to install dependencies and start the local Vite dev server.
+
+### Environment limitation
+- `npm install` is blocked by registry policy in this environment (`403 Forbidden` for `@playwright/test`), so the repro app could not be started locally.
+- Because the app never booted, no new UI interaction evidence could be gathered in this rerun.
+
+### Result
+- No additional defects were confirmed beyond the previously documented three MapBuilder interaction issues above.
+- Existing findings remain the active bug inventory for follow-up.
+
+### Highest-impact / lowest-risk issue to fix first
+- **Right assets overlay intercepts pointer events across unrelated UI controls**.
+- Why first: it blocks core tool switching and debug controls, and likely has a constrained root cause in layering/hit-testing boundaries.
+
+### BUG_FIX handoff block
+- **Issue title:** Right assets overlay intercepts pointer events across unrelated UI controls
+- **Deterministic repro steps:**
+  1. Open `/?repro=mapBuilder&debug=1` in mobile viewport (390x844).
+  2. Dismiss folder prompt with **Not Now**.
+  3. Tap **Stamp** (or any bottom toolbar tool button).
+- **Most likely root cause:** right assets overlay container remains hit-testable outside intended panel surface, allowing its subtree to intercept pointer events over toolbar/debug controls.
+- **Target files/modules (likely):**
+  - MapBuilder right-side assets overlay/layout component(s).
+  - Shared layering/z-index constants for MapBuilder overlays.
+- **Suggested unit test targets:**
+  - A pure layering/hit-testing guard helper (if present) that determines pass-through vs interactive regions.
+  - A reducer/state-selector test confirming tool changes apply when UI dispatches toolbar intents (to protect against regressions once pointer interception is removed).
