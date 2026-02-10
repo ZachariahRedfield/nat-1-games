@@ -81,3 +81,19 @@ If any item cannot be satisfied, explicitly explain why.
       - at least one failing test before the fix (ideal), OR
       - a new regression test added after the fix with clear assertions.
 - [ ] If no test is added, include a brief justification + a manual regression checklist.
+
+##Example Unit Test
+import test from "node:test";
+import assert from "node:assert/strict";
+// import { thing } from "./thing.js";
+
+test("does X when Y", () => {
+  // Arrange
+  const input = 123;
+
+  // Act
+  const result = input + 1;
+
+  // Assert
+  assert.equal(result, 124);
+});
