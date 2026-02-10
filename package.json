@@ -8,7 +8,7 @@
   "build": "vite build",
   "preview": "vite preview",
 
-  "verify:fast": "npm run build",
+  "verify:fast": "npm run test:unit",
   "verify": "npm run build",
 
   "codex:verify:fast": "npm run verify:fast",
