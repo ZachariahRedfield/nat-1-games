@@ -4,23 +4,24 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview",
-
-  "verify:fast": "npm run test:unit",
-  "verify": "npm run build",
-
-  "codex:verify:fast": "npm run verify:fast",
-  "codex:verify": "npm run verify",
-
-  "codex:doc-sync": "node scripts/doc-sync.js",
-
-  "test": "node --test",
-  "test:watch": "node --test --watch",
-  "test:unit": "node --test src/**/*.test.js"
-},
+    "build": "vite build",
+    "codex:doc-sync": "node scripts/doc-sync.js",
+    "codex:verify": "npm run verify",
+    "codex:verify:fast": "npm run verify:fast",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "node --test",
+    "test:e2e": "playwright test",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:ui": "playwright test --ui",
+    "test:unit": "node --test src/**/*.test.js",
+    "test:watch": "node --test --watch",
+    "verify": "npm run build",
+    "verify:fast": "npm run test:unit"
+  },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.18",

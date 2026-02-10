@@ -1,4 +1,6 @@
-# Codex Testing Recipe (Unit Tests)
+# Codex Testing Recipe
+
+## Unit Tests
 
 When fixing a bug:
 1) Identify the smallest deterministic unit of logic related to the root cause.
@@ -20,3 +22,13 @@ When fixing a bug:
 - Assertions: `node:assert/strict`
 - Tests live colocated as `*.test.js` near the code under `src/**`
 - Run: `npm run test:unit` during iteration, `npm run test` before finalizing
+
+## Playwright E2E
+- E2E specs live under `e2e/` and run with Playwright.
+- Run all E2E specs with `npm run test:e2e`.
+- Additional helpers:
+  - `npm run test:e2e:ui`
+  - `npm run test:e2e:debug`
+  - `npm run test:e2e:report`
+- E2E uses deterministic repro routes like `/?repro=mapBuilder`.
+- Playwright web server bootstraps with `VITE_DEBUG_AUTH=1` so DEV auth-gated repro paths are available during local test runs.

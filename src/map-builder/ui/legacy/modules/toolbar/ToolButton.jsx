@@ -43,6 +43,8 @@ export default function ToolButton({
       <button
         type="button"
         aria-label={label}
+        data-testid={`tool-${id}`}
+        data-active={active ? "true" : "false"}
         disabled={disabled}
         onClick={handleClick}
         className={`relative w-10 h-10 flex items-center justify-center rounded-xl backdrop-blur-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${baseClass} ${className}`}
