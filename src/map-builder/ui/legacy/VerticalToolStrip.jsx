@@ -3,6 +3,7 @@ import { useToolstripTips } from "./modules/toolbar/useToolstripTips.js";
 import ToolStack from "./modules/toolbar/ToolStack.jsx";
 import { CanvasIcon, CursorIcon, EraserIcon, GridIcon, PanIcon, ZoomIcon } from "./modules/toolbar/icons.jsx";
 import ToolButton from "./modules/toolbar/ToolButton.jsx";
+import { buildToolIntentActions } from "./modules/toolbar/toolIntentActions.js";
 
 export default function VerticalToolStrip({
   interactionMode,
@@ -23,18 +24,21 @@ export default function VerticalToolStrip({
   const gridActive = drawActive && engine === "grid";
   const canvasActive = drawActive && engine === "canvas";
 
+  const toolIntentActions = buildToolIntentActions({
+    assetGroup,
+    setZoomToolActive,
+    setPanToolActive,
+    setInteractionMode,
+    setEngine,
+  });
+
   const toolItems = [
     {
       id: "stamp",
       label: "Stamp",
       icon: GridIcon,
       active: gridActive,
-      onSelect: () => {
-        setZoomToolActive(false);
-        setPanToolActive(false);
-        setInteractionMode("draw");
-        setEngine("grid");
-      },
+      onSelect: toolIntentActions.stamp,
     },
     {
       id: "canvas",
@@ -42,44 +46,28 @@ export default function VerticalToolStrip({
       icon: CanvasIcon,
       active: canvasActive,
       disabled: assetGroup === "token",
-      onSelect: () => {
-        if (assetGroup === "token") return;
-        setZoomToolActive(false);
-        setPanToolActive(false);
-        setInteractionMode("draw");
-        setEngine("canvas");
-      },
+      onSelect: toolIntentActions.canvas,
     },
     {
       id: "select",
       label: "Select",
       icon: CursorIcon,
       active: selectActive,
-      onSelect: () => {
-        setZoomToolActive(false);
-        setPanToolActive(false);
-        setInteractionMode("select");
-      },
+      onSelect: toolIntentActions.select,
     },
     {
       id: "pan",
       label: "Pan",
       icon: PanIcon,
       active: panToolActive,
-      onSelect: () => {
-        setPanToolActive(true);
-        setZoomToolActive(false);
-      },
+      onSelect: toolIntentActions.pan,
     },
     {
       id: "zoom",
       label: "Zoom",
       icon: ZoomIcon,
       active: zoomToolActive,
-      onSelect: () => {
-        setZoomToolActive(true);
-        setPanToolActive(false);
-      },
+      onSelect: toolIntentActions.zoom,
     },
   ];
 
