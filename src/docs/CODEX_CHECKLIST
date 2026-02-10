@@ -81,6 +81,8 @@ If any item cannot be satisfied, explicitly explain why.
       - at least one failing test before the fix (ideal), OR
       - a new regression test added after the fix with clear assertions.
 - [ ] If no test is added, include a brief justification + a manual regression checklist.
+- Place tests next to the module being tested as X.test.js.
+- Do not create __tests__ folders unless a module explicitly requires it.
 
 ##Example Unit Test
 import test from "node:test";
