@@ -14,7 +14,11 @@
   "codex:verify:fast": "npm run verify:fast",
   "codex:verify": "npm run verify",
 
-  "codex:doc-sync": "node scripts/doc-sync.js"
+  "codex:doc-sync": "node scripts/doc-sync.js",
+
+  "test": "node --test",
+  "test:watch": "node --test --watch",
+  "test:unit": "node --test src/**/*.test.js"
 },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
