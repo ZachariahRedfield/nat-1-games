@@ -31,6 +31,7 @@ Stop when you either:
 - or have explored all major tool interaction flows.
 
 Do not fix anything yet — just discover and document.
+BUG_REPORT additions do not get a changelog entry unless they accompany a code change that fixes something merge-worthy.
 
 Follow src/docs/CODEX_CHECKLIST.md for reporting format.
 
