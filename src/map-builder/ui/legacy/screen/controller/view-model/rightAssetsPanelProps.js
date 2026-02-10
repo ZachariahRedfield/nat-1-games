@@ -25,5 +25,6 @@ export function createRightAssetsPanelProps(state) {
     canActOnSelection: state.selectedObjsList?.length > 0 || state.selectedTokensList?.length > 0,
     onSaveSelection: state.openSaveSelectionDialog,
     onDeleteSelection: state.deleteCurrentSelection,
+    placedTabLabel: state.placedTabLabel,
   };
 }
