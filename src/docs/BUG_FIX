@@ -33,3 +33,8 @@ Stop when you either:
 Do not fix anything yet — just discover and document.
 
 Follow src/docs/CODEX_CHECKLIST.md for reporting format.
+
+Testing requirement:
+- Add at least 1 focused unit regression test for the root cause.
+- Prefer testing pure logic/services/hooks over UI.
+- If a unit test is not feasible, explain why and provide a manual regression checklist.
