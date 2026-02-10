@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Grid from "../../../canvas/Grid/Grid.jsx";
 import { SiteHeader, useResponsiveMode } from "../../../../../shared/index.js";
 import SaveSelectionDialog from "../../SaveSelectionDialog.jsx";
@@ -12,6 +12,10 @@ import MapSizeModal from "../components/MapSizeModal.jsx";
 import AssetsFolderDialog from "../components/AssetsFolderDialog.jsx";
 import LegacyMapBuilderUndoRedoControls from "./LegacyUndoRedoControls.jsx";
 import RightAssetsPanel from "../../components/RightAssetsPanel.jsx";
+
+const DebugHud = import.meta.env.DEV
+  ? React.lazy(() => import("../../../../../shared/ui/debug/DebugHud.jsx"))
+  : null;
 
 const GRID_BACKGROUND_IMAGE =
   "radial-gradient(80% 60% at 50% 0%, rgba(255, 243, 210, 0.6), rgba(255, 243, 210, 0.9)), repeating-linear-gradient(0deg, rgba(190,155,90,0.06), rgba(190,155,90,0.06) 2px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 4px)";
@@ -30,6 +34,7 @@ export default function LegacyMapBuilderLayout({
   mapSizeModalProps,
   rightAssetsPanelProps,
   saveSelectionDialogProps,
+  debugProps,
   session,
   onLogout,
   onNavigate,
@@ -45,11 +50,39 @@ export default function LegacyMapBuilderLayout({
   const mapDrawerOpen = headerAllProps?.mapsMenuOpen;
   const compactDrawerOpen = mapDrawerOpen || layersOpen;
 
+  const isDev = import.meta.env.DEV;
+  const urlDebug = isDev && new URLSearchParams(window.location.search).get("debug") === "1";
+  const [hudPrefEnabled, setHudPrefEnabled] = useState(() => (
+    isDev ? window.localStorage.getItem("debugHud") === "1" : false
+  ));
+  const [pointerDebug, setPointerDebug] = useState({});
+  const [stateSummary, setStateSummary] = useState("");
+  const hudEnabled = isDev && (urlDebug || hudPrefEnabled);
+
+
   useEffect(() => {
     if (mapDrawerOpen) {
       setLayersOpen(false);
     }
   }, [mapDrawerOpen]);
+
+  useEffect(() => {
+    if (!isDev) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (!(event.ctrlKey && event.shiftKey && event.key?.toLowerCase() === "d")) return;
+      event.preventDefault();
+      setHudPrefEnabled((value) => {
+        const next = !value;
+        window.localStorage.setItem("debugHud", next ? "1" : "0");
+        return next;
+      });
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDev]);
+
 
   const handleToggleLayers = useCallback(() => {
     setLayersOpen((value) => {
@@ -90,6 +123,36 @@ export default function LegacyMapBuilderLayout({
     [handleToggleLayers, headerAllProps, layersOpen, mapDrawerOpen],
   );
 
+
+  const activeToolId = useMemo(() => {
+    if (toolbarProps?.zoomToolActive) return "zoom";
+    if (toolbarProps?.panToolActive) return "pan";
+    if (toolbarProps?.interactionMode === "select") return "select";
+    if (toolbarProps?.isErasing) return "eraser";
+    return toolbarProps?.engine || "draw";
+  }, [toolbarProps]);
+
+  const debugActions = useMemo(() => {
+    if (!isDev) return {};
+    return {
+      saveNow: () => debugProps?.saveProject?.(),
+      loadNow: () => debugProps?.openLoadModal?.(),
+      exportNow: () => debugProps?.exportProject?.(),
+      clearCaches: () => debugProps?.clearProjectCaches?.(),
+      dumpState: () => {
+        const summary = {
+          responsiveMode: isCompact ? "mobile" : "desktop",
+          activeToolId,
+          pointerDebug,
+          selectionDebug: debugProps?.selectionDebug,
+          brushDebug: debugProps?.brushDebug,
+          storageDebug: debugProps?.storageDebug,
+        };
+        setStateSummary(JSON.stringify(summary, null, 2));
+      },
+    };
+  }, [activeToolId, debugProps, isCompact, isDev, pointerDebug]);
+
   const TopChromeCluster = useCallback(
     ({ showHeader = true, showLayerBar = true }) => (
       <div className="flex flex-col">
@@ -125,7 +188,7 @@ export default function LegacyMapBuilderLayout({
             <div className="relative w-full min-h-full flex justify-center items-start md:items-center p-3 sm:p-6">
               <div className="flex-1 flex">
                 <div ref={layout.gridContentRef} className="relative inline-flex mx-auto">
-                  <Grid {...gridProps} />
+                  <Grid {...gridProps} onPointerDebugChange={isDev ? setPointerDebug : undefined} />
                 </div>
               </div>
             </div>
@@ -244,6 +307,26 @@ export default function LegacyMapBuilderLayout({
           <div className="absolute inset-0 z-[10030] pointer-events-none">
             <RightAssetsPanel {...rightAssetsPanelProps} topOffset={rightPanelTopOffset} />
           </div>
+
+
+          {isDev && hudEnabled ? (
+            <div className="absolute inset-0 z-[10015] pointer-events-none" data-overlay-layer="debug-hud">
+              <div className="pointer-events-auto">
+                <Suspense fallback={null}>
+                  <DebugHud
+                  responsiveMode={isCompact ? "mobile" : "desktop"}
+                  activeToolId={activeToolId}
+                  pointerDebug={pointerDebug}
+                  selectionDebug={debugProps?.selectionDebug}
+                  brushDebug={debugProps?.brushDebug}
+                  storageDebug={debugProps?.storageDebug}
+                  stateSummary={stateSummary}
+                  actions={debugActions}
+                />
+                </Suspense>
+              </div>
+            </div>
+          ) : null}
 
           <div className="absolute inset-0 z-[10060] pointer-events-none">
             <AssetCreatorModal {...assetCreatorModalProps} />

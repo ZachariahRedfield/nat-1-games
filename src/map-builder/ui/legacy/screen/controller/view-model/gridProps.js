@@ -52,5 +52,6 @@ export function createGridProps(state) {
     updateTokenById: state.updateTokenById,
     onTokenSelectionChange: state.handleTokenSelectionChange,
     allowInactiveSelection: true,
+    onPointerDebugChange: state.onPointerDebugChange,
   };
 }

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 function cloneAssetList(assets) {
   return assets.map((asset) => ({ ...asset }));
@@ -45,6 +45,9 @@ export function useLegacyProjectSaving({
   canvasSmoothing,
   naturalSettings,
 }) {
+  const [lastSaveResult, setLastSaveResult] = useState("idle");
+  const [lastSaveAt, setLastSaveAt] = useState(null);
+
   const pruneUnreferencedAssets = useCallback(() => {
     try {
       const referenced = new Set();
@@ -153,6 +156,7 @@ export function useLegacyProjectSaving({
       setNeedsAssetsFolder(true);
       setAssetsFolderDialogOpen(true);
       showToast("Select an Account Save Folder to save.", "warning");
+      setLastSaveResult("blocked-assets-folder");
       return;
     }
 
@@ -180,10 +184,14 @@ export function useLegacyProjectSaving({
 
     if (!response?.ok) {
       showToast("Failed to save project. Try export.", "error");
+      setLastSaveResult("error");
+      setLastSaveAt(Date.now());
       return;
     }
 
     showToast(response.message || "Project saved.", "success");
+    setLastSaveResult("success");
+    setLastSaveAt(Date.now());
     await refreshAssetsFromFilesystem();
   }, [
     canvasRefs,
@@ -208,6 +216,7 @@ export function useLegacyProjectSaving({
       setNeedsAssetsFolder(true);
       setAssetsFolderDialogOpen(true);
       showToast("Select an Account Save Folder to save.", "warning");
+      setLastSaveResult("blocked-assets-folder");
       return;
     }
 
@@ -225,10 +234,14 @@ export function useLegacyProjectSaving({
 
     if (!response?.ok) {
       showToast("Failed to save project.", "error");
+      setLastSaveResult("error");
+      setLastSaveAt(Date.now());
       return;
     }
 
     showToast(response.message || "Project saved.", "success");
+    setLastSaveResult("success");
+    setLastSaveAt(Date.now());
     await refreshAssetsFromFilesystem();
   }, [
     canvasRefs,
@@ -244,7 +257,7 @@ export function useLegacyProjectSaving({
     showToast,
   ]);
 
-  return { saveProject, saveProjectAs };
+  return { saveProject, saveProjectAs, lastSaveResult, lastSaveAt };
 }
 
 export default useLegacyProjectSaving;

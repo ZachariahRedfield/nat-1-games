@@ -51,6 +51,10 @@ export function useLegacyMapBuilderState() {
     historyState,
     projectLoadingState,
     projectSavingState,
+    activeStorageBackend,
+    refreshStorageBackend,
+    exportProject,
+    clearProjectCaches,
   } = projectModules;
 
   return {
@@ -93,6 +97,10 @@ export function useLegacyMapBuilderState() {
     ...historyState,
     ...projectLoadingState,
     ...projectSavingState,
+    activeStorageBackend,
+    refreshStorageBackend,
+    exportProject,
+    clearProjectCaches,
     handleChangeRows,
     handleChangeCols,
     applyMapSize,

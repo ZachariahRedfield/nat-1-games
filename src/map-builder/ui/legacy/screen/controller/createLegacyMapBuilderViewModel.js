@@ -8,6 +8,7 @@ import { createGridProps } from "./view-model/gridProps.js";
 import { createBottomAssetsDrawerProps } from "./view-model/bottomAssetsDrawerProps.js";
 import { createHeaderProps } from "./view-model/headerProps.js";
 import { createRightAssetsPanelProps } from "./view-model/rightAssetsPanelProps.js";
+import { createDebugProps } from "./view-model/debugProps.js";
 
 export function createLegacyMapBuilderViewModel(state) {
   const headerProps = createHeaderProps(state);
@@ -19,6 +20,7 @@ export function createLegacyMapBuilderViewModel(state) {
   const gridProps = createGridProps(state);
   const bottomAssetsDrawerProps = createBottomAssetsDrawerProps(state);
   const rightAssetsPanelProps = createRightAssetsPanelProps(state);
+  const debugProps = createDebugProps(state);
 
   const {
     assetsFolderDialogProps,
@@ -43,6 +45,7 @@ export function createLegacyMapBuilderViewModel(state) {
     bottomAssetsDrawerProps,
     rightAssetsPanelProps,
     saveSelectionDialogProps,
+    debugProps,
   };
 }
 

@@ -3,6 +3,7 @@
 
 ## 2026-02
 
+- Added a development-only MapBuilder Debug HUD with URL/keyboard toggles, live interaction/storage diagnostics, and harness actions for save/load/export/cache reset to speed local debugging without affecting production builds.
 - Made Main Menu role constraints visible by rendering DM-only actions as disabled buttons with explicit "DM only" labels for non-DM users, while keeping navigation-level DM guards unchanged.
 
 ## 2026-01

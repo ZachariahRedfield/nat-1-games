@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   saveProject as saveProjectManager,
   saveProjectAs as saveProjectAsManager,
@@ -9,6 +9,9 @@ import {
   isAssetsFolderConfigured,
   hasCurrentProjectDir,
   getCurrentProjectInfo,
+  exportCurrentProjectPack,
+  clearCurrentProjectDir,
+  getStorageMenuState,
 } from "../../../../../application/save-load/index.js";
 import { useLegacyAssetWorkflow } from "../../state/useLegacyAssetWorkflow.js";
 import { useLegacyHistory } from "../../state/useLegacyHistory.js";
@@ -219,6 +222,28 @@ export function useLegacyProjectModules({
     naturalSettings: canvasDisplayState.naturalSettings,
   });
 
+  const [activeStorageBackend, setActiveStorageBackend] = useState("unknown");
+
+  const refreshStorageBackend = useCallback(async () => {
+    const storage = await getStorageMenuState();
+    setActiveStorageBackend(storage?.providerInfo?.label || storage?.providerInfo?.key || "unknown");
+  }, []);
+
+  useEffect(() => {
+    refreshStorageBackend();
+  }, [refreshStorageBackend]);
+
+  const exportProject = useCallback(async () => {
+    const response = await exportCurrentProjectPack();
+    feedbackState.showToast(response?.message || "Export failed.", response?.ok ? "success" : "error");
+    return response;
+  }, [feedbackState]);
+
+  const clearProjectCaches = useCallback(() => {
+    clearCurrentProjectDir();
+    feedbackState.showToast("Cleared active project directory pointer.", "success");
+  }, [feedbackState]);
+
   return {
     legacyAssetWorkflow,
     closeAssetCreator,
@@ -226,6 +251,10 @@ export function useLegacyProjectModules({
     historyState,
     projectLoadingState,
     projectSavingState,
+    activeStorageBackend,
+    refreshStorageBackend,
+    exportProject,
+    clearProjectCaches,
   };
 }
 
