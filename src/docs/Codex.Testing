@@ -1,0 +1,16 @@
+# Codex Testing Recipe (Unit Tests)
+
+When fixing a bug:
+1) Identify the smallest deterministic unit of logic related to the root cause.
+2) Add a regression test that:
+   - fails on old behavior
+   - passes after fix
+3) Keep tests focused:
+   - 1 bug = 1–3 assertions
+   - avoid broad integration tests
+4) Run:
+   - npm run verify:fast during iteration
+   - npm run verify before finalizing
+5) If unit testing is not practical:
+   - add a tiny logic-level test (math/state) OR
+   - document manual regression steps in PR summary
