@@ -5,6 +5,7 @@ import AssetPreviewSection from "../modules/assets/drawer/AssetPreviewSection.js
 import SelectionSettingsPanel from "../screen/components/settings-panel/SelectionSettingsPanel.jsx";
 import { useResponsiveMode } from "../../../../shared/index.js";
 import { getRightAssetsPanelPointerEventClasses } from "./rightAssetsPanelPointerEvents.js";
+import { LEGACY_MAP_BUILDER_Z_INDEX_CLASSES } from "../layering/zIndexClasses.js";
 
 const WIDTH_STORAGE_KEY = "mapBuilder.rightAssetsPanel.width.v1";
 const COLLAPSED_STORAGE_KEY = "mapBuilder.rightAssetsPanel.collapsed.v1";
@@ -686,7 +687,7 @@ export default function RightAssetsPanel({
       </div>
       {collapsed && (
         <div
-          className={`fixed z-[10019] pointer-events-auto flex gap-2 ${
+          className={`fixed ${LEGACY_MAP_BUILDER_Z_INDEX_CLASSES.RIGHT_ASSETS_COLLAPSED_TABS} pointer-events-auto flex gap-2 ${
             isMobile ? "flex-row justify-center" : "flex-col"
           }`}
           style={tabWrapStyle}
