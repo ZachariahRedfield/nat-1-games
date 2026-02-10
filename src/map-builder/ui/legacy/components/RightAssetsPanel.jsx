@@ -4,6 +4,7 @@ import AssetDrawerSettings from "../modules/assets/drawer/AssetDrawerSettings.js
 import AssetPreviewSection from "../modules/assets/drawer/AssetPreviewSection.jsx";
 import SelectionSettingsPanel from "../screen/components/settings-panel/SelectionSettingsPanel.jsx";
 import { useResponsiveMode } from "../../../../shared/index.js";
+import { getRightAssetsPanelPointerEventClasses } from "./rightAssetsPanelPointerEvents.js";
 
 const WIDTH_STORAGE_KEY = "mapBuilder.rightAssetsPanel.width.v1";
 const COLLAPSED_STORAGE_KEY = "mapBuilder.rightAssetsPanel.collapsed.v1";
@@ -257,6 +258,8 @@ export default function RightAssetsPanel({
     };
   }, [isMobile, topOffset]);
 
+  const pointerEventClasses = getRightAssetsPanelPointerEventClasses({ collapsed });
+
   const { assets = [], objects = {}, tokens = [] } = assetPanelProps ?? {};
 
   const placedAssets = useMemo(() => {
@@ -434,13 +437,13 @@ export default function RightAssetsPanel({
 
   return (
     <>
-      <div className="fixed z-[10018] pointer-events-none" style={panelStyle}>
+      <div className={pointerEventClasses.overlayClassName}>
         {!collapsed && (
           <div
-            className={`relative h-full bg-gray-900/95 shadow-2xl flex flex-col pointer-events-auto ${
+            className={`${pointerEventClasses.panelClassName} absolute bg-gray-900/95 shadow-2xl flex flex-col ${
               isMobile ? "border-t border-gray-700 rounded-t-2xl" : "border-l border-gray-700"
             }`}
-            style={isMobile ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" } : undefined}
+            style={{ ...panelStyle, ...(isMobile ? { paddingBottom: "env(safe-area-inset-bottom, 0px)" } : {}) }}
           >
             {isMobile ? (
               <div className="flex justify-center pt-2">
