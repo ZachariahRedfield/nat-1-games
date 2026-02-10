@@ -30,3 +30,14 @@ If the task is exploratory, redirect to BUG_REPORTER.md.
 - CODEX_CHECKLIST status
 
 Do not claim completion unless all applicable checklist items pass.
+
+### Verification fallback (required when toolchain is unavailable)
+If `npm run verify:fast` or `npm run verify` cannot be run due to environment/toolchain limitations:
+- Clearly label verification as **BLOCKED (environment)**, not failed.
+- Still run any available tests (node:test for touched modules).
+- Provide the exact local commands required to complete verification:
+  - npm install
+  - npm run verify:fast
+  - npm run verify
+  - npm run test:e2e (if relevant)
+- Do not claim completion; claim “ready pending local verification.”
