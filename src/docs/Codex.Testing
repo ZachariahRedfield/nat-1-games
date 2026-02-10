@@ -14,3 +14,9 @@ When fixing a bug:
 5) If unit testing is not practical:
    - add a tiny logic-level test (math/state) OR
    - document manual regression steps in PR summary
+
+### Test framework
+- Use Node’s built-in runner: `node:test`
+- Assertions: `node:assert/strict`
+- Tests live colocated as `*.test.js` near the code under `src/**`
+- Run: `npm run test:unit` during iteration, `npm run test` before finalizing
