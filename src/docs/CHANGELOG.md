@@ -5,6 +5,7 @@
 
 - Added a development-only MapBuilder Debug HUD with URL/keyboard toggles, live interaction/storage diagnostics, and harness actions for save/load/export/cache reset to speed local debugging without affecting production builds.
 - Made Main Menu role constraints visible by rendering DM-only actions as disabled buttons with explicit "DM only" labels for non-DM users, while keeping navigation-level DM guards unchanged.
+- Added strictly gated DEV auth bootstrap via URL params so sandbox runs can auto-login as a DM session and jump directly to mapBuilder/startSession/assetCreation without changing production behavior.
 
 ## 2026-01
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DM_ONLY_SCREENS, SCREENS, getDefaultScreenForSession } from "../../screens.js";
+import { createDevSeedSession, getDevAuthDebugConfig } from "../../shared/devAuthDebug.js";
 
 export async function performLogout({ clearSession, supabase, setSessionState, setScreen }) {
   clearSession?.();
@@ -17,22 +18,46 @@ export async function performLogout({ clearSession, supabase, setSessionState, s
 
 export function useAppNavigationState(container) {
   const {
-    auth: { getSession, clearSession },
+    auth: { getSession, clearSession, setSession },
     mapBuilder: { clearCurrentProjectDir },
     shared: { supabase },
   } = container;
 
   const [screen, setScreen] = useState(SCREENS.LOGIN);
   const [sessionState, setSessionState] = useState(null);
+  const [devAuthDebug, setDevAuthDebug] = useState({ enabled: false, shouldShowPanel: false });
   const prevScreenRef = useRef(SCREENS.LOGIN);
 
   useEffect(() => {
+    const debugConfig = getDevAuthDebugConfig(typeof window === "undefined" ? "" : window.location.search);
+    setDevAuthDebug({
+      enabled: debugConfig.enabled,
+      shouldShowPanel: debugConfig.shouldShowPanel,
+    });
+
     const existing = getSession?.();
-    if (existing) {
-      setSessionState(existing);
-      setScreen(getDefaultScreenForSession(existing));
+    if (debugConfig.shouldAutoLogin) {
+      const nextSession = existing || createDevSeedSession();
+      if (!existing) {
+        setSession?.(nextSession);
+      }
+      setSessionState(nextSession);
+
+      if (debugConfig.targetScreen === SCREENS.MAP_BUILDER) {
+        clearCurrentProjectDir?.();
+      }
+
+      setScreen(debugConfig.targetScreen);
+      return;
     }
-  }, [getSession]);
+
+    if (!existing) {
+      return;
+    }
+
+    setSessionState(existing);
+    setScreen(getDefaultScreenForSession(existing));
+  }, [getSession, setSession, clearCurrentProjectDir]);
 
   useEffect(() => {
     const prevScreen = prevScreenRef.current;
@@ -76,5 +101,6 @@ export function useAppNavigationState(container) {
     navigate,
     logout,
     handleLoggedIn,
+    devAuthDebug,
   };
 }
