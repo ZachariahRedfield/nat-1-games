@@ -69,3 +69,15 @@ If any item cannot be satisfied, explicitly explain why.
       - root cause
       - fix
       - validation steps
+
+### Test selection rules (required)
+- [ ] Prefer adding tests closest to the bug’s root cause:
+      - pure functions (geometry, transforms, serialization)
+      - state reducers / history snapshots
+      - services (auth/session/storage)
+      - hooks (navigation state, tool state)
+- [ ] Do NOT add UI integration tests unless the bug cannot be covered otherwise.
+- [ ] Each bug fix should have:
+      - at least one failing test before the fix (ideal), OR
+      - a new regression test added after the fix with clear assertions.
+- [ ] If no test is added, include a brief justification + a manual regression checklist.
