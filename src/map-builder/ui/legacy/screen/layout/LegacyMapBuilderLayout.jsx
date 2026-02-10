@@ -12,6 +12,7 @@ import MapSizeModal from "../components/MapSizeModal.jsx";
 import AssetsFolderDialog from "../components/AssetsFolderDialog.jsx";
 import LegacyMapBuilderUndoRedoControls from "./LegacyUndoRedoControls.jsx";
 import RightAssetsPanel from "../../components/RightAssetsPanel.jsx";
+import { LEGACY_MAP_BUILDER_Z_INDEX_CLASSES } from "../../layering/zIndexClasses.js";
 
 const DebugHud = import.meta.env.DEV
   ? React.lazy(() => import("../../../../../shared/ui/debug/DebugHud.jsx"))
@@ -250,7 +251,7 @@ export default function LegacyMapBuilderLayout({
           </div>
 
           <div
-            className="absolute inset-0 z-[10015] pointer-events-none"
+            className={`absolute inset-0 ${LEGACY_MAP_BUILDER_Z_INDEX_CLASSES.TOOL_HUD_OVERLAY} pointer-events-none`}
             data-overlay-layer="tool-hud"
           >
             {isCompact ? (
@@ -315,7 +316,7 @@ export default function LegacyMapBuilderLayout({
 
 
           {isDev && hudEnabled ? (
-            <div className="absolute inset-0 z-[10015] pointer-events-none" data-overlay-layer="debug-hud">
+            <div className={`absolute inset-0 ${LEGACY_MAP_BUILDER_Z_INDEX_CLASSES.TOOL_HUD_OVERLAY} pointer-events-none`} data-overlay-layer="debug-hud">
               <div className="pointer-events-auto">
                 <Suspense fallback={null}>
                   <DebugHud
