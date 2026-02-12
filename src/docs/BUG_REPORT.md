@@ -99,3 +99,36 @@
 - **Suggested unit test targets:**
   - A pure layering/hit-testing guard helper (if present) that determines pass-through vs interactive regions.
   - A reducer/state-selector test confirming tool changes apply when UI dispatches toolbar intents (to protect against regressions once pointer interception is removed).
+
+## 2026-02-12 — BUG_REPORT rerun (Playwright harness)
+
+### Scope covered
+- Ran the existing MapBuilder Playwright regression suite (`npm run test:e2e`) to validate deterministic repro coverage.
+
+### Bug 4 — Mobile Chromium Playwright project launches WebKit instead of Chromium
+- **Repro steps**
+  1. Run `npm run test:e2e`.
+  2. Observe the `Mobile Chromium` project launch step.
+- **Observed**
+  - The `Mobile Chromium` project attempts to launch WebKit and fails with missing WebKit executable (`.../webkit-2248/pw_run.sh`).
+- **Expected**
+  - `Mobile Chromium` project should launch Chromium for iPhone-form-factor regression checks.
+- **Root cause hypothesis**
+  - `playwright.config.js` derives the mobile project from `devices["iPhone 12"]`, which defaults `browserName` to `webkit`; the project never overrides `browserName` to `chromium`.
+- **Evidence (console/automation output)**
+  - `Error: browserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/webkit-2248/pw_run.sh` while running project named `Mobile Chromium`.
+
+### Highest-impact / lowest-risk issue to fix first
+- **Mobile Chromium Playwright project launches WebKit instead of Chromium**.
+- Why first: it prevents intended mobile Chromium regression coverage and is isolated to a small, deterministic test harness configuration fix.
+
+### BUG_FIX handoff block
+- **Issue title:** Mobile Chromium Playwright project launches WebKit instead of Chromium
+- **Deterministic repro steps:**
+  1. Run `npm run test:e2e`.
+  2. Confirm `Mobile Chromium` attempts to launch WebKit executable.
+- **Most likely root cause:** `devices["iPhone 12"]` defaults `browserName: "webkit"` and the project does not override it.
+- **Target files/modules (likely):**
+  - `playwright.config.js`
+- **Suggested unit test targets:**
+  - A config-level unit test that asserts `Mobile Chromium` project declares `use.browserName === "chromium"`.
