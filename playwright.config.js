@@ -24,7 +24,7 @@ export default defineConfig({
     },
     {
       name: "Mobile Chromium",
-      use: { ...devices["iPhone 12"] },
+      use: { ...devices["iPhone 12"], browserName: "chromium" },
     },
   ],
 });
