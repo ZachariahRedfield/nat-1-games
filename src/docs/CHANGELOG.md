@@ -3,6 +3,7 @@
 
 ## 2026-02
 
+- Hardened Node test script globbing by quoting `src/**/*.test.js` so unit-test discovery stays deterministic across shells/CI environments.
 - Updated Playwright project device settings so both "Desktop Chromium" and "Mobile Chromium" run on Chromium (mobile now emulates Pixel 5) instead of unintentionally requiring WebKit binaries.
 - Added an architecture proposal for cleaner storage mode switching boundaries (OPFS vs Folder) with explicit snapshot transaction safety invariants.
 - Consolidated MapBuilder overlay z-index usage for tool HUD/right assets panel and added regression unit coverage for toolbar tool-intent dispatch so pointer-hit-testing fixes remain stable.
