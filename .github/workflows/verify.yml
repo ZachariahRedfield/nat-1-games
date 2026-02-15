@@ -14,14 +14,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set base ref
+      - name: Ensure base branch is available
         run: |
-          # Ensure base exists locally for diffing
-          git fetch origin main:origin/main
+          git fetch origin main
 
       - name: Run agent guards
         run: |
-          BASE_REF="origin/main" HEAD_REF="HEAD" ./scripts/ci/agent-guards.sh
+          BASE_REF="origin/main" HEAD_REF="HEAD" bash ./scripts/ci/agent-guards.sh
 
   verify:
     runs-on: ubuntu-latest
