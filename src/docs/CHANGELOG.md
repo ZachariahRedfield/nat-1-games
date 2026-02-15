@@ -3,6 +3,7 @@
 
 ## 2026-02
 
+- Updated Playwright project device settings so both "Desktop Chromium" and "Mobile Chromium" run on Chromium (mobile now emulates Pixel 5) instead of unintentionally requiring WebKit binaries.
 - Added an architecture proposal for cleaner storage mode switching boundaries (OPFS vs Folder) with explicit snapshot transaction safety invariants.
 - Consolidated MapBuilder overlay z-index usage for tool HUD/right assets panel and added regression unit coverage for toolbar tool-intent dispatch so pointer-hit-testing fixes remain stable.
 - Fixed mobile-only MapBuilder Playwright specs to use `testInfo.project.name` skip guards so desktop projects no longer error on unsupported `test.skip` callback parameters.
@@ -42,4 +43,3 @@
 - Removed the extra circular clip from image-stamp canvas brushing so stamp edges no longer show a white ring when crossing transparent pixels.
 - Normalized auth role UX by showing role selection in both login and sign-up flows so client validation matches the signup service contract.
 - Switched login session role resolution to server-authenticated `data.role` (fallback `Player`) and removed client-side profile role mutation during login so DM gating reflects trusted auth data.
-
