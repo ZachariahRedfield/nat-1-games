@@ -17,7 +17,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:unit": "node --test \"src/**/*.test.js\"",
     "test:watch": "node --test --watch",
-    "verify": "npm run build",
+    "verify": "npm run test:unit && npm run build",
     "verify:fast": "npm run test:unit"
   },
   "devDependencies": {
