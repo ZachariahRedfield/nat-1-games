@@ -43,6 +43,12 @@ const clipToGridCells = (ctx, point, radius, bounds) => {
   ctx.clip();
 };
 
+const clipToBrushCircle = (ctx, point, radius) => {
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+  ctx.clip();
+};
+
 const resolveStampTiles = (stamp, gridSettings, selectedAsset) => {
   const sizeCols = stamp?.sizeCols ?? stamp?.sizeTiles ?? gridSettings?.sizeCols ?? gridSettings?.sizeTiles ?? 1;
   const sizeRows = stamp?.sizeRows ?? stamp?.sizeTiles ?? gridSettings?.sizeRows ?? gridSettings?.sizeTiles;
@@ -94,7 +100,13 @@ export const paintBrushTip = (cssPoint, context) => {
 
   const radius = (brushSize * BASE_TILE) / 2;
   const bounds = getBrushCellBounds(p, radius, bufferWidth, bufferHeight);
-  clipToGridCells(ctx, p, radius, bounds);
+  const snapToGrid = gridSettings?.snapToGrid ?? true;
+
+  if (snapToGrid) {
+    clipToGridCells(ctx, p, radius, bounds);
+  } else {
+    clipToBrushCircle(ctx, p, radius);
+  }
 
   if (selectedAsset?.kind === "image" && selectedAsset.img) {
     const img = selectedAsset.img;
