@@ -3,6 +3,7 @@
 
 ## 2026-02
 
+- Updated the Playwright e2e runner to fail fast in CI when Chromium is missing (while still skipping locally) and added unit coverage for the execution-mode decision logic.
 - Hardened Node test script globbing by quoting `src/**/*.test.js` so unit-test discovery stays deterministic across shells/CI environments.
 - Updated Playwright project device settings so both "Desktop Chromium" and "Mobile Chromium" run on Chromium (mobile now emulates Pixel 5) instead of unintentionally requiring WebKit binaries.
 - Added an architecture proposal for cleaner storage mode switching boundaries (OPFS vs Folder) with explicit snapshot transaction safety invariants.
