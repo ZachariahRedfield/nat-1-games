@@ -1,0 +1,165 @@
+# Project Context
+
+This repository contains the Nat-1 Games application.
+
+Nat-1 Games is structured as a modular monolith with a strong emphasis on:
+- Clear module boundaries
+- Snapshot-based undo/redo
+- Versioned persistence
+- Long-term architectural integrity
+
+This document describes the system as it exists.
+Behavioral rules and contributor obligations are defined in AGENTS.md.
+
+---
+
+# 1. Architecture Snapshot
+
+## Architectural Model
+
+The system follows a modular monolith architecture.
+
+Each major feature area is treated as a module.
+Modules are isolated and communicate through explicit boundaries.
+Shared logic lives in `/core` or `/shared`.
+
+## Module Overview (High Level)
+
+- MapBuilder
+- Shared/Core
+- (Add future modules here as they stabilize)
+
+## Core Principles (Descriptive)
+
+- Modules are cohesive and isolated.
+- Shared utilities are centralized.
+- Business logic is separate from UI components.
+- State is centralized and snapshot-safe.
+- Persistence is versioned and migration-aware.
+
+## High-Level Data Flow
+
+User Input  
+→ Intent/Action  
+→ State Mutation (centralized)  
+→ Snapshot Recorded  
+→ UI Re-render  
+
+Persistence flow:
+
+Serialized State  
+→ Versioned Schema  
+→ Migration (if required)  
+→ Load into Runtime State  
+
+## Folder Structure (Representative)
+
+src/
+  map-builder/
+  core/
+  shared/
+  state/
+  ui/
+
+(Keep this updated as modules evolve.)
+
+---
+
+# 2. Domain Concepts
+
+## Tool Modes
+
+The map builder currently supports:
+
+- Pan
+- Stamp Brush (tile-based)
+- Canvas Brush (freeform layer effects)
+
+Canvas Brush supports:
+- Brush size
+- Opacity
+- Spacing
+- Layer-aware painting
+
+Undo/redo must correctly support both tile placement and canvas strokes.
+
+---
+
+# 3. Roadmap
+
+## Current Phase
+
+(MapBuilder stabilization / storage evolution / etc.)
+
+## Completed
+
+- Undo/redo snapshot support for:
+  - gridSettings
+  - brushSize
+  - canvasOpacity
+  - canvasSpacing
+- Eraser toggle (tile + canvas)
+- Modular file separation (MapBuilder / Grid split)
+
+## Next Up
+
+- (Define your current next milestone here)
+- (Example: storage mode switching OPFS ↔ Folder)
+- (Example: improve canvas brush alignment bug)
+
+## Known Issues
+
+- (List high-level known bugs if still relevant)
+- (Keep this short and factual)
+
+---
+
+# 4. Development Workflow
+
+## Verification Commands
+
+During iteration:
+- `npm run verify:fast`
+
+Before finalizing:
+- `npm run verify`
+
+Verification should include:
+- Type checking
+- Lint
+- Tests
+- Build
+
+---
+
+## Definition of Done (Practical)
+
+A non-trivial change is complete when:
+
+- Architectural boundaries are preserved.
+- State remains undo/redo safe.
+- Persistence integrity is maintained.
+- At least one focused regression test exists (when feasible).
+- CHANGELOG.md contains a concise behavioral entry.
+
+---
+
+# 5. Persistence Model
+
+Serialized project/map state is versioned.
+
+Any schema change requires:
+- Version bump
+- Migration OR explicit breaking-change declaration
+
+Never silently invalidate existing saves.
+
+---
+
+# 6. Debug & Repro (Optional)
+
+Repro routes may be available, for example:
+
+/?repro=mapBuilder&debug=1
+
+(Keep updated if relevant.)
