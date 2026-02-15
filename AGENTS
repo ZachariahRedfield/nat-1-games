@@ -1,0 +1,206 @@
+# AGENTS.md
+
+This file defines the architectural invariants and engineering philosophy of this repository.
+
+All non-trivial changes must comply with this contract.  
+If a request conflicts with it, explicitly identify the conflict and propose a safer alternative before proceeding.
+
+---
+
+# I. SYSTEM INVARIANTS (Non-Negotiable)
+
+## 1. Architectural Model
+
+The system is a **modular monolith**.
+
+### Module Boundaries
+
+- Modules must not import from sibling modules.
+- Shared logic must live in `/core` or `/shared`.
+- Cross-module coordination must occur through explicit interfaces.
+- Do not introduce new global state mechanisms.
+
+If a feature requires cross-module access:
+- Extract or refactor into a shared abstraction.
+- Do not create one-off direct coupling.
+
+### Separation of Concerns
+
+- UI components must not contain business logic.
+- Business logic must not depend on UI implementation details.
+- Rendering layers must remain side-effect free.
+- State mutations must be centralized and traceable.
+
+---
+
+## 2. State & History Safety
+
+The application uses snapshot-based undo/redo.
+
+### Mutation Rules
+
+- All state mutations must be reversible.
+- No hidden or implicit mutations.
+- No mutation during render cycles.
+- All state must be serializable.
+
+### Snapshot Integrity
+
+New state must:
+- Be deterministic.
+- Be included in history snapshots.
+- Avoid non-serializable references (DOM nodes, functions, class instances).
+
+When introducing new state:
+- Evaluate undo/redo impact.
+- Explicitly call out history risks.
+
+---
+
+## 3. Persistence & Versioning
+
+Serialized project/map state is versioned.
+
+Any change to serialized structures requires:
+1. A schema version bump.
+2. A backward-compatible migration  
+   OR an explicit breaking-change declaration.
+
+Never silently break existing saves.
+
+Persistence rules:
+- Validate file paths defensively.
+- Do not assume filesystem permissions.
+- Require explicit user intent for destructive actions.
+
+---
+
+## 4. UI System Discipline
+
+### Layering
+
+- Do not introduce ad-hoc z-index values.
+- Use the shared layering scale.
+- Use the single top-level portal host for modals, confirmations, and toasts.
+- Do not force visibility via stacking hacks.
+
+### Interaction Safety
+
+All pointer interactions must:
+- Work on desktop and mobile.
+- Avoid gesture conflicts (drag vs scroll vs pan).
+- Disable complex resizing/reordering on mobile unless explicitly designed.
+
+Validate interaction changes across responsive modes.
+
+---
+
+## 5. Testing & Verification
+
+Behavior changes require:
+
+- At least one focused regression unit test when feasible.
+- Preference for pure unit tests (reducers/services/helpers) over UI tests.
+- If UI-heavy and not unit-testable:
+  - Add a non-visual logic test, OR
+  - Provide a brief manual regression checklist.
+
+Do not consider work complete unless verification passes.
+
+---
+
+# II. ENGINEERING PHILOSOPHY (Decision Guidance)
+
+When multiple compliant solutions exist, prefer the option that best aligns with the following principles.
+
+## 1. Long-Term Integrity > Short-Term Convenience
+
+Favor solutions that:
+- Preserve architectural boundaries.
+- Reduce future complexity.
+- Avoid one-off logic and hidden coupling.
+
+Do not “just make it work” if it increases system entropy.
+
+---
+
+## 2. Clarity > Cleverness
+
+- Prefer explicit logic over implicit magic.
+- Prefer readability over dense abstraction.
+- Prefer simple, observable data flow over indirection.
+
+Optimizations must not meaningfully reduce understandability.
+
+---
+
+## 3. Determinism Over Implicit Behavior
+
+Avoid:
+- Hidden side effects.
+- Implicit state transitions.
+- Untraceable mutations.
+
+Prefer:
+- Explicit actions.
+- Centralized state changes.
+- Predictable flows.
+
+---
+
+## 4. Mechanical Sympathy
+
+Design changes must respect:
+
+- Snapshot-based history.
+- Serialization constraints.
+- Modular boundaries.
+- UI layering discipline.
+
+If a design fights the architecture, redesign it.
+
+---
+
+## 5. Minimal Surface Area
+
+When adding features:
+
+- Avoid expanding public interfaces unnecessarily.
+- Avoid introducing new global patterns.
+- Avoid broad refactors unless structurally justified.
+
+Prefer incremental, composable improvements.
+
+---
+
+# III. CHANGE DISCIPLINE
+
+For non-trivial changes:
+
+- Keep changes cleanly scoped and PR-ready.
+- Do not include debug artifacts or TODOs.
+- Update `CHANGELOG.md` with a concise behavioral summary (what changed and why, not how).
+- Update documentation only where structurally necessary.
+
+If requirements are unclear:
+- Ask at most 1–2 targeted clarification questions.
+- Proceed with a clearly stated default assumption when appropriate.
+
+---
+
+# IV. CONFLICT PROTOCOL
+
+If a request violates:
+
+- Architectural invariants  
+- State/history safety  
+- Persistence guarantees  
+- UI system discipline  
+
+You must:
+
+1. Explicitly identify the violation.
+2. Explain the architectural risk.
+3. Propose a compliant alternative.
+
+System integrity takes precedence over expediency.
