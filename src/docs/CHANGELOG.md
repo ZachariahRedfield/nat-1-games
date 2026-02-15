@@ -3,6 +3,7 @@
 
 ## 2026-02
 
+- Added an architecture proposal for cleaner storage mode switching boundaries (OPFS vs Folder) with explicit snapshot transaction safety invariants.
 - Consolidated MapBuilder overlay z-index usage for tool HUD/right assets panel and added regression unit coverage for toolbar tool-intent dispatch so pointer-hit-testing fixes remain stable.
 - Fixed mobile-only MapBuilder Playwright specs to use `testInfo.project.name` skip guards so desktop projects no longer error on unsupported `test.skip` callback parameters.
 - Added a Playwright E2E harness for MapBuilder repro flows (desktop+mobile projects, deterministic dev-auth startup, and stable `data-testid` selectors) to catch toolbar/compact-control interaction regressions earlier.
