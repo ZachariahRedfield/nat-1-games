@@ -3,6 +3,7 @@
 
 ## 2026-02
 
+- Implemented the storage mode architecture plan by introducing `StorageModeOrchestrator`, `ProjectSessionRegistry`, and `SnapshotTransactionService`, wiring `StorageManager` through these boundaries for provider resolution/session ownership/snapshot flow coordination, and removing the architecture proposal doc after implementation.
 - Updated the `verify` GitHub Actions job to use Node 22 so Vite builds run on a supported runtime and PR verification no longer fails on outdated Node 20 minors.
 - Fixed `verify` workflow guard execution by fetching `origin/main` as a remote-tracking ref and invoking `agent-guards.sh` through `bash` so CI no longer fails on missing execute permissions or ambiguous base refs.
 - Updated the Playwright e2e runner to fail fast in CI when Chromium is missing (while still skipping locally) and added unit coverage for the execution-mode decision logic.
