@@ -3,6 +3,8 @@
 
 ## 2026-02
 
+- Added `FAWXZZY_ENGINEERING_PLAYBOOK.md` and `FAWXZZY_ARCHITECTURE_PLAN.md` to translate the reusable Nat-1 engineering doctrine into a domain-specific, mobile-first SaaS architecture plan for Fawxzzy Fitness, including transfer/simplify/drop guidance and new patterns for workout logging, PR tracking, progressive overload, analytics readiness, Supabase RLS, and offline sync.
+
 - Implemented the storage mode architecture plan by introducing `StorageModeOrchestrator`, `ProjectSessionRegistry`, and `SnapshotTransactionService`, wiring `StorageManager` through these boundaries for provider resolution/session ownership/snapshot flow coordination, and removing the architecture proposal doc after implementation.
 - Updated the `verify` GitHub Actions job to use Node 22 so Vite builds run on a supported runtime and PR verification no longer fails on outdated Node 20 minors.
 - Fixed `verify` workflow guard execution by fetching `origin/main` as a remote-tracking ref and invoking `agent-guards.sh` through `bash` so CI no longer fails on missing execute permissions or ambiguous base refs.
