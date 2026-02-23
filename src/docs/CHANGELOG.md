@@ -50,3 +50,5 @@
 - Removed the extra circular clip from image-stamp canvas brushing so stamp edges no longer show a white ring when crossing transparent pixels.
 - Normalized auth role UX by showing role selection in both login and sign-up flows so client validation matches the signup service contract.
 - Switched login session role resolution to server-authenticated `data.role` (fallback `Player`) and removed client-side profile role mutation during login so DM gating reflects trusted auth data.
+- Standardized session auth action responses to `ActionResult` semantics (`{ ok: true, data? } | { ok: false, error }`) so login/sign-up failures are handled through explicit contracts instead of thrown errors.
+- Updated API auth endpoints to emit the same `ActionResult` shape for success/error payloads, reducing response-shape drift as additional session/server actions adopt the pattern.

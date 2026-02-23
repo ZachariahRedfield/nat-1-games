@@ -2,36 +2,50 @@ import { kv } from "@vercel/kv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+function actionSuccess(data) {
+  return { ok: true, data };
+}
+
+function actionError(error) {
+  return { ok: false, error };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.status(405).json({ success: false, message: 'Method not allowed', data: null });
+    res.status(405).json(actionError('Method not allowed'));
     return;
   }
+
   try {
     const { username, password } = req.body || {};
     if (!username || !password) {
-      res.status(400).json({ success: false, message: 'username and password required', data: null });
+      res.status(400).json(actionError('username and password required'));
       return;
     }
+
     const key = `user:${String(username).toLowerCase()}`;
     const user = await kv.get(key);
     if (!user) {
-      res.status(404).json({ success: false, message: 'user not found', data: null });
+      res.status(404).json(actionError('user not found'));
       return;
     }
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) {
-      res.status(401).json({ success: false, message: 'invalid credentials', data: null });
+
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      res.status(401).json(actionError('invalid credentials'));
       return;
     }
+
     const token = jwt.sign(
       { sub: user.username, role: user.role },
       process.env.JWT_SECRET,
       { algorithm: 'HS256', expiresIn: '7d' }
     );
-    res.status(200).json({ success: true, message: 'ok', data: { token, user: { username: user.username, role: user.role } } });
-  } catch (err) {
-    res.status(500).json({ success: false, message: 'server error', data: null });
+
+    res.status(200).json(
+      actionSuccess({ token, user: { username: user.username, role: user.role } })
+    );
+  } catch {
+    res.status(500).json(actionError('server error'));
   }
 }
-

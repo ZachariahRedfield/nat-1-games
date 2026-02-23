@@ -29,13 +29,21 @@ export function useLoginSubmission({
           if (!role) {
             throw new Error("Role is required for sign up");
           }
-          await signup?.(trimmedUsername, rawPassword, role);
+          const signupResult = await signup?.(trimmedUsername, rawPassword, role);
+          if (!signupResult?.ok) {
+            throw new Error(signupResult?.error || "Signup failed");
+          }
           setMode("login");
           setFeedback({ type: "info", message: "Account created. Please log in." });
           return;
         }
 
-        const data = await login?.(trimmedUsername, rawPassword);
+        const loginResult = await login?.(trimmedUsername, rawPassword);
+        if (!loginResult?.ok) {
+          throw new Error(loginResult?.error || "Login failed");
+        }
+
+        const data = loginResult.data;
         if (!data) {
           throw new Error("Login failed");
         }
