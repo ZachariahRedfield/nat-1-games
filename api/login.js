@@ -2,11 +2,11 @@ import { kv } from "@vercel/kv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-function actionSuccess(data) {
+export function actionSuccess(data) {
   return { ok: true, data };
 }
 
-function actionError(error) {
+export function actionError(error) {
   return { ok: false, error };
 }
 
