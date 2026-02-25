@@ -2,6 +2,7 @@ import React from "react";
 import { useAppNavigation, useAppSession } from "../../../app/AppContext.jsx";
 import { SCREENS } from "../../../app/screens.js";
 import SiteHeader from "../site-header/SiteHeader.jsx";
+import AppButton from "../button/AppButton.jsx";
 
 export default function MainMenu({ setScreen, session, onLogout }) {
   const { navigate, logout, screen: activeScreen } = useAppNavigation();
@@ -19,9 +20,9 @@ export default function MainMenu({ setScreen, session, onLogout }) {
   ]);
 
   const menuActions = [
-    { label: "Map Builder", screen: SCREENS.MAP_BUILDER, className: "bg-blue-600 hover:bg-blue-500" },
-    { label: "Start Session", screen: SCREENS.START_SESSION, className: "bg-green-600 hover:bg-green-500" },
-    { label: "Asset Creation", screen: SCREENS.ASSET_CREATION, className: "bg-purple-600 hover:bg-purple-500" },
+    { label: "Map Builder", screen: SCREENS.MAP_BUILDER, tone: "primary" },
+    { label: "Start Session", screen: SCREENS.START_SESSION, tone: "primary" },
+    { label: "Asset Creation", screen: SCREENS.ASSET_CREATION, tone: "primary" },
   ];
 
   return (
@@ -33,16 +34,16 @@ export default function MainMenu({ setScreen, session, onLogout }) {
         onNavigate={goTo}
       />
       <main className="flex-1 flex flex-col gap-4 items-center justify-center bg-gray-900 text-white">
-        {menuActions.map(({ label, screen, className }) => {
+        {menuActions.map(({ label, screen, tone }) => {
           const isDmOnly = dmOnlyActions.has(screen);
           const isBlocked = isDmOnly && !isDM;
 
           return (
-            <button
+            <AppButton
               key={screen}
-              className={`px-4 py-2 rounded ${
-                isBlocked ? "bg-gray-600 cursor-not-allowed opacity-70" : className
-              }`}
+              className="min-w-52"
+              tone={isBlocked ? "neutral" : tone}
+              size="large"
               disabled={isBlocked}
               aria-label={isBlocked ? `${label} (DM only)` : label}
               title={isBlocked ? "DM only" : undefined}
@@ -50,7 +51,7 @@ export default function MainMenu({ setScreen, session, onLogout }) {
             >
               {label}
               {isBlocked ? " (DM only)" : ""}
-            </button>
+            </AppButton>
           );
         })}
       </main>

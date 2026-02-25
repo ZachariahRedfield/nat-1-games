@@ -1,4 +1,5 @@
 import React from "react";
+import AppButton from "../../../shared/ui/button/AppButton.jsx";
 
 export function AuthLayout({ title, goBack, children }) {
   return (
@@ -6,13 +7,9 @@ export function AuthLayout({ title, goBack, children }) {
       <header className="p-4 bg-gray-800 flex justify-between items-center">
         <h2 className="text-xl font-bold">{title}</h2>
         {goBack ? (
-          <button
-            type="button"
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
-            onClick={goBack}
-          >
+          <AppButton type="button" tone="neutral" size="compact" onClick={goBack}>
             Back
-          </button>
+          </AppButton>
         ) : (
           <span />
         )}
