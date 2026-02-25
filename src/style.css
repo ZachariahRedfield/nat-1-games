@@ -15,3 +15,106 @@
     font-size: 16px;
   }
 }
+
+@layer components {
+  :root {
+    --app-btn-radius: 0.5rem;
+    --app-btn-px: 1rem;
+    --app-btn-py: 0.625rem;
+    --app-btn-font-size: 0.95rem;
+    --app-btn-font-weight: 600;
+    --app-btn-transition: 140ms ease;
+
+    --app-btn-primary-bg: rgb(37 99 235);
+    --app-btn-primary-bg-hover: rgb(29 78 216);
+    --app-btn-primary-bg-active: rgb(30 64 175);
+
+    --app-btn-neutral-bg: rgb(55 65 81);
+    --app-btn-neutral-bg-hover: rgb(75 85 99);
+    --app-btn-neutral-bg-active: rgb(31 41 55);
+
+    --app-btn-ghost-bg: transparent;
+    --app-btn-ghost-bg-hover: rgb(31 41 55 / 0.55);
+    --app-btn-ghost-bg-active: rgb(31 41 55 / 0.7);
+  }
+
+  .app-btn {
+    border-radius: var(--app-btn-radius);
+    padding: var(--app-btn-py) var(--app-btn-px);
+    font-size: var(--app-btn-font-size);
+    font-weight: var(--app-btn-font-weight);
+    line-height: 1.15;
+    color: white;
+    transition:
+      background-color var(--app-btn-transition),
+      transform var(--app-btn-transition),
+      opacity var(--app-btn-transition);
+  }
+
+  .app-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  .app-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .app-btn:focus-visible {
+    outline: 2px solid rgb(147 197 253);
+    outline-offset: 2px;
+  }
+
+  .app-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .app-btn--primary {
+    background: var(--app-btn-primary-bg);
+  }
+
+  .app-btn--primary:hover:not(:disabled) {
+    background: var(--app-btn-primary-bg-hover);
+  }
+
+  .app-btn--primary:active:not(:disabled) {
+    background: var(--app-btn-primary-bg-active);
+  }
+
+  .app-btn--neutral {
+    background: var(--app-btn-neutral-bg);
+  }
+
+  .app-btn--neutral:hover:not(:disabled) {
+    background: var(--app-btn-neutral-bg-hover);
+  }
+
+  .app-btn--neutral:active:not(:disabled) {
+    background: var(--app-btn-neutral-bg-active);
+  }
+
+  .app-btn--ghost {
+    background: var(--app-btn-ghost-bg);
+    border: 1px solid rgb(75 85 99);
+  }
+
+  .app-btn--ghost:hover:not(:disabled) {
+    background: var(--app-btn-ghost-bg-hover);
+  }
+
+  .app-btn--ghost:active:not(:disabled) {
+    background: var(--app-btn-ghost-bg-active);
+  }
+
+  .app-btn--compact {
+    --app-btn-px: 0.625rem;
+    --app-btn-py: 0.4rem;
+    --app-btn-font-size: 0.8rem;
+  }
+
+  .app-btn--large {
+    --app-btn-px: 1.125rem;
+    --app-btn-py: 0.75rem;
+    --app-btn-font-size: 1rem;
+  }
+}

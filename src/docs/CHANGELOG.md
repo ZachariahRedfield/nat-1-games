@@ -3,6 +3,9 @@
 
 ## 2026-02
 
+- WHAT: Introduced shared app-level button tokens and a reusable `AppButton` primitive, then applied it to high-frequency actions in the main menu and auth screens.
+- WHY: Reduce action-style drift and maintain consistent touch/keyboard feedback across core navigation flows.
+
 - Added `FAWXZZY_ENGINEERING_PLAYBOOK.md` and `FAWXZZY_ARCHITECTURE_PLAN.md` to translate the reusable Nat-1 engineering doctrine into a domain-specific, mobile-first SaaS architecture plan for Fawxzzy Fitness, including transfer/simplify/drop guidance and new patterns for workout logging, PR tracking, progressive overload, analytics readiness, Supabase RLS, and offline sync.
 
 - Implemented the storage mode architecture plan by introducing `StorageModeOrchestrator`, `ProjectSessionRegistry`, and `SnapshotTransactionService`, wiring `StorageManager` through these boundaries for provider resolution/session ownership/snapshot flow coordination, and removing the architecture proposal doc after implementation.
