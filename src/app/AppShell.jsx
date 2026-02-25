@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { createAppContainer } from "./AppContainer.js";
 import { AppProvider } from "./AppContext.jsx";
 import AppScreenRenderer from "./ui/navigation/AppScreenRenderer.jsx";
@@ -26,6 +26,38 @@ export default function AppShell() {
     useAppNavigationState(container);
 
   const appNavigate = navigate ?? setScreen;
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return undefined;
+
+    const resetZoom = () => {
+      const active = document.activeElement;
+      const isInputFocused =
+        active instanceof HTMLElement &&
+        (active.tagName === "INPUT" ||
+          active.tagName === "TEXTAREA" ||
+          active.tagName === "SELECT" ||
+          active.isContentEditable);
+
+      if (isInputFocused) return;
+
+      if (window.visualViewport.scale > 1) {
+        window.scrollTo({
+          left: window.scrollX,
+          top: window.scrollY,
+          behavior: "auto",
+        });
+      }
+    };
+
+    window.addEventListener("focusout", resetZoom, true);
+    window.visualViewport.addEventListener("resize", resetZoom);
+
+    return () => {
+      window.removeEventListener("focusout", resetZoom, true);
+      window.visualViewport?.removeEventListener("resize", resetZoom);
+    };
+  }, []);
 
   return (
     <AppProvider
