@@ -8,8 +8,10 @@
   }
 
   input,
+  select,
   textarea,
   [contenteditable="true"] {
     caret-color: auto;
+    font-size: 16px;
   }
 }
